@@ -10,12 +10,23 @@ In total, MSLS contains ~1.6 million images from 30 major cities on six-continen
 
 The model presented here was trained on a sample of the MSLS using images from only the United States. The approximate distribution by metro area is below:
 
-    | Metro-Statistical Area                       | Images (count) |
-    |----------------------------------------------|----------------|
-    | Miami-Fort Lauderdale-Pompano Beach, FL  MSA | 5,900          |
-    | Austin–Round Rock-Georgetown MSA             | 28,460         |
-    | Phoenix MSA                                  | 106,220        |
-    | San Francisco-Oakland-Fremont, CA MSA        | 4,525          |
+| City      | Size     | Imgs   |
+|-----------|----------|--------|
+| Austin    | 761.5 MB |  28462 |
+| bangkok   | 1.2 GB   |  40125 |
+| budapest  | 1.7 GB   |  45800 |
+| helsinki  | 721.3 MB |  15228 |
+| london    | 265.4 MB |   5983 |
+| manila    | 219.0 MB |   5378 |
+| melbourne | 6.3 GB   | 189945 |
+| moscow    | 4.9 GB   | 171878 |
+| paris     | 344.2 MB |   9503 |
+| phoenix   | 3.4 GB   | 106221 |
+| saopaulo  | 1.2 GB   |  35096 |
+| sf        | 174.6 MB |   4525 |
+| trondheim | 207.5 MB |   4136 |
+| zurich    | 113.8 MB |   2991 |
+
 
 ### Supplemental Links & Citation
 

@@ -1,3 +1,6 @@
+# USE:
+# python3 run_gaudi_dcgan.py --dataroot "/efs/images/multi/" --seed 215
+
 # General Deps
 import random
 import os
@@ -5,6 +8,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import argparse
 import matplotlib.animation as animation
 from IPython.display import HTML
 
@@ -17,11 +21,30 @@ import torchvision.utils as vutils
 # DCGAN
 import gaudi_dcgan as dcgan
 
-# Root directory for dataset
-dataroot = "/efs/images/sample"
-MODEL_SEED = 215
+
+parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
+
+parser.add_argument("-s", "--seed", type=int, help="An integer to seed Pytorch")
+
+parser.add_argument("-n", "--name", type=int, help="An integer to seed Pytorch")
+
+parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
+
+parser.add_argument("-s", "--s_epoch", type=int, help="Epoch to resume training from")
+
+parser.add_argument("-n", "--n_epoch", type=int, help="Number of Epochs to train until")
+
 
 if __name__ == "__main__":
+
+    args = parser.parse_args()
+
+    # Root directory for dataset
+    DATAROOT = args.dataroot or "/efs/images/sample"
+    MODEL_SEED = args.seed or 215
+    NUM_EPOCH = args.n_epoch or 32
+    START_EPOCH = args.s_epoch or 0
+    NAME = args.name or "msls_dcgan_001"
 
     # Seed Model
     random.seed(MODEL_SEED)
@@ -29,14 +52,16 @@ if __name__ == "__main__":
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64 img world!
-    model_cfg = dcgan.ModelCheckpointConfig()
+    model_cfg = dcgan.ModelCheckpointConfig(model_name=NAME)
+
     train_cfg = dcgan.TrainingConfig()
 
     # We can use an image folder dataset the way we have it setup.
     dataset = dset.ImageFolder(
-        root=dataroot,
+        root=DATAROOT,
         transform=transforms.Compose(
             [
+                transforms.RandomAffine(degrees=0, translate=(0.1, 0.0)),
                 transforms.CenterCrop(
                     train_cfg.img_size * 4
                 ),  # Use the Middle 256 x 256
@@ -91,5 +116,5 @@ if __name__ == "__main__":
 
     # Run Model
     result = dcgan.start_or_resume_training_run(
-        dataloader, train_cfg, model_cfg, num_epochs=16, start_epoch=0
+        dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
     )
