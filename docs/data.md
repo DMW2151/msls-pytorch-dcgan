@@ -6,9 +6,7 @@
 
 Models trained on both `DL1` and `P3` instances use a subset of the Mapillary Street-Level Sequences dataset (MSLS). Mapillary, a subsidiary of Facebook, primarily provides a platform for crowd-sourced maps and street-level imagery. This dataset is available for download [here](https://www.mapillary.com/dataset/places).
 
-In total, MSLS contains ~1.6 million images from 30 major cities on six-continents. In general, image sizes range from 256x256 to 640x480. Because the original DCGAN paper expects 64x64 images, these images gave me leeway to apply cropping, down-scaling, and multiple translations to almost all images in the sample.
-
-The model presented here was trained on a sample of the MSLS using images from only the United States. The approximate distribution by metro area is below:
+In total, MSLS contains ~1.6 million images from 30 major cities on six-continents. In general, image sizes range from 256x256 to 640x480. Because the original DCGAN paper expects 64x64 images, these images gave me leeway to apply cropping, down-scaling, and multiple horizontal translations to almost all images in the sample. The model presented here was trained on a sample of the MSLS using images from approximatley 1/2 of the MSLS dataset. The distribution by metro area is below:
 
 | City      | Size     | Imgs   |
 |-----------|----------|--------|
@@ -27,6 +25,7 @@ The model presented here was trained on a sample of the MSLS using images from o
 | trondheim | 207.5 MB |   4136 |
 | zurich    | 113.8 MB |   2991 |
 
+Removed some empty files (`find /efs/images -type f -empty -print -delete`)
 
 ### Supplemental Links & Citation
 

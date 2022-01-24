@@ -30,7 +30,7 @@ parser.add_argument("-n", "--name", type=int, help="An integer to seed Pytorch")
 
 parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
 
-parser.add_argument("-s", "--s_epoch", type=int, help="Epoch to resume training from")
+parser.add_argument("-k", "--s_epoch", type=int, help="Epoch to resume training from")
 
 parser.add_argument("-n", "--n_epoch", type=int, help="Number of Epochs to train until")
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         root=DATAROOT,
         transform=transforms.Compose(
             [
-                transforms.RandomAffine(degrees=0, translate=(0.1, 0.0)),
+                transforms.RandomAffine(degrees=0, translate=(0.2, 0.0)),
                 transforms.CenterCrop(
                     train_cfg.img_size * 4
                 ),  # Use the Middle 256 x 256

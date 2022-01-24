@@ -74,15 +74,40 @@ class TrainingConfig:
     ngpu: int = int(torch.cuda.is_available())  # No Support for Multi GPU!!
 
     def _announce(self):
+        """Show Pytorch and CUDA attributes before Train..."""
+
         print("====================")
         print(self.dev.__repr__())
         print(f"Pytorch Version: {torch.__version__}")
+
+        if torch.cuda.device_count() > 1:
+            print(f"Running in Multi-GPU: {torch.cuda.device_count()} GPUs Available.")
+
+        if torch.cuda.is_available():
+            try:
+                print(torch._C._cuda_getDriverVersion(), "cuda driver")
+                print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
+                print(torch._C._nccl_version(), "nccl")
+                for i in range(torch.cuda.device_count()):
+                    print("device %s:" % i, torch.cuda.get_device_properties(i))
+            except AttributeError:
+                pass
         print("====================")
 
     def get_net_D(self):
-        """Instantiate an uninitialized Disctiminator Network"""
+        """
+        Instantiate a Disctiminator Network
+            - Add Data Parallelism if Multi GPU
+            - Add Habana AdamW if Habana
+        """
 
-        netD = Discriminator(self).to(self.dev)
+        netD = Discriminator(self)
+
+        if torch.cuda.is_available():
+            if torch.cuda.device_count() > 1:
+                netD = nn.DataParallel(netD)
+
+        netD.to(self.dev)
 
         # Will Fail if not on a Habana DL AMI Instance; Use FusedAdamW over the Original
         # Adam Optimizer.
@@ -111,9 +136,19 @@ class TrainingConfig:
         return netD, optimD
 
     def get_net_G(self):
-        """Instantiate an uninitialized Generator Network"""
+        """
+        Instantiate a Generator Network
+            - Add Data Parallelism if Multi GPU
+            - Add Habana AdamW if Habana
+        """
 
-        netG = Generator(self).to(self.dev)
+        netG = Generator(self)
+
+        if torch.cuda.is_available():
+            if torch.cuda.device_count() > 1:
+                netG = nn.DataParallel(netG)
+
+        netG.to(self.dev)
 
         # Will Fail if not on a Habana DL AMI Instance; Use FusedAdamW over the Original
         # Adam Optimizer.
@@ -277,7 +312,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
 
 
 def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0):
-    """Train Model """
+    """Train Model"""
     train_cfg._announce()
 
     # Initialize Net and Optimizers
@@ -299,7 +334,7 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
         netD.apply(weights_init)
         cur_epoch = 0
         img_list = []
-        losses = {"_G": [], "_D": []}
+        losses = {"_G": [], "_D": [], "D_x": [], "D_G_z1": [], "D_G_z2": []}
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize Stateless BCELoss Function
@@ -310,7 +345,7 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1) All-real batch; Update D network: log(D(x)) + log(1 - D(G(z)))
-            # Discriminator loss calculated as the sum of losses for the all real and all fake batches 
+            # Discriminator loss calculated as the sum of losses for the all real and all fake batches
             netD.zero_grad()
 
             real_cpu = dbatch[0].to(train_cfg.dev)
@@ -379,21 +414,25 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            # Show Loss Every 32,000 images (250 training steps * 128/step)
-            if epoch_step % 250 == 0:
+            # Show Loss Every 6,400 images (50 training steps * 128/step)
+            if epoch_step % 50 == 0:
                 print(
-                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dataloader)}] Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
-                # And also save the progress on the fixed latent input vector...
-                with torch.no_grad():
-                    fake = netG(fixed_noise).detach().cpu()
-                    img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+                # Save Sample Imgs Every 32,000 images processed (250 training steps * 128/step)
+                if (epoch_step % 250) == 0:
+                    # And also save the progress on the fixed latent input vector...
+                    with torch.no_grad():
+                        fake = netG(fixed_noise).detach().cpu()
+                        img_list.append(
+                            vutils.make_grid(fake, padding=2, normalize=True)
+                        )
 
             # Save Losses (and a few other function values) for plotting later
             losses["_G"].append(errG.item())
             losses["_D"].append(errD.item())
-            losses["D_x"].append(D_x)s
+            losses["D_x"].append(D_x)
             losses["D_G_z1"].append(D_G_z1)
             losses["D_G_z2"].append(D_G_z2)
 
