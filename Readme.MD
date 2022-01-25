@@ -64,11 +64,11 @@ I considered using `3 x 128 x 128` images for this project and adding an additio
 
 The model presented here was trained on a sample of the MSLS using transformed images from approximately 45% of the MSLS dataset. The distribution by metro area from my sample additional distributions of year, month, and time-of-day from the whole dataset are presented below:
 
- <img style="padding: 20px;" align="left" width="600" height="500" src="docs/images/chart.jpg">
+ <img style="padding: 20px;" align="left" width="500" height="400" src="docs/images/chart.jpg">
 
-| City      | Size     | Imgs    | 
+| City      | Size     | Imgs    |
 |-----------|----------|---------|
-| Austin    | 0.761 GB |  28,462 |
+| Austin    | 0.76 GB  |  28,462 |
 | Bangkok   | 1.2 GB   |  40,125 |
 | Budapest  | 1.7 GB   |  45,800 |
 | Helsinki  | 0.72 GB  |  15,228 |
