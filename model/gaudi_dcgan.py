@@ -1,23 +1,22 @@
 # Core Script for running DCGAN -> Implements the GAN architecture from the Original
-# DCGAN Paper in Pytorch with slight adjustments to the optimizer.
+# DCGAN Paper in PyTorch with slight adjustments to the optimizer.
 #
 # See: https://arxiv.org/abs/1406.2661
 # See: https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf
 #
-# A Very Quick Intro To GAN + Notation used, modified from:
+# A very quick intro to DCGAN & notation used, modified from:
 # https://github.com/pytorch/tutorials/blob/master/beginner_source/dcgan_faces_tutorial.py
 #
 # Let:
 #   - X be an vector (image) with dims C x W x H
-#   - Z be a latent vector sampled from a standard normal distribution
+#   - Z be a latent vector sampled from a standard normal distribution 
 #   - D(X) be a discriminator network which outputs the probability that X came from training data
-#   - G(Z) be a generator network which maps the latent vector, Z, to data-space.
+#   - G(Z) be a generator network which maps the latent vector, Z, to data-space (i.e. an Image)
 #   - D(G(z)) is the probability that the output of the generator G is a real image.
 #
-# Put simply G tries to create believable images from the latent input vector
+# Put simply, G tries to create believable images from the latent input vector
 # and D tries to maximize the probability it correctly classifies reals and
-# fakes (from G),
-#
+# fakes (from G)
 
 import datetime
 import os
