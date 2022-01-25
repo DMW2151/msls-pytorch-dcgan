@@ -1,4 +1,6 @@
 # USE:
+
+# Command line wrapper around gaudi_dcgan.py
 # python3 run_gaudi_dcgan.py --dataroot "/efs/images/multi/" --seed 215
 
 # General Deps
@@ -40,7 +42,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Root directory for dataset
-    DATAROOT = args.dataroot or "/efs/images/sample"
+    DATAROOT = args.dataroot or "/efs/images/"
     MODEL_SEED = args.seed or 215
     NUM_EPOCH = args.n_epoch or 32
     START_EPOCH = args.s_epoch or 0
@@ -56,7 +58,8 @@ if __name__ == "__main__":
 
     train_cfg = dcgan.TrainingConfig()
 
-    # We can use an image folder dataset the way we have it setup.
+    # We can use an image folder dataset; depending on the size of the training directory this can take a 
+    # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)
     dataset = dset.ImageFolder(
         root=DATAROOT,
         transform=transforms.Compose(
