@@ -355,7 +355,7 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
     )
 
 
-def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
+def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, n_iter=10, save_to_disk=False):
     """
     Generates samples from a model checkpoint saved to disk 
     --------
@@ -401,9 +401,25 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
 
     # Use the Generator to create "believable" fake images - You can call a plotting function 
     # on this output to visualize the images vs real ones
-
     generated_imgs = netG(rd_noise).detach().cpu()
-    return generated_imgs
+    
+    if (save_to_disk):
+        # If we elect to save to disk, save `n_iter` similar image grids to disk...
+        for _ in range(n_iter):
+            
+            rd_noise = torch.randn(
+                n_samples, train_cfg.nz, 1, 1, 
+                device=train_cfg.dev
+            )
+            
+            generated_imgs = netG(rd_noise).detach().cpu()
+            # NOTE: Save Here
+            
+        return generated_imgs
+    else:
+        return generated_imgs
+    
+
 
 
 def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0):
