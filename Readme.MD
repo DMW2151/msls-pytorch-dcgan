@@ -37,7 +37,7 @@ At a low-level, it's difficult to describe all of the consequences of using `PyT
   
 - The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. This project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I do, as the original paper describes:
 
-    > ...Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
+    > Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
 
 As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I should also note the following changes between the model's execution on the two machines:
 
