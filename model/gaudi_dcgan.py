@@ -9,7 +9,7 @@
 #
 # Let:
 #   - X be an vector (image) with dims C x W x H
-#   - Z be a latent vector sampled from a standard normal distribution 
+#   - Z be a latent vector sampled from a standard normal distribution
 #   - D(X) be a discriminator network which outputs the probability that X came from training data
 #   - G(Z) be a generator network which maps the latent vector, Z, to data-space (i.e. an Image)
 #   - D(G(z)) is the probability that the output of the generator G is a real image.
@@ -64,11 +64,11 @@ except ImportError:
 @dataclass
 class TrainingConfig:
     """
-    TrainingConfig holds the training parameters for both the generator 
+    TrainingConfig holds the training parameters for both the generator
     and discriminator networks.
 
     --------
-    Example - Increase learning rate from default (0.0002) -> (0.0004) and 
+    Example - Increase learning rate from default (0.0002) -> (0.0004) and
     batch size from default (128) -> (512).
 
     train_cfg = dcgan.TrainingConfig(
@@ -78,15 +78,17 @@ class TrainingConfig:
 
     batch_size: int = 128  # Batch size during training -> DCGAN: 128
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
-    nc: int = 3  #  Number of channels in the training image -> DCGAN: 3
-    nz: int = 100  # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
+    nc: int = 3  # Number of channels in the training image -> DCGAN: 3
+    # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
+    nz: int = 100
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
     lr: float = 0.0002  # Learning rate for optimizers
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
 
-    dev: torch.device = torch.device("cuda:0" if (torch.cuda.is_available()) else "hpu")
+    dev: torch.device = torch.device(
+        "cuda:0" if (torch.cuda.is_available()) else "hpu")
     ngpu: int = int(torch.cuda.is_available())  # No Support for Multi GPU!!
 
     def _announce(self):
@@ -102,10 +104,14 @@ class TrainingConfig:
         if torch.cuda.is_available():
             try:
                 print(torch._C._cuda_getDriverVersion(), "cuda driver")
-                print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
+                print(
+                    torch._C._cuda_getCompiledVersion(),
+                    "cuda compiled version")
                 print(torch._C._nccl_version(), "nccl")
                 for i in range(torch.cuda.device_count()):
-                    print("device %s:" % i, torch.cuda.get_device_properties(i))
+                    print(
+                        "device %s:" %
+                        i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
         print("====================")
@@ -133,7 +139,8 @@ class TrainingConfig:
         netD = Discriminator(self)
 
         # Enable Data Parallelism across all available GPUs...
-        # BUG: TODO: This disables the ability to run in Single GPU - In practice, this is not ideal!
+        # BUG: TODO: This disables the ability to run in Single GPU - In
+        # practice, this is not ideal!
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
                 netD = nn.DataParallel(netD)
@@ -174,7 +181,7 @@ class TrainingConfig:
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
                 netG = nn.DataParallel(netG)
-        
+
         # Put model on device(s)
         netG.to(self.dev)
 
@@ -200,11 +207,11 @@ class TrainingConfig:
 @dataclass
 class ModelCheckpointConfig:
     """
-    ModelCheckpointConfig holds the model save parameters for both the generator 
+    ModelCheckpointConfig holds the model save parameters for both the generator
     and discriminator networks.
 
     --------
-    Example: Rename the model and decrease save frequency from every epoch (1) to 
+    Example: Rename the model and decrease save frequency from every epoch (1) to
     every fourth epoch (4)
 
     model_cfg = dcgan.ModelCheckpointConfig(
@@ -213,11 +220,12 @@ class ModelCheckpointConfig:
     )
     """
 
-    model_name: str = "msls_dcgan_001" # Name of the Model
-    model_dir: str = "/efs/trained_model" # Directory to save the model checkpoints to...
-    save_frequency: int = 1 # Save a model checkpoint every N epochs
-    log_frequency: int = 50 # Print logs to STDOUT every N batches
-    gen_progress_frequence: int = 250 # Save progress images every N batches
+    model_name: str = "msls_dcgan_001"  # Name of the Model
+    # Directory to save the model checkpoints to...
+    model_dir: str = "/efs/trained_model"
+    save_frequency: int = 1  # Save a model checkpoint every N epochs
+    log_frequency: int = 50  # Print logs to STDOUT every N batches
+    gen_progress_frequence: int = 250  # Save progress images every N batches
 
 
 def weights_init(m):
@@ -239,11 +247,11 @@ def weights_init(m):
 # Generator Code
 class Generator(nn.Module):
     """
-    Generator Net. The generator is designed to map the latent space vector (z) to believable data. 
+    Generator Net. The generator is designed to map the latent space vector (z) to believable data.
     Since our data are images, this means transforming (by default) a [1 x 100] latent vector to a
     3 x 64 x 64 RGB image.
 
-    Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH layer to transform the 
+    Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH layer to transform the
     output data to (-1, 1) for each channel (color)...
     """
 
@@ -279,12 +287,12 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     """
-    Discriminator Net. Discriminator is a classifier network that (by default) takes a 
+    Discriminator Net. Discriminator is a classifier network that (by default) takes a
     3 x 64 x 64 image as input and outputs a probability that the image is from the set
-    of real images. 
+    of real images.
 
-    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu) layers, 
-    and then a Sigmoid layer to transform the output data to (0, 1). No different from 
+    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu) layers,
+    and then a Sigmoid layer to transform the output data to (0, 1). No different from
     Logit ;)
     """
 
@@ -323,7 +331,7 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
     Args:
         netD, netG - nn.Module - The Generator and Discriminator networks
 
-        optimD, optimG - Union(torch.optim, torch.hpex.optimizers.FusedAdamW) - Optimizer 
+        optimD, optimG - Union(torch.optim, torch.hpex.optimizers.FusedAdamW) - Optimizer
         function for Discriminator and Generator Nets
 
         path - str Path to file to open...
@@ -333,7 +341,7 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
             netD, netG, optimD, optimG, path
     )
 
-    TODO: Probably not the most efficient use of memory here, could so 
+    TODO: Probably not the most efficient use of memory here, could so
     something clever w. (de)serialization, but IMO, this is OK for now...
     """
 
@@ -355,16 +363,21 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
     )
 
 
-def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, n_iter=10, save_to_disk=False):
+def generate_fake_samples(n_samples, train_cfg, model_cfg,
+                          as_of_epoch=16, n_iter=10, save_to_disk=False):
     """
-    Generates samples from a model checkpoint saved to disk 
+    Generates samples from a model checkpoint saved to disk, writes a few sample grids to disk
+    and also returns last to the user
     --------
     Args:
         - n_samples - int - Number of samples to generate
         - train_cfg - TrainingConfig - Used to initialize the Generator model
         - model_cfg - ModelCheckPointConfig - Defines how to fetch the model checkpoint from disk
-        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model 
-        checkpoint is available
+        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model
+            checkpoint is available
+        - n_iter - int - number of img grids to save to disk (if save_to_disk)
+        - save_to_disk - bool - if True, generate `n_iter` grids and return the last to the user.
+            If false, then generate (and return) only 1 grid.
     --------
     Example: Plot 16 sample images from the 16th epoch of training
 
@@ -387,7 +400,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, n_ite
 
     # Generate Noise - Latent Vector for the Model...
     rd_noise = torch.randn(
-        n_samples, train_cfg.nz, 1, 1, 
+        n_samples, train_cfg.nz, 1, 1,
         device=train_cfg.dev
     )
 
@@ -399,30 +412,30 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, n_ite
 
     _, _, _, _ = instantiate_from_checkpoint(netD, netG, optimD, optimG, path)
 
-    # Use the Generator to create "believable" fake images - You can call a plotting function 
+    # Use the Generator to create "believable" fake images - You can call a plotting function
     # on this output to visualize the images vs real ones
     generated_imgs = netG(rd_noise).detach().cpu()
-    
+
     if (save_to_disk):
-        # If we elect to save to disk, save `n_iter` similar image grids to disk...
+        # If we elect to save to disk, save `n_iter` similar image grids to
+        # disk...
         for _ in range(n_iter):
-            
+
             rd_noise = torch.randn(
-                n_samples, train_cfg.nz, 1, 1, 
+                n_samples, train_cfg.nz, 1, 1,
                 device=train_cfg.dev
             )
-            
+
             generated_imgs = netG(rd_noise).detach().cpu()
             # NOTE: Save Here
-            
+
         return generated_imgs
     else:
         return generated_imgs
-    
 
 
-
-def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0):
+def start_or_resume_training_run(
+        dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0):
     """
     Begin Training Model. That's It.
     --------
@@ -431,9 +444,9 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
         - train_cfg - TrainingConfig - Used to initialize the Generator model
         - model_cfg - ModelCheckPointConfig - Defines how to fetch the model checkpoint from disk
         - n_epochs - intt - Number of Epochs to train through...
-        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model 
+        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model
         checkpoint is available
-        
+
     --------
     Example: Start a training run from `START_EPOCH` and go until `NUM_EPOCHS` using the
     parameters given in `train_cfg` and `model_cfg`
@@ -475,12 +488,14 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1) All-real batch; Update D network: log(D(x)) + log(1 - D(G(z)))
-            # Discriminator loss calculated as the sum of losses for the all real and all fake batches
+            # Discriminator loss calculated as the sum of losses for the all
+            # real and all fake batches
             netD.zero_grad()
 
             real_cpu = dbatch[0].to(train_cfg.dev)
             b_size = real_cpu.size(0)
-            label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
+            label = torch.full(
+                (b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
             output = netD(real_cpu).view(-1)
@@ -490,10 +505,11 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
             errD_real.backward()
             D_x = output.mean().item()
 
-            ## Train with All-fake batch
+            # Train with All-fake batch
 
             # Generate batch of latent vectors
-            noise = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
+            noise = torch.randn(b_size, train_cfg.nz, 1,
+                                1, device=train_cfg.dev)
 
             fake = netG(noise)
             label.fill_(0.0)
@@ -509,7 +525,8 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
             errD = errD_real + errD_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
-            # to call `htcore.mark_step()` twice per Net per training step: See comments above!
+            # to call `htcore.mark_step()` twice per Net per training step: See
+            # comments above!
 
             # Mark Habana Steps => Discriminator Optim;
             if HABANA_ENABLED and HABANA_LAZY:
@@ -520,7 +537,7 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            ## (2) Update Net_G: maximize log(D(G(z)))
+            # (2) Update Net_G: maximize log(D(G(z)))
 
             netG.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
@@ -544,15 +561,18 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
+            # With default params - this shows loss every 6,400 images (50
+            # training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
                     f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
-            # Save Sample Imgs Every 32,000 images processed (250 training steps * 128/step)
+            # Save Sample Imgs Every 32,000 images processed (250 training
+            # steps * 128/step)
             if (epoch_step % model_cfg.gen_progress_frequency) == 0:
-                # And also save the progress on the fixed latent input vector...
+                # And also save the progress on the fixed latent input
+                # vector...
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
                     img_list.append(
@@ -570,7 +590,8 @@ def start_or_resume_training_run(dl, train_cfg, model_cfg, n_epochs=256, st_epoc
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
 
             # Ensure the Save Directory Exists
-            if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}"):
+            if not os.path.exists(
+                    f"{model_cfg.model_dir}/{model_cfg.model_name}"):
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Save Checkpoint

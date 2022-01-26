@@ -26,15 +26,35 @@ import gaudi_dcgan as dcgan
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
-parser.add_argument("-s", "--seed", type=int, help="An integer to seed Pytorch")
+parser.add_argument(
+    "-s",
+    "--seed",
+    type=int,
+    help="An integer to seed Pytorch")
 
-parser.add_argument("-n", "--name", type=int, help="An integer to seed Pytorch")
+parser.add_argument(
+    "-n",
+    "--name",
+    type=int,
+    help="An integer to seed Pytorch")
 
-parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
+parser.add_argument(
+    "-d",
+    "--dataroot",
+    type=str,
+    help="Root folder of training data")
 
-parser.add_argument("-k", "--s_epoch", type=int, help="Epoch to resume training from")
+parser.add_argument(
+    "-k",
+    "--s_epoch",
+    type=int,
+    help="Epoch to resume training from")
 
-parser.add_argument("-n", "--n_epoch", type=int, help="Number of Epochs to train until")
+parser.add_argument(
+    "-n",
+    "--n_epoch",
+    type=int,
+    help="Number of Epochs to train until")
 
 
 if __name__ == "__main__":
@@ -53,18 +73,19 @@ if __name__ == "__main__":
     torch.manual_seed(MODEL_SEED)
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
-    # because the original DCGAN is a bit unstable when outside of the 64x64 img world!
+    # because the original DCGAN is a bit unstable when outside of the 64x64
+    # img world!
     model_cfg = dcgan.ModelCheckpointConfig(model_name=NAME)
 
     train_cfg = dcgan.TrainingConfig()
 
-    # We can use an image folder dataset; depending on the size of the training directory this can take a 
+    # We can use an image folder dataset; depending on the size of the training directory this can take a
     # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)
     dataset = dset.ImageFolder(
         root=DATAROOT,
         transform=transforms.Compose(
             [
-                transforms.RandomAffine(degrees=0, translate=(0.2, 0.0)),
+                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
                 transforms.CenterCrop(
                     train_cfg.img_size * 4
                 ),  # Use the Middle 256 x 256

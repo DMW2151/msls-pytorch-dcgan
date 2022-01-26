@@ -35,7 +35,9 @@ At a low-level, it's difficult to describe all of the consequences of using `PyT
 
 - Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) in their paper that is a patched version of `pylearn2`'s `SGD` function. Instead, I elected for a (relatively) more modern optimizer. `AdamW` is a solid, general-purpose optimizer. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi units.
   
-- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance. This project is not so much interested in demonstrating the validity of the architecture and does not report such metrics.
+- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. This project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I do, as the original paper describes:
+
+    > ...Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
 
 As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I should also note the following changes between the model's execution on the two machines:
 
@@ -60,7 +62,7 @@ Models trained on both `DL1` and `p3` instances use a subset of the Mapillary St
 
 In total, MSLS contains 1.6 million images from 30 major cities on six-continents. Image sizes range from `(3 x 256 x 256)` to `(3 x 640 x 480)`. Because the original `DCGAN` paper expects `(3 x 64 x 64)` images, the larger MSLS sizes gave me leeway to apply cropping, down-scaling, and multiple horizontal translations to almost all images in the sample.
 
-I considered using `3 x 128 x 128` images for this project and adding an additional `2DConv`/`ReLu` layer to both the Discriminator and Generator networks to handle for the newly sized images. This seemed like a significant deviation from the original paper and I elected to train on `3 x 64 x 64` as in the original paper. In the last 8 years *many* methods have been developed to handle `3 x 128 x 128` (and *much* larger [images](https://github.com/lucidrains/lightweight-gan)).
+I considered using `(3 x 128 x 128)` images for this project and adding an additional `2DConv`/`ReLu` layer to both the Discriminator and Generator networks to handle for the newly sized images. This seemed like a significant deviation from the original paper and I elected to train on `(3 x 64 x 64)` as in the original paper. In the last 8 years *many* methods have been developed to handle `(3 x 128 x 128)` (and *much* larger [images](https://github.com/lucidrains/lightweight-gan)).
 
 The model presented here was trained on a sample of the MSLS using transformed images from approximately 45% of the MSLS dataset. The distribution by metro area from my sample additional distributions of year, month, and time-of-day from the whole dataset are presented below:
 
@@ -88,7 +90,7 @@ The model presented here was trained on a sample of the MSLS using transformed i
 
 ### Image Translations
 
-As noted in the previous sectionm, MSLS images are significantly larger than those DCGAN accepts as an input. The following code is an annotated excerpt from `run_gaudi_dcgan.py` and applies a transformation from a single raw image to an image used in the model.
+As noted in the previous section, MSLS images are significantly larger than those DCGAN accepts as an input. The following code is an annotated excerpt from `run_gaudi_dcgan.py` and applies a transformation from a single raw image to an image used in the model.
 
 ```python
 # Create pytorch.Data.ImageFolder from `DATAROOT`; Focus on transformations
@@ -97,7 +99,7 @@ data = dset.ImageFolder(
     transform=transforms.Compose([
         # (1) Middle 1/2 of the Image is Most "Interesting", especially towards the edges, things like
         # sidewalks, trees, etc. => Apply a random horizontal shift of (-30%, 30%) * orig_W
-        transforms.RandomAffine(degrees=0, translate=(0.2, 0.0)),
+        transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
 
         # (2) Use the Middle 256 x 256) of the resulting, shifted image
         transforms.CenterCrop(IMG_SIZE * 4),
@@ -117,7 +119,7 @@ data = dset.ImageFolder(
 )
 ```
 
-In practice, this could mean an image<sup>3</sup> like the one shown below and to the left could be transformed to look like any of those on the right:
+In practice, this could mean an image<sup>3</sup> like the one shown below could be transformed to look like any of those on the right (scale preserved).
 
 <center>
     <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" height="400" src="./docs/images/translation/nyc_img_transformed_samples.png">
