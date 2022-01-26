@@ -119,11 +119,22 @@ data = dset.ImageFolder(
 )
 ```
 
-In practice, this could mean an image<sup>3</sup> like the one shown below could be transformed to look like any of those on the right (scale preserved).
+In practice, this could mean an image<sup>3</sup> like the one shown below could be transformed to look like any of those on the right (scale preserved). The second image shown below is a sample of 16 training images derived from the from the MSLS dataset.
 
 <center>
+    <figure>
     <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" height="400" src="./docs/images/translation/nyc_img_transformed_samples.png">
+    <figcaption>Sample Transformations (NYC)</figcaption>
+    <figure>
 </center>
+
+<center>
+    <figure>
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./docs/images/translation/train_samples_eu.png">
+    <figcaption>Training Samples From MSLS (Global) </figcaption>
+    <figure>
+</center>
+
 
 ## Supplemental Links & Citations
 

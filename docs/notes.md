@@ -23,19 +23,17 @@ sudo pip install nvidia-ml-py boto3 pynvml &&\
 
 ```bash
 # Generic: shuf -zn500 -e ${SRC_LOCATION}/*.jpg | xargs -0 cp -vt ${TARGET_LOCATION}
+# This is recommended to have a small sample of a few thousand images to run quick tests
+# on. And then using `/efs/samples/001/` as DATA_ROOT when prompted...
 
-sudo mkdir -p /efs/images/multi/b1
+sudo mkdir -p /efs/samples/001/
 
 sudo shuf -zn500 -e /efs/images/*.jpg |\
-    xargs -0 cp -vt /efs/images/b1
-
-# OR:
-
-ls -lh /efs/images | head -1000 | xargs -0 sudo cp -vt /efs/images/mutli/b1/
+    xargs -0 cp -vt /efs/samples/001/
 
 # OR (Even lazier)
 
-sudo cp /efs/images/a* /efs/images/multi/b1/
+sudo cp /efs/images/a* /efs/samples/001/
 ```
 
 ### Sync From S3 -> EFS

@@ -222,10 +222,10 @@ class ModelCheckpointConfig:
 
     model_name: str = "msls_dcgan_001"  # Name of the Model
     # Directory to save the model checkpoints to...
-    model_dir: str = "/efs/trained_model"
+    model_dir: str = "/efs/trained_model" # Requires `/efs/trained_model` has permissions s.t. ec2-user/ubuntu can write.
     save_frequency: int = 1  # Save a model checkpoint every N epochs
     log_frequency: int = 50  # Print logs to STDOUT every N batches
-    gen_progress_frequence: int = 250  # Save progress images every N batches
+    gen_progress_frequency: int = 250  # Save progress images every N batches
 
 
 def weights_init(m):
@@ -363,8 +363,7 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
     )
 
 
-def generate_fake_samples(n_samples, train_cfg, model_cfg,
-                          as_of_epoch=16, n_iter=10, save_to_disk=False):
+def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     """
     Generates samples from a model checkpoint saved to disk, writes a few sample grids to disk
     and also returns last to the user
@@ -375,9 +374,6 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg,
         - model_cfg - ModelCheckPointConfig - Defines how to fetch the model checkpoint from disk
         - as_of_epoch - int - Epoch to generate samples as of - will fail if no model
             checkpoint is available
-        - n_iter - int - number of img grids to save to disk (if save_to_disk)
-        - save_to_disk - bool - if True, generate `n_iter` grids and return the last to the user.
-            If false, then generate (and return) only 1 grid.
     --------
     Example: Plot 16 sample images from the 16th epoch of training
 
@@ -414,24 +410,11 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg,
 
     # Use the Generator to create "believable" fake images - You can call a plotting function
     # on this output to visualize the images vs real ones
+
+    # Ideally a Generator Net can use a CPU to (slowly) generate samples, this confirms it, 
+    # we can run the net through via CPU for "inference"
     generated_imgs = netG(rd_noise).detach().cpu()
-
-    if (save_to_disk):
-        # If we elect to save to disk, save `n_iter` similar image grids to
-        # disk...
-        for _ in range(n_iter):
-
-            rd_noise = torch.randn(
-                n_samples, train_cfg.nz, 1, 1,
-                device=train_cfg.dev
-            )
-
-            generated_imgs = netG(rd_noise).detach().cpu()
-            # NOTE: Save Here
-
-        return generated_imgs
-    else:
-        return generated_imgs
+    return generated_imgs
 
 
 def start_or_resume_training_run(
