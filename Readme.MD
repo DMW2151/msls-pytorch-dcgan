@@ -20,7 +20,7 @@ The model is a `PyTorch` implementation of the original Deep Convolutional Gener
   
 - `D(G(Z))` &mdash; The probability that the output of the generator `G` is a real image.
 
-Put simply, `G` tries to create believable images from the latent input vector and `D` tries to maximize the probability it correctly classifies real (from data) and fake images (produced from `G(X)`). Throughout the code there are additional references to specific loss metrics, please see `gaudi_dcgan.py` for a description of those values.
+Put simply, `G` tries to create believable images from the latent input vector and `D` tries to maximize the probability it correctly classifies real (from data) and fake images (produced from `G(Z)`). Throughout the code there are additional references to specific loss metrics, please see `gaudi_dcgan.py` for a description of those values.
 
 The network's architecture is unchanged from the original paper and is diagramed below:
 

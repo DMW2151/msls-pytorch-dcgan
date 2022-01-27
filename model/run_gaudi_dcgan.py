@@ -1,7 +1,14 @@
 # USE:
 
 # Command line wrapper around gaudi_dcgan.py
-# python3 run_gaudi_dcgan.py --dataroot "/efs/images/multi/" --seed 215
+# Sample Usage on Command Line - See Notes on Running on DL1
+#
+# ! python3 run_gaudi_dcgan.py \
+#    --dataroot "/efs/images/" \
+#    --seed 215 \
+#    --name msls_2022_01_24_001 \
+#    --s_epoch 0 \
+#    --n_epoch 16
 
 # General Deps
 import random
