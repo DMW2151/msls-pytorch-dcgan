@@ -1,12 +1,12 @@
 # MSLS-DCGAN
 
-This repository contains code for training an implementation of Ian Goodfellow's original `DCGAN` model<sup>1</sup> on data sourced from Mapillary's Street Level Sequences dataset. Although this paper is quite old **(2014)**, I felt that it's worth taking a look at because it's a foundational paper in the field and can be implemented in just a few hundred lines of PyTorch.
+This repository contains code for training an implementation of Ian Goodfellow's original `DCGAN` model<sup>1</sup> on data sourced from Mapillary's Street Level Sequences dataset. Although this paper is quite old (2014), I felt that it's worth taking a look at because it's a foundational paper in the field and can be implemented in just a few hundred lines of PyTorch.
 
-The code in this repo has been instrumented so that I can test it's performance on either Habana's Gaudi accelerator-backed instances or Nvidia GPU instances.
+The code in this repo has been instrumented so that I can test performance on either Habana's Gaudi accelerator-backed instances or Nvidia GPU instances.
 
 ## Baseline Model
 
-The model is a `PyTorch` implementation of the original Deep Convolutional Generative Adversarial Networks (`DCGAN`) paper with a few modifications to allow for higher performance training on Habana instances. Before discussing modifications, let's discuss the *"way"* this model works.
+Before discussing modifications, let's discuss the *"way"* this model works.
 
 **Assume the following:**
 
@@ -33,9 +33,9 @@ The network's architecture is unchanged from the original paper and is diagramed
 
 At a low-level, it's difficult to describe all of the consequences of using `PyTorch` (at least without a deep understanding of PyTorch internals). At a high level, I made the following notable changes:
 
-- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) in their paper that is a patched version of `pylearn2`'s `SGD` function. Instead, I elected for a (relatively) more modern optimizer. `AdamW` is a solid, general-purpose optimizer. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi units.
+- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) in their paper that is a patched version of `pylearn2`'s `SGD` function. Instead, I elected for a (slightly) more modern optimizer. `AdamW` is a solid, general-purpose optimizer. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi units.
   
-- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. This project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I do, as the original paper describes:
+- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. My project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I use the methods described below to compare the same model across epochs:
 
     > Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
 
@@ -43,11 +43,9 @@ As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I sh
 
 - When running on Gaudi processors, swap out a standard `pytorch.DataLoader` for `habana_dataloader.HabanaDataLoader`. Under the right [circumstances](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader), `HabanaDataLoader` can yield better performance that the native `DataLoader`.
   
-- When running on Gaudi processors, use "Lazy Mode". [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
+- When running on Gaudi processors, use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
   
 - When running on Gaudi processors, use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter.
-
-
 
 ## Training Infrastructure
 
@@ -62,31 +60,49 @@ Models trained on both `DL1` and `p3` instances use a subset of the Mapillary St
 
 In total, MSLS contains 1.6 million images from 30 major cities on six-continents. Image sizes range from `(3 x 256 x 256)` to `(3 x 640 x 480)`. Because the original `DCGAN` paper expects `(3 x 64 x 64)` images, the larger MSLS sizes gave me leeway to apply cropping, down-scaling, and multiple horizontal translations to almost all images in the sample.
 
-I considered using `(3 x 128 x 128)` images for this project and adding an additional `2DConv`/`ReLu` layer to both the Discriminator and Generator networks to handle for the newly sized images. This seemed like a significant deviation from the original paper and I elected to train on `(3 x 64 x 64)` as in the original paper. In the last 8 years *many* methods have been developed to handle `(3 x 128 x 128)` (and *much* larger [images](https://github.com/lucidrains/lightweight-gan)).
+I considered using `(3 x 128 x 128)` images for this project and adding an additional `2DConv`/`ReLu` layer to both the Discriminator and Generator networks to handle for the newly sized images. However, this seemed like a significant deviation from my stated goal, and I elected to train on `(3 x 64 x 64)` as in the original paper. In the last 8 years *many* methods have been developed to handle `(3 x 128 x 128)` (and *much* larger [images](https://github.com/lucidrains/lightweight-gan)).
 
-The model presented here was trained on a sample of the MSLS using transformed images from approximately 45% of the MSLS dataset. The distribution by metro area from my sample additional distributions of year, month, and time-of-day from the whole dataset are presented below:
+The model presented here was trained on a sample of ~700,000 images from the MSLS data. An additional ~300,000 images were held-out to be used in model evaluation.
 
- <img style="padding: 20px;" align="left" width="500" height="400" src="docs/images/chart.jpg">
+```bash
+# Training Sample
+| City      | Train-Img |
+|-----------|-----------|
+| Austin    |    28,462 |
+| Bangkok   |    40,125 |
+| Budapest  |    45,800 |
+| Helsinki  |    15,228 |
+| London    |     5,983 |
+| Manila    |     5,378 |
+| Melbourne |   189,945 |
+| Moscow    |   171,878 |
+| Paris     |     9,503 |
+| Phoenix   |   106,221 |
+| Sao Paulo |    35,096 |
+| SF        |     4,525 |
+| Trondheim |     4,136 |
+| Zurich    |     2,991 |
+| Total     |   665,271 |
+```
 
-| City      | Size     | Imgs    |
-|-----------|----------|---------|
-| Austin    | 0.76 GB  |  28,462 |
-| Bangkok   | 1.2 GB   |  40,125 |
-| Budapest  | 1.7 GB   |  45,800 |
-| Helsinki  | 0.72 GB  |  15,228 |
-| London    | 0.26 GB  |   5,983 |
-| Manila    | 0.21 GB  |   5,378 |
-| Melbourne | 6.3 GB   | 189,945 |
-| Moscow    | 4.9 GB   | 171,878 |
-| Paris     | 0.34 GB  |   9,503 |
-| Phoenix   | 3.4 GB   | 106,221 |
-| Sao Paulo | 1.2 GB   |  35,096 |
-| SF        | 0.17 MB  |   4,525 |
-| Trondheim | 0.21 MB  |   4,136 |
-| Zurich    | 0.13 MB  |   2,991 |
-| **Total**     | **21.5 GB**  | **665,271** |
-
-<br></br>
+```bash
+# Holdout Sample
+| City      | HO-Imgs   |
+|-----------|-----------|
+| Amman     |     1,811 |
+| Amsterdam |     7,908 |
+| Boston    |    14,037 |
+| Goa       |     5,735 |
+| Kampala   |     2,069 |
+| Nairobi   |       887 |
+| Ottawa    |   123,296 |
+| Phoenix   |    50,256 |
+| Saopaulo  |    19,002 |
+| Tokyo     |    34,836 |
+| Toronto   |    12,802 |
+| Trondheim |     5,028 |
+| Total     |   277,667 |
+```
 
 ### Image Translations
 

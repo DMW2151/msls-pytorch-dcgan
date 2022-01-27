@@ -9,14 +9,11 @@
 dl="$(uuidgen | tr -d '-').zip"
 s3_bucket=$2
 
-curl -XGET $1 --output $dl &&\
+curl -k -XGET $1 --output $dl &&\
     sudo mkdir -p /efs/images &&\
     sudo unzip $dl -d /efs/images
 
-# Send Compressed File to S3 (will have a randomized uuid) && Sync imgs directory to S3
-aws s3 cp $dl s3://$s3_bucket/raw/ &&\
-    rm $dl
-
-s3 sync ./efs/images s3://$s3_bucket/imgs/
+# Send Compressed File to S3 so we don't have to hammer MSLS bandwith
+aws s3 cp $dl s3://$s3_bucket/raw/ && rm $dl
 
 exit 0
