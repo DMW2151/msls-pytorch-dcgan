@@ -2,21 +2,6 @@
 # DCGAN Paper in PyTorch with slight adjustments to the optimizer.
 #
 # See: https://arxiv.org/abs/1406.2661
-# See: https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf
-#
-# A very quick intro to DCGAN & notation used, modified from:
-# https://github.com/pytorch/tutorials/blob/master/beginner_source/dcgan_faces_tutorial.py
-#
-# Let:
-#   - X be an vector (image) with dims C x W x H
-#   - Z be a latent vector sampled from a standard normal distribution
-#   - D(X) be a discriminator network which outputs the probability that X came from training data
-#   - G(Z) be a generator network which maps the latent vector, Z, to data-space (i.e. an Image)
-#   - D(G(z)) is the probability that the output of the generator G is a real image.
-#
-# Put simply, G tries to create believable images from the latent input vector
-# and D tries to maximize the probability it correctly classifies reals and
-# fakes (from G)
 
 import datetime
 import os
@@ -31,6 +16,7 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+from torch.utils.tensorboard import SummaryWriter
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
@@ -97,11 +83,11 @@ class TrainingConfig:
         print("====================")
         print(self.dev.__repr__())
         print(f"Pytorch Version: {torch.__version__}")
-
+    
         if torch.cuda.device_count():
             print(f"Running with {torch.cuda.device_count()} GPUs Available.")
+            print(f"CUDA Available: {torch.cuda.is_available()}")
 
-        if torch.cuda.is_available():
             try:
                 print(torch._C._cuda_getDriverVersion(), "cuda driver")
                 print(
@@ -114,6 +100,7 @@ class TrainingConfig:
                         i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
+
         print("====================")
 
     def get_net_D(self):
@@ -463,14 +450,23 @@ def start_or_resume_training_run(
         losses = {"_G": [], "_D": [], "D_x": [], "D_G_z1": [], "D_G_z2": []}
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
+    # Initialize PyTorch Writer
+    writer = SummaryWriter(
+        f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
+    )
+
     # Initialize Stateless BCELoss Function
     criterion = nn.BCELoss()
 
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs + 1):
+
+        # Set Epoch Logging Iteration to 0 - For Plotting!
+        log_i = 0
+
         for epoch_step, dbatch in enumerate(dl, 0):
 
-            # (1) All-real batch; Update D network: log(D(x)) + log(1 - D(G(z)))
+            # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
             # Discriminator loss calculated as the sum of losses for the all
             # real and all fake batches
             netD.zero_grad()
@@ -488,7 +484,7 @@ def start_or_resume_training_run(
             errD_real.backward()
             D_x = output.mean().item()
 
-            # Train with All-fake batch
+            # (1.2) Update D Network; Train with All-fake batch
 
             # Generate batch of latent vectors
             noise = torch.randn(b_size, train_cfg.nz, 1,
@@ -544,15 +540,23 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            # With default params - this shows loss every 6,400 images (50
-            # training steps * 128/step)
+            # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
                     f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
-            # Save Sample Imgs Every 32,000 images processed (250 training
-            # steps * 128/step)
+                # Write Metrics to TensorBoard...
+                for metric, val in zip(
+                    ['G_loss', 'D_loss', 'D_x', 'D_G_z1', 'D_G_z2'],
+                    [errG.item(), errD.item(), D_x, D_G_z1, D_G_z2]
+                ):
+                    writer.add_scalar(metric, val, (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency))
+
+                log_i += 1
+                writer.flush()
+
+            # Save Sample Imgs Every N Epochs...
             if (epoch_step % model_cfg.gen_progress_frequency) == 0:
                 # And also save the progress on the fixed latent input
                 # vector...
@@ -592,4 +596,5 @@ def start_or_resume_training_run(
                 f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
             )
 
+    writer.close()
     return {"losses": losses, "img_list": img_list}

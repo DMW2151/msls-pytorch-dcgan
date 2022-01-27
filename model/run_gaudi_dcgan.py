@@ -145,6 +145,10 @@ if __name__ == "__main__":
             num_workers=min(os.cpu_count() // 2, 8),
         )
 
+    # Create Location For Model Outputs
+    if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}/events"):
+        os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
+
     # Run Model
     result = dcgan.start_or_resume_training_run(
         dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
