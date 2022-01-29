@@ -151,5 +151,5 @@ if __name__ == "__main__":
 
     # Run Model
     result = dcgan.start_or_resume_training_run(
-        dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
+        dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH, profile_run=True
     )
