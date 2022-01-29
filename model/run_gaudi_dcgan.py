@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Root directory for dataset
     DATAROOT = args.dataroot or "/efs/images/"
     MODEL_SEED = args.seed or 215
-    NUM_EPOCH = args.n_epoch or 32
+    NUM_EPOCH = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
     NAME = args.name or "msls_dcgan_ml_dl_24xlarge_001"
 

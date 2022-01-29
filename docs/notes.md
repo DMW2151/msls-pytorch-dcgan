@@ -43,3 +43,9 @@ aws s3 sync s3://dmw2151-path-to-imgs-bucket /efs/imgs
 
 sudo aws s3 cp --recursive s3://dmw2151-street-images/imgs/ /efs/images/
 ```
+
+### Build Post
+
+```bash
+pandoc --standalone --template template.html post.md -o post.html
+```

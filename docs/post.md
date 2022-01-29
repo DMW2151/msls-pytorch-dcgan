@@ -1,5 +1,7 @@
-
-# Revisiting the Original Generative Adversarial Networks Paper on Habana DL1 Instances
+---
+title: Revisiting the Original Generative Adversarial Networks Paper on Habana DL1 Instances
+date: Jan 22, 2022
+---
 
 ## Theory Behind DCGAN
 
@@ -25,6 +27,7 @@ Put simply, `G` tries to create believable images from the latent input vector a
         <figcaption>DBGAN Architecture - As diagramed by <i>Radford, et. al <sup>4<sup></i></figcaption>
     <figure>
 </center>
+
 
 
 
@@ -153,6 +156,30 @@ As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I sh
 
 ## Comparative Results w.r.t Cost and Hardware Performance (`DL1` v. `P`)
 
+
+
+
+
+### Misc
+
+```bash
+
+# Training Output
+====================
+device(type='cuda', index=0)
+Pytorch Version: 1.5.1
+Running with 1 GPUs Available.
+CUDA Available: True
+11000 cuda driver
+10020 cuda compiled version
+2408 nccl
+device 0: _CudaDeviceProperties(name='Tesla V100-SXM2-16GB', major=7, minor=0, total_memory=16160MB, multi_processor_count=80)
+====================
+ [2022-01-29 21:36:43.399867] [0/64][0/7463] Loss_D: 2.1746 Loss_G: 3.0387 D(x): 0.2859 D(G(z)): 0.4398 / 0.0652
+ [2022-01-29 21:36:52.976800] [0/64][50/7463] Loss_D: 3.8224 Loss_G: 24.3508 D(x): 0.9778 D(G(z)): 0.9699 / 0.0000
+ [2022-01-29 21:37:03.253769] [0/64][100/7463] Loss_D: 1.0481 Loss_G: 1.2767 D(x): 0.4846 D(G(z)): 0.0186 / 0.3596
+ [2022-01-29 21:37:12.679152] [0/64][150/7463] Loss_D: 0.7538 Loss_G: 3.9849 D(x): 0.7482 D(G(z)): 0.2172 / 0.0249
+```
 
 ## Supplemental Links & Citations
 
