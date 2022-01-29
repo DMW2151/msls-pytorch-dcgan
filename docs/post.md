@@ -40,27 +40,36 @@ In total, MSLS contains 1.6 million images from 30 major cities on six-continent
 
 I considered using `(3 x 128 x 128)` images for this project and adding an additional `2DConv`/`ReLu` layer to both the Discriminator and Generator networks to handle for the newly sized images. However, this seemed like a significant deviation from my stated goal, and I elected to train on `(3 x 64 x 64)` as in the original paper. In the last 8 years *many* methods have been developed to handle `(3 x 128 x 128)` (and *much* larger [images](https://github.com/lucidrains/lightweight-gan)).
 
-The model presented here was trained on a sample of ~700,000 images from the MSLS data. An additional ~300,000 images were held-out to be used in model evaluation.
+The model presented here was trained on a sample of ~900,000 images from the MSLS data. An additional ~30,000 images were held-out to be used in model evaluation.
 
 ```bash
-# Training Sample               # Hold-Out Sample
-| City      | Train-Img |       | City      | HO-Imgs   |
-|-----------|-----------|       |-----------|-----------|
-| Austin    |    28,462 |       | Amman     |     1,811 |
-| Bangkok   |    40,125 |       | Amsterdam |     7,908 |
-| Budapest  |    45,800 |       | Boston    |    14,037 |
-| Helsinki  |    15,228 |       | Goa       |     5,735 |
-| London    |     5,983 |       | Kampala   |     2,069 |
-| Manila    |     5,378 |       | Nairobi   |       887 |
-| Melbourne |   189,945 |       | Ottawa    |   123,296 |
-| Moscow    |   171,878 |       | Phoenix   |    50,256 |
-| Paris     |     9,503 |       | Saopaulo  |    19,002 |
-| Phoenix   |   106,221 |       | Tokyo     |    34,836 |
-| Sao Paulo |    35,096 |       | Toronto   |    12,802 |
-| SF        |     4,525 |       | Trondheim |     5,028 |
-| Trondheim |     4,136 |       | Total     |   277,667 |
+# Training Sample
+| City      | Train-Img |
+|-----------|-----------|
+| Amman     |     1,811 |
+| Amsterdam |     7,908 |
+| Austin    |    28,462 |
+| Bangkok   |    40,125 |
+| Boston    |    14,037 |
+| Budapest  |    45,800 |
+| Goa       |     5,735 |
+| Helsinki  |    15,228 |
+| Kampala   |     2,069 |
+| London    |     5,983 |
+| Manila    |     5,378 |
+| Melbourne |   189,945 |
+| Moscow    |   171,878 |
+| Nairobi   |       887 |
+| Ottawa    |   123,296 |
+| Paris     |     9,503 |
+| Phoenix   |   156,477 |
+| Sao Paulo |    54,098 |
+| SF        |     4,525 |
+| Tokyo     |    34,836 |
+| Toronto   |    12,802 |
+| Trondheim |     9,154 |
 | Zurich    |     2,991 |
-| Total     |   665,271 |
+| Total     |   942,928 |
 ```
 
 
@@ -179,6 +188,11 @@ device 0: _CudaDeviceProperties(name='Tesla V100-SXM2-16GB', major=7, minor=0, t
  [2022-01-29 21:36:52.976800] [0/64][50/7463] Loss_D: 3.8224 Loss_G: 24.3508 D(x): 0.9778 D(G(z)): 0.9699 / 0.0000
  [2022-01-29 21:37:03.253769] [0/64][100/7463] Loss_D: 1.0481 Loss_G: 1.2767 D(x): 0.4846 D(G(z)): 0.0186 / 0.3596
  [2022-01-29 21:37:12.679152] [0/64][150/7463] Loss_D: 0.7538 Loss_G: 3.9849 D(x): 0.7482 D(G(z)): 0.2172 / 0.0249
+```
+
+
+```bash
+find /efs/ -type f -empty
 ```
 
 ## Supplemental Links & Citations

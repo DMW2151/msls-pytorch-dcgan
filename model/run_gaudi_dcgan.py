@@ -6,7 +6,7 @@
 # ! python3 run_gaudi_dcgan.py \
 #    --dataroot "/efs/images/" \
 #    --seed 215 \
-#    --name msls_2022_01_24_001 \
+#    --name msls_dl1_2022_01_24_001 \
 #    --s_epoch 0 \
 #    --n_epoch 16
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Root directory for dataset
-    DATAROOT = args.dataroot or "/efs/images/"
+    DATAROOT = args.dataroot or "/efs/samples/"
     MODEL_SEED = args.seed or 215
     NUM_EPOCH = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
