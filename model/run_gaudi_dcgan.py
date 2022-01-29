@@ -73,7 +73,7 @@ if __name__ == "__main__":
     MODEL_SEED = args.seed or 215
     NUM_EPOCH = args.n_epoch or 32
     START_EPOCH = args.s_epoch or 0
-    NAME = args.name or "msls_dcgan_001"
+    NAME = args.name or "msls_dcgan_ml_dl_24xlarge_001"
 
     # Seed Model
     random.seed(MODEL_SEED)

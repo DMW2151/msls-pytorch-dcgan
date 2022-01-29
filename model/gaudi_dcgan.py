@@ -405,7 +405,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
 
 
 def start_or_resume_training_run(
-        dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0):
+        dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0, profile_run=False):
     """
     Begin Training Model. That's It.
     --------
@@ -425,8 +425,6 @@ def start_or_resume_training_run(
         dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
     )
     """
-
-    train_cfg._announce()
 
     # Initialize Net and Optimizers
     netD, optimD = train_cfg.get_net_D()
@@ -457,6 +455,22 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCELoss()
+
+   
+    # Announce
+    train_cfg._announce()
+    
+    # Init Profiler
+    if (profile_run) and (torch.__version__ > "1.8"):
+        import torch.profiler
+        prof = torch.profiler.profile(
+            schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(f"{model_cfg.model_dir}/{model_cfg.model_name}/events"),
+            record_shapes=True,
+            with_stack=True
+        )
+
+        prof.start()
 
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs + 1):
@@ -537,6 +551,9 @@ def start_or_resume_training_run(
             # Update G
             optimG.step()
 
+            if (profile_run) and (torch.__version__ > "1.8"):
+                prof.step()
+
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
@@ -597,4 +614,8 @@ def start_or_resume_training_run(
             )
 
     writer.close()
+    
+    if (profile_run) and (torch.__version__ > "1.8"):
+        prof.stop()
+
     return {"losses": losses, "img_list": img_list}

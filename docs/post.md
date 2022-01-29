@@ -1,4 +1,7 @@
-## Baseline Model
+
+# Revisiting the Original Generative Adversarial Networks Paper on Habana DL1 Instances
+
+## Theory Behind DCGAN
 
 Before discussing modifications, let's discuss the *"way"* this model works.
 
@@ -14,41 +17,19 @@ Before discussing modifications, let's discuss the *"way"* this model works.
   
 - `D(G(Z))` &mdash; The probability that the output of the generator `G` is a real image.
 
-Put simply, `G` tries to create believable images from the latent input vector and `D` tries to maximize the probability it correctly classifies real (from data) and fake images (produced from `G(Z)`). Throughout the code there are additional references to specific loss metrics, please see `gaudi_dcgan.py` for a description of those values.
-
-The network's architecture is unchanged from the original paper and is diagramed below:
+Put simply, `G` tries to create believable images from the latent input vector and `D` tries to maximize the probability it correctly classifies real (from data) and fake images (produced from `G(Z)`). Throughout the code there are additional references to specific loss metrics, please see `gaudi_dcgan.py` for a description of those values. The network's architecture is unchanged from the original paper and is diagramed below:
 
 <center>
     <figure>
-        <img style="padding: 20px;" align="center" width="600" src="./docs/images/translation/gan.png">
+        <img style="padding: 20px;" align="center" width="600" src="./images/translation/gan.png">
         <figcaption>DBGAN Architecture - As diagramed by <i>Radford, et. al <sup>4<sup></i></figcaption>
     <figure>
 </center>
 
-At a low-level, it's difficult to describe all of the consequences of using `PyTorch` (at least without a deep understanding of PyTorch internals). At a high level, I made the following notable changes:
 
-- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) in their paper that is a patched version of `pylearn2`'s `SGD` function. Instead, I elected for a (slightly) more modern optimizer. `AdamW` is a solid, general-purpose optimizer. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi units.
-  
-- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. My project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I use the methods described below to compare the same model across epochs:
 
-    > Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
+## Discussion of MSLS Dataset & Data Preparation
 
-As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I should also note the following changes between the model's execution on the two machines:
-
-- When running on Gaudi processors, swap out a standard `pytorch.DataLoader` for `habana_dataloader.HabanaDataLoader`. Under the right [circumstances](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader), `HabanaDataLoader` can yield better performance that the native `DataLoader`.
-  
-- When running on Gaudi processors, use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
-  
-- When running on Gaudi processors, use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter.
-
-## Training Infrastructure
-
-I've provided a full description of the AWS system architecure for training [here](https://github.com/DMW2151/msls-dcgan-infra).
-Broadly, I train the model once on a `DL1.24xlarge` instance and once on a `ml.p3.8xlarge` instance.
-
-The `ml.p3.8xlarge` instance is not a meant to be a perfect comparison for the `DL1`. It's simply a similarly-priced GPU instance that a team may consider for training deep-learning models. I perform an analysis of comparable instances in my [main post](https://dmw2151.com/trained-a-gan).
-
-## Mapillary Street Level Sequences Data
 
 Models trained on both `DL1` and `p3` instances use a subset of the Mapillary Street-Level Sequences dataset (MSLS). Mapillary, a subsidiary of Facebook, primarily provides a platform for crowd-sourced maps and street-level imagery. This dataset is available for download [here](https://www.mapillary.com/dataset/places)<sup>2</sup>.
 
@@ -59,46 +40,26 @@ I considered using `(3 x 128 x 128)` images for this project and adding an addit
 The model presented here was trained on a sample of ~700,000 images from the MSLS data. An additional ~300,000 images were held-out to be used in model evaluation.
 
 ```bash
-# Training Sample
-| City      | Train-Img |
-|-----------|-----------|
-| Austin    |    28,462 |
-| Bangkok   |    40,125 |
-| Budapest  |    45,800 |
-| Helsinki  |    15,228 |
-| London    |     5,983 |
-| Manila    |     5,378 |
-| Melbourne |   189,945 |
-| Moscow    |   171,878 |
-| Paris     |     9,503 |
-| Phoenix   |   106,221 |
-| Sao Paulo |    35,096 |
-| SF        |     4,525 |
-| Trondheim |     4,136 |
+# Training Sample               # Hold-Out Sample
+| City      | Train-Img |       | City      | HO-Imgs   |
+|-----------|-----------|       |-----------|-----------|
+| Austin    |    28,462 |       | Amman     |     1,811 |
+| Bangkok   |    40,125 |       | Amsterdam |     7,908 |
+| Budapest  |    45,800 |       | Boston    |    14,037 |
+| Helsinki  |    15,228 |       | Goa       |     5,735 |
+| London    |     5,983 |       | Kampala   |     2,069 |
+| Manila    |     5,378 |       | Nairobi   |       887 |
+| Melbourne |   189,945 |       | Ottawa    |   123,296 |
+| Moscow    |   171,878 |       | Phoenix   |    50,256 |
+| Paris     |     9,503 |       | Saopaulo  |    19,002 |
+| Phoenix   |   106,221 |       | Tokyo     |    34,836 |
+| Sao Paulo |    35,096 |       | Toronto   |    12,802 |
+| SF        |     4,525 |       | Trondheim |     5,028 |
+| Trondheim |     4,136 |       | Total     |   277,667 |
 | Zurich    |     2,991 |
 | Total     |   665,271 |
 ```
 
-```bash
-# Holdout Sample
-| City      | HO-Imgs   |
-|-----------|-----------|
-| Amman     |     1,811 |
-| Amsterdam |     7,908 |
-| Boston    |    14,037 |
-| Goa       |     5,735 |
-| Kampala   |     2,069 |
-| Nairobi   |       887 |
-| Ottawa    |   123,296 |
-| Phoenix   |    50,256 |
-| Saopaulo  |    19,002 |
-| Tokyo     |    34,836 |
-| Toronto   |    12,802 |
-| Trondheim |     5,028 |
-| Total     |   277,667 |
-```
-
-### Image Translations
 
 As noted in the previous section, MSLS images are significantly larger than those DCGAN accepts as an input. The following code is an annotated excerpt from `run_gaudi_dcgan.py` and applies a transformation from a single raw image to an image used in the model.
 
@@ -133,17 +94,64 @@ In practice, this could mean an image<sup>3</sup> like the one shown below could
 
 <center>
     <figure>
-    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" height="400" src="./docs/images/translation/nyc_img_transformed_samples.png">
+    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" height="400" src="./images/translation/nyc_img_transformed_samples.png">
     <figcaption>Sample Transformations (NYC)</figcaption>
     <figure>
 </center>
 
 <center>
     <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./docs/images/translation/train_samples_eu.png">
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/translation/train_samples_eu.png">
     <figcaption>Training Samples From MSLS (Global) </figcaption>
     <figure>
 </center>
+
+## Discussion of AWS System Architecture
+
+The core module contains the networking and security features required for the remaining resources in the infrastructure. Notably, this module deploys:
+
+- A VPC with two subnets (1 public, 1 private) in the same availability zone (**Note:**  `DL1` and `P3` instances are not available in all regions and zones ).
+- A jump instance in the VPC's public subnet
+- An AWS Elastic Filesystem (EFS) that can be mounted from the VPC's private subnet
+
+ used a `DL1.24xlarge` running the Deep Learning AMI as my main training instance. This machine runs in the VPC's private subnet and must be accessed via SSH tunnelling. 
+
+The module `train-prod` provisions this machine and outputs the value of the instance's internal IP as `training_instance_ip` . Using this IP and the `jump_ip_addr` from `mlcore`, a user can SSH to the instance.
+
+[Grafana](https://grafana.com/) is an open source analytics & monitoring solution that can be used to create charts from a variety of external data sources. A Grafana instance is not required to perform any model training or analysis, although many of the charts from my [main post](https://dmw2151.com/trained-a-gan) have been generated from the Grafana UI.
+
+The module `stats-monitor` launches a Grafana instance in the core VPC and generates a `metrics_ip_addr`. Using this address and the `jump_ip_addr` from `mlcore`, a user can SSH tunnel the metrics instance UI to `localhost` with the following:
+
+## Training Instances
+
+I've provided a full description of the AWS system architecure for training [here](https://github.com/DMW2151/msls-dcgan-infra).
+Broadly, I train the model once on a `DL1.24xlarge` instance and once on a `ml.p3.8xlarge` instance.
+
+The `ml.p3.8xlarge` instance is not a meant to be a perfect comparison for the `DL1`. It's simply a similarly-priced GPU instance that a team may consider for training deep-learning models. I perform an analysis of comparable instances in my [main post](https://dmw2151.com/trained-a-gan).
+
+
+## Modifications for Training on Gaudi (`DL1`) and Nvidia GPU (`P`)
+
+At a low-level, it's difficult to describe all of the consequences of using `PyTorch` (at least without a deep understanding of PyTorch internals). At a high level, I made the following notable changes:
+
+- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) in their paper that is a patched version of `pylearn2`'s `SGD` function. Instead, I elected for a (slightly) more modern optimizer. `AdamW` is a solid, general-purpose optimizer. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi units.
+  
+- The original paper uses `CIFAR-10`, `MNIST`, and `TFD` to evaluate performance against several other generative methods. My project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I use the methods described below to compare the same model across epochs:
+
+    > Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.
+
+As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I should also note the following changes between the model's execution on the two machines:
+
+- When running on Gaudi processors, swap out a standard `pytorch.DataLoader` for `habana_dataloader.HabanaDataLoader`. Under the right [circumstances](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader), `HabanaDataLoader` can yield better performance that the native `DataLoader`.
+  
+- When running on Gaudi processors, use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
+  
+- When running on Gaudi processors, use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter.
+
+
+## DCGAN Results
+
+## Comparative Results w.r.t Cost and Hardware Performance (`DL1` v. `P`)
 
 
 ## Supplemental Links & Citations
