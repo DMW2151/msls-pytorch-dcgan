@@ -481,10 +481,7 @@ def start_or_resume_training_run(
 
         for epoch_step, dbatch in enumerate(dl, 0):
             
-            # Generate batch of latent vectors
-            Z = torch.randn(b_size, train_cfg.nz, 1,
-                                1, device=train_cfg.dev)
-
+            
             # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
             # Discriminator loss calculated as the sum of losses for the all
             # real and all fake batches
@@ -492,6 +489,10 @@ def start_or_resume_training_run(
 
             real_cpu = dbatch[0].to(train_cfg.dev)
             b_size = real_cpu.size(0)
+
+            # Generate batch of latent vectors
+            Z = torch.randn(b_size, train_cfg.nz, 1,
+                                1, device=train_cfg.dev)
             label = torch.full(
                 (b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
