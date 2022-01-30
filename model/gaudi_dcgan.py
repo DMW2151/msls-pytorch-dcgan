@@ -501,7 +501,7 @@ def start_or_resume_training_run(
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = netD(real_cpu).view(-1)
-            errD_real = criterion(output, label)
+            errD_real = criterion(output.half(), label.half())
 
             # Calculate gradients for D in backward pass
             errD_real.backward()
@@ -514,7 +514,7 @@ def start_or_resume_training_run(
             # Classify all fake batch with D && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = netD(fake.detach()).view(-1)
-            errD_fake = criterion(output, label)
+            errD_fake = criterion(output, label.half())
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
@@ -543,7 +543,7 @@ def start_or_resume_training_run(
             # Forward pass fake batch through Net_D; Calculate G_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = netD(fake).view(-1)
-            errG = criterion(output, label)
+            errG = criterion(output, label.half())
 
             # Calculate gradients for Net_G
             errG.backward()
