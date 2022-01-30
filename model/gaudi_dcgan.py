@@ -496,7 +496,7 @@ def start_or_resume_training_run(
             Z = torch.randn(b_size, train_cfg.nz, 1,
                                 1, device=train_cfg.dev)
             label = torch.full(
-                (b_size,), 1.0, dtype=torch.half, device=train_cfg.dev)
+                (b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
