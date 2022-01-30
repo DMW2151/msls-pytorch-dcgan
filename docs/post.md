@@ -180,10 +180,11 @@ Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-in
 | p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 | $32.77 |
 Table: Table A.1.1 - Possible Comparable GPU Instances
 
-Of the instances listed in *Table A.1.1*, I chose the following for comparison tests against the `DL1`. On price, `p3.8xlarge` is the most similar to the `DL1` and offers 4 `V100`s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the `g4dn.12xlarge` instances. The `T4` is a, decidedly less powerful contemporary of the `V100`. Because these are very low cost units and I'm not sensitive to time-to-train, I wanted to experiment with these as well.
+Of the instances listed in *Table A.1.1*, I chose the following for comparison tests against the `DL1`. On price, `p3.8xlarge` is the most similar to the `DL1` and offers 4 `V100`s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the `g4dn.12xlarge` instances. The `T4` is a decidedly less powerful contemporary of the `V100`. Because these are very low cost units and I'm not sensitive to time-to-train, I wanted to experiment with these as well.
 
 | API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) | USD/Hr |
 |---------------|--------------|-------|------|-----------------------|---------------|--------|
+| p2.8xlarge    |          488 |    32 |    8 | NVIDIA Tesla K80      |            96 |  $7.20 |
 | g4dn.12xlarge |          192 |    48 |    4 | NVIDIA T4 Tensor Core |            64 |  $3.91 |
 | p3.8xlarge    |          244 |    32 |    4 | NVIDIA Tesla V100     |            64 | $12.24 |
 Table: Table A.1.2 - GPU Instances Evaluated
