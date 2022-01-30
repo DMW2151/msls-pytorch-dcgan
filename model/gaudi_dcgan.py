@@ -49,6 +49,7 @@ except ImportError:
     # Failed Habana Import -> HABANA_ENABLED == 0
     HABANA_ENABLED = 0
 
+USE_AMP = True
 
 @dataclass
 class TrainingConfig:
@@ -459,7 +460,7 @@ def start_or_resume_training_run(
     )
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
 
     # Init Profiler
     if (profile_run) and (torch.__version__ > "1.8"):
@@ -479,6 +480,10 @@ def start_or_resume_training_run(
         log_i = 0
 
         for epoch_step, dbatch in enumerate(dl, 0):
+            
+            # Generate batch of latent vectors
+            Z = torch.randn(b_size, train_cfg.nz, 1,
+                                1, device=train_cfg.dev)
 
             # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
             # Discriminator loss calculated as the sum of losses for the all
@@ -491,25 +496,22 @@ def start_or_resume_training_run(
                 (b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
-            output = netD(real_cpu).view(-1)
-            errD_real = criterion(output, label)
+            with torch.cuda.amp.autocast(enabled=USE_AMP):
+                output = netD(real_cpu).view(-1)
+                errD_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
             errD_real.backward()
             D_x = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
-
-            # Generate batch of latent vectors
-            noise = torch.randn(b_size, train_cfg.nz, 1,
-                                1, device=train_cfg.dev)
-
-            fake = netG(noise)
+            fake = netG(Z)
             label.fill_(0.0)
 
             # Classify all fake batch with D && Calculate D_loss
-            output = netD(fake.detach()).view(-1)
-            errD_fake = criterion(output, label)
+            with torch.cuda.amp.autocast(enabled=USE_AMP):
+                output = netD(fake.detach()).view(-1)
+                errD_fake = criterion(output, label)
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
@@ -536,9 +538,9 @@ def start_or_resume_training_run(
             label.fill_(1.0)  # fake labels are real for generator cost
 
             # Forward pass fake batch through Net_D; Calculate G_loss
-
-            output = netD(fake).view(-1)
-            errG = criterion(output, label)
+            with torch.cuda.amp.autocast(enabled=USE_AMP):
+                output = netD(fake).view(-1)
+                errG = criterion(output, label)
 
             # Calculate gradients for Net_G
             errG.backward()
