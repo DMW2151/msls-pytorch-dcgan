@@ -559,7 +559,7 @@ def start_or_resume_training_run(
                 )
 
             # Calculate gradients for Net_G
-            scaler.scale(err_G).backward()
+            scaler_G.scale(err_G).backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
