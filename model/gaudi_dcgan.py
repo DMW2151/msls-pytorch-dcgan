@@ -452,7 +452,7 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.HingeEmbeddingLoss()
-    scaler = GradScaler()
+    scaler = torch.cuda.amp.GradScaler()
     
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
