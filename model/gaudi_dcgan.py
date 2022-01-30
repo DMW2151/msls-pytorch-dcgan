@@ -21,7 +21,7 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 
-if (torch.__version__ > "1.8"):
+if (torch.__version__ == "1.10.0"):
     import torch.profiler
     
 # Habana Imports - will fail if not on a Habana DL AMI instance
@@ -451,7 +451,7 @@ def start_or_resume_training_run(
         net_D.apply(weights_init)
         cur_epoch = 0
         img_list = []
-        losses = {"_G": [], "_D": [], "D_x": [], "D_G_z1": [], "D_G_z2": []}
+        losses = {"_G": [], "_D": [], "D_X": [], "D_G_z1": [], "D_G_z2": []}
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize PyTorch Writer
@@ -465,7 +465,7 @@ def start_or_resume_training_run(
     scaler_G = torch.cuda.amp.GradScaler()
 
     # Init Profiler
-    if (profile_run) and (torch.__version__ > "1.8"):
+    if (profile_run) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
             schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
             on_trace_ready=torch.profiler.tensorboard_trace_handler(f"{model_cfg.model_dir}/{model_cfg.model_name}/events"),
@@ -510,7 +510,7 @@ def start_or_resume_training_run(
 
             # Calculate gradients for D in backward pass
             scaler_D.scale(err_D_real).backward()
-            D_x = output.mean().item()
+            D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
             fake = net_G(Z)
@@ -570,7 +570,7 @@ def start_or_resume_training_run(
             scaler_G.step(optim_G)
             scaler_G.update()
 
-            if (profile_run) and (torch.__version__ > "1.8"):
+            if (profile_run) and (torch.__version__ == "1.10.0"):
                 prof.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
@@ -579,13 +579,13 @@ def start_or_resume_training_run(
             # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
-                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_X:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
                 # Write Metrics to TensorBoard...
                 for metric, val in zip(
-                    ['G_loss', 'D_loss', 'D_x', 'D_G_z1', 'D_G_z2'],
-                    [err_G.item(), err_D.item(), D_x, D_G_z1, D_G_z2]
+                    ['G_loss', 'D_loss', 'D_X', 'D_G_z1', 'D_G_z2'],
+                    [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2]
                 ):
                     writer.add_scalar(metric, val, (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency))
 
@@ -605,7 +605,7 @@ def start_or_resume_training_run(
             # Save Losses (and a few other function values) for plotting later
             losses["_G"].append(err_G.item())
             losses["_D"].append(err_D.item())
-            losses["D_x"].append(D_x)
+            losses["D_X"].append(D_X)
             losses["D_G_z1"].append(D_G_z1)
             losses["D_G_z2"].append(D_G_z2)
 
@@ -634,7 +634,7 @@ def start_or_resume_training_run(
 
     writer.close()
 
-    if (profile_run) and (torch.__version__ > "1.8"):
+    if (profile_run) and (torch.__version__ == "1.10.0"):
         prof.stop()
 
     return {"losses": losses, "img_list": img_list}
