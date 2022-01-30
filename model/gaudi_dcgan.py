@@ -542,7 +542,7 @@ def start_or_resume_training_run(
 
             # Forward pass fake batch through Net_D; Calculate G_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = netDs(fake).view(-1)
+                output = netD(fake).view(-1)
             errG = criterion(output, label)
 
             # Calculate gradients for Net_G
