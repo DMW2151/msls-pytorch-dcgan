@@ -451,10 +451,7 @@ def start_or_resume_training_run(
     writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.HingeEmbeddingLoss()
-
-    scaler_D = torch.cuda.amp.GradScaler()
-    scaler_G = torch.cuda.amp.GradScaler()
+    criterion = nn.BCELoss()
     
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
@@ -489,28 +486,24 @@ def start_or_resume_training_run(
             label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
-            with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = net_D(real_imgs).view(-1)
-                err_D_real = criterion(output, label)
+            output = net_D(real_imgs).view(-1)
+            err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
-            scaler_D.scale(err_D_real).backward()
-            # err_D_real.backward()
+            err_D_real.backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
             fake = net_G(Z)
-            label.fill_(-1.) # Under HingeLoss -> Use -1
+            label.fill_(0.0)
 
             # Classify all fake batch with D && Calculate D_loss 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = net_D(fake.detach()).view(-1)
-                err_D_fake = criterion(output, label)
+            output = net_D(fake.detach()).view(-1)
+            err_D_fake = criterion(output, label)
             
-            scaler_D.scale(err_D_fake).backward()
-            #err_D_fake.backward()
+            err_D_fake.backward()
             D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
@@ -521,9 +514,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
-            scaler_D.step(optim_D)
-            scaler_D.update()
-            #optim_D.step()
+            optim_D.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
@@ -535,12 +526,10 @@ def start_or_resume_training_run(
 
             # Forward pass fake batch through Net_D; Calculate G_loss && 
             # Calculate gradients for Net_G
-            with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = net_D(fake).view(-1)
-                err_G = criterion(output, label)
-
-            scaler_G.scale(err_G).backward()
-            #err_G.backward()
+            output = net_D(fake).view(-1)
+            err_G = criterion(output, label)
+        
+            err_G.backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
@@ -548,9 +537,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
-            scaler_G.step(optim_G)
-            scaler_G.update()
-            #optim_G.step()
+            optim_G.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
