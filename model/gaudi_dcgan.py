@@ -527,7 +527,6 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            optim_D.step()
             scaler_D.step(optim_D)
             scaler_D.update()
 
@@ -535,7 +534,6 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # (2) Update Net_G: maximize log(D(G(z)))
-
             net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
@@ -553,7 +551,6 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G
-            optim_G.step()
             scaler_G.step(optim_G)
             scaler_G.update()
 
