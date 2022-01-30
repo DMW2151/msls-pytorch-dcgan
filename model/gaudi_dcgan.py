@@ -451,7 +451,8 @@ def start_or_resume_training_run(
     writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCELoss()
+    criterion = nn.HingeEmbeddingLoss()
+    scaler = GradScaler()
     
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
@@ -496,7 +497,7 @@ def start_or_resume_training_run(
 
             # (1.2) Update D Network; Train with All-fake batch
             fake = net_G(Z)
-            label.fill_(0.0)
+            label.fill_(-1.) # Under HingeLoss -> Use -1
 
             # Classify all fake batch with D && Calculate D_loss 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
