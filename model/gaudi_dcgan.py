@@ -101,9 +101,6 @@ class TrainingConfig:
                     print("device %s:" % i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
-
-        print("====================")
-
     def get_net_D(self):
         """
         Instantiate a Disctiminator Network:
@@ -490,8 +487,6 @@ def start_or_resume_training_run(
             real_cpu = dbatch[0].to(train_cfg.dev)
             b_size = real_cpu.size(0)
 
-            # Generate batch of latent vectors
-            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
             label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
@@ -504,13 +499,14 @@ def start_or_resume_training_run(
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
+            # Generate batch of latent vectors
+            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
             fake = net_G(Z)
             label.fill_(0.0)
 
             # Classify all fake batch with D && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake.detach()).view(-1)
-                print(output)
                 err_D_fake = criterion(torch.log(output / (1 - output)), label)
                 D_G_z1 = output.mean().item()
 
@@ -527,6 +523,7 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
+            optim_D.step()
             scaler_common.step(optim_D)
             scaler_common.update()
 
@@ -534,14 +531,12 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # (2) Update Net_G: maximize log(D(G(z)))
-
             net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
             # Forward pass fake batch through Net_D; Calculate G_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake).view(-1)
-                print(output)
                 err_G = criterion(torch.log(output / (1 - output)), label)
                 D_G_z2 = output.mean().item()
 
@@ -553,6 +548,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G
+            optim_G.step()
             scaler_common.step(optim_G)
             scaler_common.update()
 
