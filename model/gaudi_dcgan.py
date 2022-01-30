@@ -92,13 +92,13 @@ class TrainingConfig:
         if torch.cuda.device_count():
             print(f"Running with {torch.cuda.device_count()} GPUs Available.")
             print(f"CUDA Available: {torch.cuda.is_available()}")
+            for i in range(torch.cuda.device_count()):
+                print("device %s:" % i, torch.cuda.get_device_properties(i))
 
             try:
                 print(torch._C._cuda_getDriverVersion(), "cuda driver")
                 print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
                 print(torch._C._nccl_version(), "nccl")
-                for i in range(torch.cuda.device_count()):
-                    print("device %s:" % i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
 
@@ -485,8 +485,8 @@ def start_or_resume_training_run(
             ######################################################################
             net_D.zero_grad()
 
-            real_cpu = dbatch[0].to(train_cfg.dev)
-            b_size = real_cpu.size(0)
+            real_imgs = dbatch[0].to(train_cfg.dev)
+            b_size = real_imgs.size(0)
 
             # Generate batch of latent vectors
             Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
@@ -494,8 +494,8 @@ def start_or_resume_training_run(
 
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = net_D(real_cpu).view(-1)
-                err_D_real = criterion(torch.log(output / (1 - output)), label)
+                output = net_D(real_imgs).view(-1)
+                err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
             scaler_D.scale(err_D_real).backward()
@@ -510,10 +510,10 @@ def start_or_resume_training_run(
             # Compute error of D as sum over the fake and the real batches
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake.detach()).view(-1)
-                err_D_fake = criterion(torch.log(output / (1 - output)), label)
+                err_D_fake = criterion(output, label)
             
             scaler_D.scale(err_D_fake).backward()
-            D_G_z1 = torch.sigmoid(output).mean().item()
+            D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
@@ -522,7 +522,7 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            optim_D.step()
+            # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
             scaler_D.step(optim_D)
             scaler_D.update()
 
@@ -538,17 +538,16 @@ def start_or_resume_training_run(
             # Calculate gradients for Net_G
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake).view(-1)
-                err_G = criterion(torch.log(output / (1 - output)), label)
+                err_G = criterion(output, label)
         
             scaler_G.scale(err_G).backward()
-            D_G_z2 = torch.sigmoid(output).mean().item()
+            D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            # Update G
-            optim_G.step()
+            # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
             scaler_G.step(optim_G)
             scaler_G.update()
 

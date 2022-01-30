@@ -3,12 +3,7 @@
 # Command line wrapper around gaudi_dcgan.py
 # Sample Usage on Command Line - See Notes on Running on DL1
 #
-# ! python3 run_gaudi_dcgan.py \
-#    --dataroot "/efs/images/" \
-#    --seed 215 \
-#    --name msls_dl1_2022_01_24_001 \
-#    --s_epoch 0 \
-#    --n_epoch 16
+# python3 run_gaudi_dcgan.py --dataroot "/efs/samples/" --seed 215 --name msls_dl1_2022_01_24_001 --s_epoch 0 --n_epoch 16
 
 # General Deps
 import random
@@ -18,14 +13,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import argparse
-import matplotlib.animation as animation
-from IPython.display import HTML
 
 # Torch Deps
 import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
-import torchvision.utils as vutils
 
 # DCGAN
 import gaudi_dcgan as dcgan
