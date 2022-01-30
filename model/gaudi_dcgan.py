@@ -522,6 +522,7 @@ def start_or_resume_training_run(
 
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
             scaler_D.step(optim_D)
+            scaler_D.update()
             #optim_D.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
@@ -548,6 +549,7 @@ def start_or_resume_training_run(
 
             # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
             scaler_G.step(optim_G)
+            scaler_G.update()
             #optim_G.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
