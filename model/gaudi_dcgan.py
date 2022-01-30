@@ -21,15 +21,16 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 
-if (torch.__version__ == "1.10.0"):
+if torch.__version__ == "1.10.0":
     import torch.profiler
-    
+
 # Habana Imports - will fail if not on a Habana DL AMI instance
 # Set Habana configuration or otherwise disable Habana...
 try:
     from habana_frameworks.torch.utils.library_loader import load_habana_module
     from habana_frameworks.torch.hpex.optimizers import FusedAdamW
     import habana_frameworks.torch.core as htcore
+
     load_habana_module()
 
     HABANA_ENABLED = 1
@@ -50,6 +51,7 @@ except ImportError:
     HABANA_ENABLED = 0
 
 USE_AMP = True
+
 
 @dataclass
 class TrainingConfig:
@@ -77,8 +79,7 @@ class TrainingConfig:
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
 
-    dev: torch.device = torch.device(
-        "cuda:0" if (torch.cuda.is_available()) else "hpu")
+    dev: torch.device = torch.device("cuda:0" if (torch.cuda.is_available()) else "hpu")
     ngpu: int = int(torch.cuda.is_available())  # No Support for Multi GPU!!
 
     def _announce(self):
@@ -87,21 +88,17 @@ class TrainingConfig:
         print("====================")
         print(self.dev.__repr__())
         print(f"Pytorch Version: {torch.__version__}")
-    
+
         if torch.cuda.device_count():
             print(f"Running with {torch.cuda.device_count()} GPUs Available.")
             print(f"CUDA Available: {torch.cuda.is_available()}")
 
             try:
                 print(torch._C._cuda_getDriverVersion(), "cuda driver")
-                print(
-                    torch._C._cuda_getCompiledVersion(),
-                    "cuda compiled version")
+                print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
                 print(torch._C._nccl_version(), "nccl")
                 for i in range(torch.cuda.device_count()):
-                    print(
-                        "device %s:" %
-                        i, torch.cuda.get_device_properties(i))
+                    print("device %s:" % i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
 
@@ -182,14 +179,17 @@ class TrainingConfig:
                 net_G.parameters(),
                 optimizer_class=torch.optim.Adam,
                 lr=self.lr,
-                betas=(self.beta1, self.beta2)
+                betas=(self.beta1, self.beta2),
             )
 
             return net_G, optim_G
 
         # If not on Habana, then use Adam optimizer...
         optim_G = optim.AdamW(
-            net_G.parameters(), lr=self.lr, betas=(self.beta1, self.beta2), weight_decay=0.01
+            net_G.parameters(),
+            lr=self.lr,
+            betas=(self.beta1, self.beta2),
+            weight_decay=0.01,
         )
 
         return net_G, optim_G
@@ -213,7 +213,7 @@ class ModelCheckpointConfig:
 
     model_name: str = "msls_dcgan_001"  # Name of the Model
     # Directory to save the model checkpoints to...
-    model_dir: str = "/efs/trained_model" # Requires `/efs/trained_model` has permissions s.t. ec2-user/ubuntu can write.
+    model_dir: str = "/efs/trained_model"  # Requires `/efs/trained_model` has permissions s.t. ec2-user/ubuntu can write.
     save_frequency: int = 1  # Save a model checkpoint every N epochs
     log_frequency: int = 50  # Print logs to STDOUT every N batches
     gen_progress_frequency: int = 250  # Save progress images every N batches
@@ -386,10 +386,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     """
 
     # Generate Noise - Latent Vector for the Model...
-    rd_noise = torch.randn(
-        n_samples, train_cfg.nz, 1, 1,
-        device=train_cfg.dev
-    )
+    rd_noise = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize empty models && initialize from `as_of_epoch`
     net_D, optim_D = train_cfg.get_net_D()
@@ -402,14 +399,15 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     # Use the Generator to create "believable" fake images - You can call a plotting function
     # on this output to visualize the images vs real ones
 
-    # Ideally a Generator Net can use a CPU to (slowly) generate samples, this confirms it, 
+    # Ideally a Generator Net can use a CPU to (slowly) generate samples, this confirms it,
     # we can run the net through via CPU for "inference"
     generated_imgs = net_G(rd_noise).detach().cpu()
     return generated_imgs
 
 
 def start_or_resume_training_run(
-        dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0, profile_run=False):
+    dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0, profile_run=False
+):
     """
     Begin Training Model. That's It.
     --------
@@ -455,22 +453,21 @@ def start_or_resume_training_run(
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize PyTorch Writer
-    writer = SummaryWriter(
-        f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
-    )
+    writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss()
-    scaler_D = torch.cuda.amp.GradScaler()
-    scaler_G = torch.cuda.amp.GradScaler()
-
+    scaler_common = torch.cuda.amp.GradScaler()
+    
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
             schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(f"{model_cfg.model_dir}/{model_cfg.model_name}/events"),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
+            ),
             record_shapes=True,
-            with_stack=True
+            with_stack=True,
         )
 
         prof.start()
@@ -482,8 +479,7 @@ def start_or_resume_training_run(
         log_i = 0
 
         for epoch_step, dbatch in enumerate(dl, 0):
-            
-            
+
             # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
             # Discriminator loss calculated as the sum of losses for the all
             # real and all fake batches
@@ -495,21 +491,16 @@ def start_or_resume_training_run(
             b_size = real_cpu.size(0)
 
             # Generate batch of latent vectors
-            Z = torch.randn(b_size, train_cfg.nz, 1,
-                                1, device=train_cfg.dev)
-            label = torch.full(
-                (b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
+            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
+            label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(real_cpu).view(-1)
-                err_D_real = criterion(
-                    torch.log(output/(1-output)), 
-                    label
-                )
+                err_D_real = criterion(torch.log(output / (1 - output)), label)
 
             # Calculate gradients for D in backward pass
-            scaler_D.scale(err_D_real).backward()
+            scaler_common.scale(err_D_real).backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
@@ -519,16 +510,13 @@ def start_or_resume_training_run(
             # Classify all fake batch with D && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake.detach()).view(-1)
-                err_D_fake = criterion(
-                    torch.log(output/(1-output)), 
-                    label
-                )
+                print(output)
+                err_D_fake = criterion(torch.log(output / (1 - output)), label)
                 D_G_z1 = output.mean().item()
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            
-            scaler_D.scale(err_D_fake).backward()
+            scaler_common.scale(err_D_fake).backward()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
@@ -539,8 +527,8 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            scaler_D.step(optim_D)
-            scaler_D.update()
+            scaler_common.step(optim_D)
+            scaler_common.update()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
@@ -553,25 +541,20 @@ def start_or_resume_training_run(
             # Forward pass fake batch through Net_D; Calculate G_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake).view(-1)
-                err_G = criterion(
-                    torch.log(output/(1-output)), 
-                    label
-                )
+                print(output)
+                err_G = criterion(torch.log(output / (1 - output)), label)
                 D_G_z2 = output.mean().item()
 
             # Calculate gradients for Net_G
-            scaler_G.scale(err_G).backward()
-            
+            scaler_common.scale(err_G).backward()
+
             # Mark Habana Steps => Generator Optim
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
             # Update G
-            scaler_G.step(optim_G)
-            scaler_G.update()
-
-            if (profile_run) and (torch.__version__ == "1.10.0"):
-                prof.step()
+            scaler_common.step(optim_G)
+            scaler_common.update()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
@@ -584,23 +567,27 @@ def start_or_resume_training_run(
 
                 # Write Metrics to TensorBoard...
                 for metric, val in zip(
-                    ['G_loss', 'D_loss', 'D_X', 'D_G_z1', 'D_G_z2'],
-                    [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2]
+                    ["G_loss", "D_loss", "D_X", "D_G_z1", "D_G_z2"],
+                    [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2],
                 ):
-                    writer.add_scalar(metric, val, (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency))
+                    writer.add_scalar(
+                        metric,
+                        val,
+                        (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency),
+                    )
 
                 log_i += 1
                 writer.flush()
 
             # Save Sample Imgs Every N Epochs...
             if (epoch_step % model_cfg.gen_progress_frequency) == 0:
-                # And also save the progress on the fixed latent input
-                # vector...
+                # And also save the progress on the fixed latent input vector...
                 with torch.no_grad():
                     fake = net_G(fixed_noise).detach().cpu()
-                    img_list.append(
-                        vutils.make_grid(fake, padding=2, normalize=True)
-                    )
+                    img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+
+            if (profile_run) and (torch.__version__ == "1.10.0"):
+                prof.step()
 
             # Save Losses (and a few other function values) for plotting later
             losses["_G"].append(err_G.item())
@@ -613,8 +600,7 @@ def start_or_resume_training_run(
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
 
             # Ensure the Save Directory Exists
-            if not os.path.exists(
-                    f"{model_cfg.model_dir}/{model_cfg.model_name}"):
+            if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}"):
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Save Checkpoint

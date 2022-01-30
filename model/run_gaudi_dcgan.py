@@ -33,35 +33,17 @@ import gaudi_dcgan as dcgan
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
-parser.add_argument(
-    "-s",
-    "--seed",
-    type=int,
-    help="An integer to seed Pytorch")
+parser.add_argument("-s", "--seed", type=int, help="An integer to seed Pytorch")
+
+parser.add_argument("-n", "--name", type=str, help="An integer to seed Pytorch")
+
+parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
+
+parser.add_argument("-se", "--s_epoch", type=int, help="Epoch to resume training from")
 
 parser.add_argument(
-    "-n",
-    "--name",
-    type=str,
-    help="An integer to seed Pytorch")
-
-parser.add_argument(
-    "-d",
-    "--dataroot",
-    type=str,
-    help="Root folder of training data")
-
-parser.add_argument(
-    "-se",
-    "--s_epoch",
-    type=int,
-    help="Epoch to resume training from")
-
-parser.add_argument(
-    "-ne",
-    "--n_epoch",
-    type=int,
-    help="Number of Epochs to train until")
+    "-ne", "--n_epoch", type=int, help="Number of Epochs to train until"
+)
 
 
 if __name__ == "__main__":
@@ -151,5 +133,10 @@ if __name__ == "__main__":
 
     # Run Model
     result = dcgan.start_or_resume_training_run(
-        dataloader, train_cfg, model_cfg, n_epochs=NUM_EPOCHS, st_epoch=START_EPOCH, profile_run=True
+        dataloader,
+        train_cfg,
+        model_cfg,
+        n_epochs=NUM_EPOCHS,
+        st_epoch=START_EPOCH,
+        profile_run=True,
     )

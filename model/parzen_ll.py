@@ -19,7 +19,7 @@ import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
-    
+
 def get_nll(x, parzen, batch_size=10):
     """
     Calculate the Negative Log-Liklihood over X using parzen function
