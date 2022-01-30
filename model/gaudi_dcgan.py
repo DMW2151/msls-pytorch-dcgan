@@ -482,10 +482,7 @@ def start_or_resume_training_run(
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
-            # Discriminator loss calculated as the sum of losses for the all
-            # real and all fake batches
-
-            # RuntimeError: torch.nn.functional.binary_cross_entropy and torch.nn.BCELoss are unsafe to autocast.
+            ######################################################################
             net_D.zero_grad()
 
             real_cpu = dbatch[0].to(train_cfg.dev)
@@ -508,22 +505,20 @@ def start_or_resume_training_run(
             fake = net_G(Z)
             label.fill_(0.0)
 
-            # Classify all fake batch with D && Calculate D_loss
+            # Classify all fake batch with D && Calculate D_loss 
+            # Calculate the gradients for this batch, accumulated with previous gradients &&\
+            # Compute error of D as sum over the fake and the real batches
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(torch.log(output / (1 - output)), label)
-                D_G_z1 = output.mean().item()
-
-            # Calculate the gradients for this batch, accumulated with previous gradients &&\
-            # Compute error of D as sum over the fake and the real batches
+            
             scaler_D.scale(err_D_fake).backward()
+            D_G_z1 = torch.sigmoid(output.mean().item())
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
             # to call `htcore.mark_step()` twice per Net per training step: See
-            # comments above!
-
-            # Mark Habana Steps => Discriminator Optim;
+            # comments above! Mark Habana Steps => Discriminator Optim...
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
@@ -534,17 +529,18 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # (2) Update Net_G: maximize log(D(G(z)))
+            ######################################################################
             net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
-            # Forward pass fake batch through Net_D; Calculate G_loss
+            # Forward pass fake batch through Net_D; Calculate G_loss && 
+            # Calculate gradients for Net_G
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake).view(-1)
                 err_G = criterion(torch.log(output / (1 - output)), label)
-                D_G_z2 = output.mean().item()
-
-            # Calculate gradients for Net_G
+        
             scaler_G.scale(err_G).backward()
+            D_G_z2 = torch.sigmoid(output.mean().item())
 
             # Mark Habana Steps => Generator Optim
             if HABANA_ENABLED and HABANA_LAZY:
