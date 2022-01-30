@@ -42,7 +42,7 @@ parser.add_argument(
 parser.add_argument(
     "-n",
     "--name",
-    type=int,
+    type=str,
     help="An integer to seed Pytorch")
 
 parser.add_argument(
