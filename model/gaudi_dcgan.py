@@ -522,6 +522,7 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
+            optim_D.step()
             scaler_D.step(optim_D)
             scaler_D.update()
 
@@ -547,6 +548,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G
+            optim_G.step()
             scaler_G.step(optim_G)
             scaler_G.update()
 
