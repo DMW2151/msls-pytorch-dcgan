@@ -567,7 +567,8 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G
-            optim_G.step()
+            scaler_G.step(optim_G)
+            scaler_G.update()
 
             if (profile_run) and (torch.__version__ > "1.8"):
                 prof.step()
