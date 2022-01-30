@@ -10,6 +10,7 @@
 source activate pytorch_p38
 
 
+
 # Essentially Exports nvidia-smi to Cloudwatch...
 
 sudo pip install nvidia-ml-py boto3 pynvml &&\

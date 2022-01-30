@@ -50,8 +50,7 @@ except ImportError:
     # Failed Habana Import -> HABANA_ENABLED == 0
     HABANA_ENABLED = 0
 
-USE_AMP = True
-
+USE_AMP = False
 
 @dataclass
 class TrainingConfig:
@@ -123,21 +122,18 @@ class TrainingConfig:
         on Habana machines, enable this, otherwise use regular `AdamW`.
         """
 
-        # Instantiate Discriminator Net
+        # Instantiate Discriminator Net, # Put model on device(s), 
+        # Enable Data Parallelism across all available GPUs
         net_D = Discriminator(self)
 
-        # Enable Data Parallelism across all available GPUs...
-        # BUG: TODO: This disables the ability to run in Single GPU - In
-        # practice, this is not ideal!
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
                 net_D = nn.DataParallel(net_D)
 
-        # Put model on device(s)
         net_D.to(self.dev)
 
-        # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
         if HABANA_ENABLED:
+            # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
             optim_D = FusedAdamW(
                 net_D.parameters(),
                 optimizer_class=torch.optim.Adam,
@@ -162,19 +158,18 @@ class TrainingConfig:
         optimizer choices.
         """
 
-        # Instantiate Generator Net
+        # Enable Data Parallelism across all available GPUs && Put model on device(s)
+
         net_G = Generator(self)
 
-        # Enable Data Parallelism across all available GPUs...
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
                 net_G = nn.DataParallel(net_G)
 
-        # Put model on device(s)
         net_G.to(self.dev)
 
-        # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
         if HABANA_ENABLED:
+            # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
             optim_G = FusedAdamW(
                 net_G.parameters(),
                 optimizer_class=torch.optim.Adam,
@@ -456,10 +451,8 @@ def start_or_resume_training_run(
     writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCEWithLogitsLoss()
-    scaler_D = torch.cuda.amp.GradScaler()
-    scaler_G = torch.cuda.amp.GradScaler()
-
+    criterion = nn.BCELoss()
+    
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
@@ -498,7 +491,7 @@ def start_or_resume_training_run(
                 err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
-            scaler_D.scale(err_D_real).backward()
+            err_D_real.backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
@@ -512,7 +505,7 @@ def start_or_resume_training_run(
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
             
-            scaler_D.scale(err_D_fake).backward()
+            err_D_fake.backward()
             D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
@@ -523,8 +516,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
-            scaler_D.step(optim_D)
-            scaler_D.update()
+            optim_D.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
@@ -540,7 +532,7 @@ def start_or_resume_training_run(
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
         
-            scaler_G.scale(err_G).backward()
+            err_G.backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
@@ -548,8 +540,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
-            scaler_G.step(optim_G)
-            scaler_G.update()
+            optim_G.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
