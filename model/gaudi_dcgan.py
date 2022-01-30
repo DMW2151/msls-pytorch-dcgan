@@ -459,7 +459,7 @@ def start_or_resume_training_run(
     )
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     # Init Profiler
     if (profile_run) and (torch.__version__ > "1.8"):
