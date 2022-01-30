@@ -5,19 +5,20 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"> 
     <meta charset="utf-8">
+    <meta name="author" content='$author-meta$'>
     <meta name="date" content='$date-meta$'>
     <title>$title$</title>
     <style>
             html {
               line-height: 1.5;
               font-family: Georgia, serif;
-              font-size: 20px;
+              font-size: 16px;
               color: #1a1a1a;
-              background-color: #fdfdfd;
+              background-color: #202025;
             }
             body {
               margin: 0 auto;
-              max-width: 36em;
+              max-width: 54em;
               padding-left: 50px;
               padding-right: 50px;
               padding-top: 50px;
@@ -51,10 +52,10 @@
               margin: 1em 0;
             }
             a {
-              color: #1a1a1a;
+              color: #1a0dab;
             }
             a:visited {
-              color: #1a1a1a;
+              color: #74438d;
             }
             img {
               max-width: 100%;
@@ -86,6 +87,7 @@
               font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
               font-size: 85%;
               margin: 0;
+              color: #FFFBC8;
             }
             pre {
               margin: 1em 0;
@@ -95,13 +97,14 @@
               padding: 0;
               overflow: visible;
               overflow-wrap: normal;
+              color: #ebebe6;
             }
             .sourceCode {
              background-color: transparent;
              overflow: visible;
             }
             hr {
-              background-color: #1a1a1a;
+              background-color: #ebebe6;
               border: none;
               height: 1px;
               margin: 1em 0;
@@ -113,21 +116,23 @@
               overflow-x: auto;
               display: block;
               font-variant-numeric: lining-nums tabular-nums;
+              color: #ebebe6;
             }
             table caption {
               margin-bottom: 0.75em;
             }
             tbody {
               margin-top: 0.5em;
-              border-top: 1px solid #1a1a1a;
-              border-bottom: 1px solid #1a1a1a;
+              border-top: 1px solid #202025;
+              border-bottom: 1px solid #202025;
             }
             th {
-              border-top: 1px solid #1a1a1a;
+              border-top: 1px solid #202025;
               padding: 0.25em 0.5em 0.25em 0.5em;
             }
             td {
               padding: 0.125em 0.5em 0.25em 0.5em;
+              color: #ebebe6;
             }
             header {
               margin-bottom: 4em;
@@ -171,9 +176,9 @@
                 -khtml-user-select: none; -moz-user-select: none;
                 -ms-user-select: none; user-select: none;
                 padding: 0 4px; width: 4em;
-                color: #aaaaaa;
+                color: #e6e6e6;
               }
-            pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+            pre.numberSource { margin-left: 3em; border-left: 1px solid #e6e6e6;  padding-left: 4px; }
             div.sourceCode
               {   }
             @media screen {
@@ -181,26 +186,26 @@
             }
             code span.al { color: #ff0000; font-weight: bold; } /* Alert */
             code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-            code span.at { color: #7d9029; } /* Attribute */
-            code span.bn { color: #40a070; } /* BaseN */
+            code span.at { color: #FFFBC8; } /* Attribute */
+            code span.bn { color: #FFFBC8; } /* BaseN */
             code span.bu { } /* BuiltIn */
-            code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+            code span.cf { color: #FFFBC8; font-weight: bold; } /* ControlFlow */
             code span.ch { color: #4070a0; } /* Char */
             code span.cn { color: #880000; } /* Constant */
             code span.co { color: #60a0b0; font-style: italic; } /* Comment */
             code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
             code span.do { color: #ba2121; font-style: italic; } /* Documentation */
             code span.dt { color: #902000; } /* DataType */
-            code span.dv { color: #40a070; } /* DecVal */
+            code span.dv { color: #FFFBC8; } /* DecVal */
             code span.er { color: #ff0000; font-weight: bold; } /* Error */
             code span.ex { } /* Extension */
-            code span.fl { color: #40a070; } /* Float */
+            code span.fl { color: #FFFBC8; } /* Float */
             code span.fu { color: #06287e; } /* Function */
             code span.im { } /* Import */
             code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-            code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+            code span.kw { color: #FFFBC8; font-weight: bold; } /* Keyword */
             code span.op { color: #666666; } /* Operator */
-            code span.ot { color: #007020; } /* Other */
+            code span.ot { color: #FFFBC8; } /* Other */
             code span.pp { color: #bc7a00; } /* Preprocessor */
             code span.sc { color: #4070a0; } /* SpecialChar */
             code span.ss { color: #bb6688; } /* SpecialString */
@@ -211,8 +216,9 @@
             .display.math{display: block; text-align: center; margin: 0.5rem auto;}
           </style>
   </head>
-  <body style="background-color:#202025; color: #FFFFFF"></body>
-    <p>Date: $date$</p>
+  <body style="background-color:#202025; color: #e6e6e6"></body>
+    <h1> $title$ </h1>
+    <p>$author$ &#8212 $date$</p>
     $body$
   </body>
 </html>

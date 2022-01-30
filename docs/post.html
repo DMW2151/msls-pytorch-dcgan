@@ -5,19 +5,20 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"> 
     <meta charset="utf-8">
-    <meta name="date" content=''>
-    <title>Revisiting the Original Generative Adversarial Networks Paper on Habana DL1 Instances</title>
+    <meta name="author" content='Dustin Wilson'>
+    <meta name="date" content='2022-01-29'>
+    <title>Generative Street-Level Imagery on DL1 Instances</title>
     <style>
             html {
               line-height: 1.5;
               font-family: Georgia, serif;
-              font-size: 20px;
+              font-size: 16px;
               color: #1a1a1a;
-              background-color: #fdfdfd;
+              background-color: #202025;
             }
             body {
               margin: 0 auto;
-              max-width: 36em;
+              max-width: 54em;
               padding-left: 50px;
               padding-right: 50px;
               padding-top: 50px;
@@ -51,10 +52,10 @@
               margin: 1em 0;
             }
             a {
-              color: #1a1a1a;
+              color: #1a0dab;
             }
             a:visited {
-              color: #1a1a1a;
+              color: #74438d;
             }
             img {
               max-width: 100%;
@@ -86,6 +87,7 @@
               font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
               font-size: 85%;
               margin: 0;
+              color: #FFFBC8;
             }
             pre {
               margin: 1em 0;
@@ -95,13 +97,14 @@
               padding: 0;
               overflow: visible;
               overflow-wrap: normal;
+              color: #ebebe6;
             }
             .sourceCode {
              background-color: transparent;
              overflow: visible;
             }
             hr {
-              background-color: #1a1a1a;
+              background-color: #ebebe6;
               border: none;
               height: 1px;
               margin: 1em 0;
@@ -113,21 +116,23 @@
               overflow-x: auto;
               display: block;
               font-variant-numeric: lining-nums tabular-nums;
+              color: #ebebe6;
             }
             table caption {
               margin-bottom: 0.75em;
             }
             tbody {
               margin-top: 0.5em;
-              border-top: 1px solid #1a1a1a;
-              border-bottom: 1px solid #1a1a1a;
+              border-top: 1px solid #202025;
+              border-bottom: 1px solid #202025;
             }
             th {
-              border-top: 1px solid #1a1a1a;
+              border-top: 1px solid #202025;
               padding: 0.25em 0.5em 0.25em 0.5em;
             }
             td {
               padding: 0.125em 0.5em 0.25em 0.5em;
+              color: #ebebe6;
             }
             header {
               margin-bottom: 4em;
@@ -171,9 +176,9 @@
                 -khtml-user-select: none; -moz-user-select: none;
                 -ms-user-select: none; user-select: none;
                 padding: 0 4px; width: 4em;
-                color: #aaaaaa;
+                color: #e6e6e6;
               }
-            pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+            pre.numberSource { margin-left: 3em; border-left: 1px solid #e6e6e6;  padding-left: 4px; }
             div.sourceCode
               {   }
             @media screen {
@@ -181,26 +186,26 @@
             }
             code span.al { color: #ff0000; font-weight: bold; } /* Alert */
             code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-            code span.at { color: #7d9029; } /* Attribute */
-            code span.bn { color: #40a070; } /* BaseN */
+            code span.at { color: #FFFBC8; } /* Attribute */
+            code span.bn { color: #FFFBC8; } /* BaseN */
             code span.bu { } /* BuiltIn */
-            code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+            code span.cf { color: #FFFBC8; font-weight: bold; } /* ControlFlow */
             code span.ch { color: #4070a0; } /* Char */
             code span.cn { color: #880000; } /* Constant */
             code span.co { color: #60a0b0; font-style: italic; } /* Comment */
             code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
             code span.do { color: #ba2121; font-style: italic; } /* Documentation */
             code span.dt { color: #902000; } /* DataType */
-            code span.dv { color: #40a070; } /* DecVal */
+            code span.dv { color: #FFFBC8; } /* DecVal */
             code span.er { color: #ff0000; font-weight: bold; } /* Error */
             code span.ex { } /* Extension */
-            code span.fl { color: #40a070; } /* Float */
+            code span.fl { color: #FFFBC8; } /* Float */
             code span.fu { color: #06287e; } /* Function */
             code span.im { } /* Import */
             code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-            code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+            code span.kw { color: #FFFBC8; font-weight: bold; } /* Keyword */
             code span.op { color: #666666; } /* Operator */
-            code span.ot { color: #007020; } /* Other */
+            code span.ot { color: #FFFBC8; } /* Other */
             code span.pp { color: #bc7a00; } /* Preprocessor */
             code span.sc { color: #4070a0; } /* SpecialChar */
             code span.ss { color: #bb6688; } /* SpecialString */
@@ -211,134 +216,302 @@
             .display.math{display: block; text-align: center; margin: 0.5rem auto;}
           </style>
   </head>
-  <body style="background-color:#202025; color: #FFFFFF"></body>
-    <p>Date: Jan 22, 2022</p>
-    <h2 id="theory-behind-dcgan">Theory Behind DCGAN</h2>
-    <p>Before discussing modifications, let’s discuss the <em>“way”</em> this model works.</p>
-    <p><strong>Assume the following:</strong></p>
+  <body style="background-color:#202025; color: #e6e6e6"></body>
+    <h1> Generative Street-Level Imagery on DL1 Instances </h1>
+    <p>Dustin Wilson &#8212 January 29, 2022</p>
+    <hr />
+    <center>
+    <figure class="image">
+    <img src="./images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <img src="./images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <img src="./images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <i>
+    <figcaption style="font-size: 12px;">
+    Nowhere, USA - Experimental Output - Scenes created by interpolating between sequences of generated frames
+    </figcaption>
+    </i>
+    </figure>
+    </center>
+    <p>This post is a companion to my entry in the <a href="https://amazon-ec2-dl1.devpost.com">AWS Deep Learning Challenge</a>. The event encouraged participants to use AWS’ DL1 instances to scale deep learning model training. I’m not much of an ML engineer, but this event offered a perfect opportunity to implement a model, instrument my code to train on <a href="https://habana.ai/wp-content/uploads/2019/06/Habana-Gaudi-Training-Platform-whitepaper.pdf">Gaudi accelerators</a>, and then perform a comparative analysis of performance across training environments. At a high level, my project involved re-implementing elements of foundational papers in the study of generative computer vision and then training a model on over 1.5 million street-level images.</p>
     <ul>
-    <li><p><code>Z</code> — Latent vector sampled from a standard normal distribution (<code>1 x 100</code>)</p></li>
-    <li><p><code>G(Z)</code> — Generator network which maps the latent vector, <code>Z</code>, to data-space. In practice, an image w. size <code>3 x 64 x 64</code></p></li>
-    <li><p><code>X</code> — Vector (image) with size <code>3 x 64 x 64</code></p></li>
-    <li><p><code>D(X)</code> — Discriminator network which outputs the probability that an input, <code>X</code>, is <em>real</em> (i.e. not an output of <code>G(Z)</code>)</p></li>
-    <li><p><code>D(G(Z))</code> — The probability that the output of the generator <code>G</code> is a real image.</p></li>
+    <li><a href="#Theory-and-Background">Theory and Background</a></li>
+    <li><a href="#Mapillary-Street-Level-Imagery-Data">Mapillary Street Level Imagery Data</a></li>
+    <li><a href="#AWS-System-Architecture">AWS System Architecture</a></li>
+    <li><a href="#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL1">Modifications for Training on Gaudi Accelerated Instances (<code>DL1</code>)</a></li>
+    <li><a href="#DCGAN-Results">DCGAN Results</a></li>
+    <li><a href="#Comparative-Performance">Comparative Performance</a></li>
+    <li><a href="#Appendix-1---Comparable-Instance-Selection">Appendix 1 - Comparable Instance Selection</a></li>
+    <li><a href="#Citations">Citations</a></li>
     </ul>
-    <p>Put simply, <code>G</code> tries to create believable images from the latent input vector and <code>D</code> tries to maximize the probability it correctly classifies real (from data) and fake images (produced from <code>G(Z)</code>). Throughout the code there are additional references to specific loss metrics, please see <code>gaudi_dcgan.py</code> for a description of those values. The network’s architecture is unchanged from the original paper and is diagramed below:</p>
+    <hr />
+    <h3 id="theory-and-background">Theory and Background</h3>
+    <p>In this project I re-implement elements of Ian Goodfellow’s <a href="https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf">Generative Adversarial Networks (2014)</a><sup>1</sup> and Alec Radford’s <a href="https://arxiv.org/pdf/1511.06434.pdf">Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)</a><sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs,Generative Adversarial Networks.</p>
+    <p>Before discussing specific elements of the project, let’s discuss the <em>way</em> GANs work. Put simply, GANs consist of two competing functions. A generator (<code>G</code>) tries to create believable data and a discriminator (<code>D</code>) tries to maximize the probability it correctly classifies real and generated data.</p>
+    <p><strong>Assume the following variables:</strong></p>
+    <ul>
+    <li><p><code>X</code> — Input data, in our case, an image with size <code>(3 x 64 x 64)</code></p></li>
+    <li><p><code>D(X)</code> or <code>D</code> — Discriminator network which outputs the probability that an input, <code>X</code>, is real.</p></li>
+    <li><p><code>G(Z)</code> or <code>G</code> — Generator network that deterministically creates data in the shape of <code>X</code>. In practice, an image with size <code>(3 x 64 x 64)</code>.</p></li>
+    <li><p><code>Z</code> — Random noise to seed the generator. In practice, a <code>(1 x 100)</code> vector drawn from a standard normal distribution.</p></li>
+    <li><p><code>D(G(Z))</code> — Given an output of the generator, the probability that the discriminator believes the image to be real. A high <code>D(G(Z))</code> suggests the generator has “tricked” the discriminator.</p></li>
+    </ul>
+    <p>Overall, our GAN is trying to maximize the sum of the two terms. The critical steps in each training iteration involve measuring the values of the following terms. For the formula-inclined, the GAN is simply maximizing the following function:</p>
+    <center>
+    <code>min​</code><sub><code>G</code></sub><code>max​</code><sub><code>V</code></sub><code>(D,G) = E</code><sub><code>x∼pdata​(x)</code></sub>​<code>[logD(x)] + E</code><sub><code>z∼pz​(z)​</code></sub><code>[log(1−D(G(z)))]</code>
+    </center>
+    <ul>
+    <li><p><code>E</code><sub><code>x∼pdata​(x)</code></sub>​<code>[logD(x)]</code> — The expected value of <code>D</code>’s predictions when given samples from the real batch. Remember, <code>D(x)</code> produces a probability, thus a perfect discriminator would return values near <em>0</em>.</p></li>
+    <li><p><code>E</code><sub><code>z∼pz​(z)​</code></sub><code>[log(1−D(G(z)))]</code> — The expected value of <code>D</code>’s prediction when given samples produced from <code>G(Z)</code>, Because all images in this batch are fake, a better discriminator would predict a lower <code>D(G(Z))</code>, also returning values near <em>0</em>.</p></li>
+    </ul>
+    <p>In the DCGAN paper, the method by which this function is maximized is by putting batches of images through <code>D</code> and <code>G</code>, where both are convolutional neural networks with a specific layer structure. My implementation replicates the architecture of both networks presented in <em>Radford et. al.</em>:</p>
     <center>
     <figure>
-    <img style="padding: 20px;" align="center" width="600" src="./images/translation/gan.png">
-    <figcaption>
-    DBGAN Architecture - As diagramed by <i>Radford, et. al <sup>4<sup></i>
+    <img style="padding-top: 20px;" align="center" width="600" src="./images/translation/gan.png"> <i>
+    <figcaption style="font-size: 12px;">
+    DBGAN Architecture - As diagramed by Radford, et. al <sup>4<sup>
     </figcaption>
+    </i>
     <figure>
     </center>
-    <h2 id="discussion-of-msls-dataset-data-preparation">Discussion of MSLS Dataset &amp; Data Preparation</h2>
-    <p>Models trained on both <code>DL1</code> and <code>p3</code> instances use a subset of the Mapillary Street-Level Sequences dataset (MSLS). Mapillary, a subsidiary of Facebook, primarily provides a platform for crowd-sourced maps and street-level imagery. This dataset is available for download <a href="https://www.mapillary.com/dataset/places">here</a><sup>2</sup>.</p>
-    <p>In total, MSLS contains 1.6 million images from 30 major cities on six-continents. Image sizes range from <code>(3 x 256 x 256)</code> to <code>(3 x 640 x 480)</code>. Because the original <code>DCGAN</code> paper expects <code>(3 x 64 x 64)</code> images, the larger MSLS sizes gave me leeway to apply cropping, down-scaling, and multiple horizontal translations to almost all images in the sample.</p>
-    <p>I considered using <code>(3 x 128 x 128)</code> images for this project and adding an additional <code>2DConv</code>/<code>ReLu</code> layer to both the Discriminator and Generator networks to handle for the newly sized images. However, this seemed like a significant deviation from my stated goal, and I elected to train on <code>(3 x 64 x 64)</code> as in the original paper. In the last 8 years <em>many</em> methods have been developed to handle <code>(3 x 128 x 128)</code> (and <em>much</em> larger <a href="https://github.com/lucidrains/lightweight-gan">images</a>).</p>
-    <p>The model presented here was trained on a sample of ~700,000 images from the MSLS data. An additional ~300,000 images were held-out to be used in model evaluation.</p>
-    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Sample               # Hold-Out Sample</span></span>
-    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">City</span>      <span class="kw">|</span> <span class="ex">Train-Img</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">City</span>      <span class="kw">|</span> <span class="ex">HO-Imgs</span>   <span class="kw">|</span></span>
-    <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span><span class="ex">-----------</span><span class="kw">|</span><span class="ex">-----------</span><span class="kw">|</span>       <span class="kw">|</span><span class="ex">-----------</span><span class="kw">|</span><span class="ex">-----------</span><span class="kw">|</span></span>
-    <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Austin</span>    <span class="kw">|</span>    <span class="ex">28,462</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Amman</span>     <span class="kw">|</span>     <span class="ex">1,811</span> <span class="kw">|</span></span>
-    <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Bangkok</span>   <span class="kw">|</span>    <span class="ex">40,125</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Amsterdam</span> <span class="kw">|</span>     <span class="ex">7,908</span> <span class="kw">|</span></span>
-    <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Budapest</span>  <span class="kw">|</span>    <span class="ex">45,800</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Boston</span>    <span class="kw">|</span>    <span class="ex">14,037</span> <span class="kw">|</span></span>
-    <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Helsinki</span>  <span class="kw">|</span>    <span class="ex">15,228</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Goa</span>       <span class="kw">|</span>     <span class="ex">5,735</span> <span class="kw">|</span></span>
-    <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">London</span>    <span class="kw">|</span>     <span class="ex">5,983</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Kampala</span>   <span class="kw">|</span>     <span class="ex">2,069</span> <span class="kw">|</span></span>
-    <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Manila</span>    <span class="kw">|</span>     <span class="ex">5,378</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Nairobi</span>   <span class="kw">|</span>       <span class="ex">887</span> <span class="kw">|</span></span>
-    <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Melbourne</span> <span class="kw">|</span>   <span class="ex">189,945</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Ottawa</span>    <span class="kw">|</span>   <span class="ex">123,296</span> <span class="kw">|</span></span>
-    <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Moscow</span>    <span class="kw">|</span>   <span class="ex">171,878</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Phoenix</span>   <span class="kw">|</span>    <span class="ex">50,256</span> <span class="kw">|</span></span>
-    <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Paris</span>     <span class="kw">|</span>     <span class="ex">9,503</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Saopaulo</span>  <span class="kw">|</span>    <span class="ex">19,002</span> <span class="kw">|</span></span>
-    <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Phoenix</span>   <span class="kw">|</span>   <span class="ex">106,221</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Tokyo</span>     <span class="kw">|</span>    <span class="ex">34,836</span> <span class="kw">|</span></span>
-    <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Sao</span> Paulo <span class="kw">|</span>    <span class="ex">35,096</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Toronto</span>   <span class="kw">|</span>    <span class="ex">12,802</span> <span class="kw">|</span></span>
-    <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">SF</span>        <span class="kw">|</span>     <span class="ex">4,525</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Trondheim</span> <span class="kw">|</span>     <span class="ex">5,028</span> <span class="kw">|</span></span>
-    <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Trondheim</span> <span class="kw">|</span>     <span class="ex">4,136</span> <span class="kw">|</span>       <span class="kw">|</span> <span class="ex">Total</span>     <span class="kw">|</span>   <span class="ex">277,667</span> <span class="kw">|</span></span>
-    <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Zurich</span>    <span class="kw">|</span>     <span class="ex">2,991</span> <span class="kw">|</span></span>
-    <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Total</span>     <span class="kw">|</span>   <span class="ex">665,271</span> <span class="kw">|</span></span></code></pre></div>
-    <p>As noted in the previous section, MSLS images are significantly larger than those DCGAN accepts as an input. The following code is an annotated excerpt from <code>run_gaudi_dcgan.py</code> and applies a transformation from a single raw image to an image used in the model.</p>
-    <div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create pytorch.Data.ImageFolder from `DATAROOT`; Focus on transformations</span></span>
-    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> dset.ImageFolder(</span>
-    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    root<span class="op">=</span>DATAROOT,</span>
-    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    transform<span class="op">=</span>transforms.Compose([</span>
-    <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># (1) Middle 1/2 of the Image is Most &quot;Interesting&quot;, especially towards the edges, things like</span></span>
-    <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># sidewalks, trees, etc. =&gt; Apply a random horizontal shift of (-30%, 30%) * orig_W</span></span>
-    <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        transforms.RandomAffine(degrees<span class="op">=</span><span class="dv">0</span>, translate<span class="op">=</span>(<span class="fl">0.3</span>, <span class="fl">0.0</span>)),</span>
-    <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="co"># (2) Use the Middle 256 x 256) of the resulting, shifted image</span></span>
-    <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        transforms.CenterCrop(IMG_SIZE <span class="op">*</span> <span class="dv">4</span>),</span>
-    <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="co"># (3) Downsize to 64 x 64 -&gt; </span><span class="al">NOTE</span><span class="co">: The downsampling/interpolation of PIL images applies</span></span>
-    <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># antialiasing by default, this (seems to be) a good choice, proceed...</span></span>
-    <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        transforms.Resize(IMG_SIZE),</span>
-    <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># (4) Converts a PIL Image or numpy.ndarray (H x W x C) in the range [0, 255] to a</span></span>
-    <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="co"># torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]</span></span>
-    <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        transforms.ToTensor(),</span>
-    <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="co"># (5) Normalize colors -&gt; Normalizes a tensor image with mean and standard deviation.</span></span>
-    <span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        <span class="co"># In this case, we apply mean and STD of 0.5, 0.5 for each channel (RGB).</span></span>
-    <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        transforms.Normalize( (<span class="fl">0.5</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span>), (<span class="dv">0</span>,<span class="dv">5</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span>) )</span>
-    <span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    ]),</span>
-    <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
-    <p>In practice, this could mean an image<sup>3</sup> like the one shown below could be transformed to look like any of those on the right (scale preserved). The second image shown below is a sample of 16 training images derived from the from the MSLS dataset.</p>
+    <p>At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
+    <ul>
+    <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
+    <li><p>In <em>Goodfellow, et al.</em>, the authors “Estimate probability of the test set data by fitting a gaussian parzen window to the samples generated with G and reporting the log-likelihood under this distribution”. The paper implements multiple generative methods and applies this procedure to evaluate the relative performance of each. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see <a href="#DCGAN-Results">results</a> for a deeper discussion of model validation.</p></li>
+    </ul>
+    <hr />
+    <h3 id="mapillary-street-level-imagery-data">Mapillary Street Level Imagery Data</h3>
     <center>
     <figure>
-    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" height="400" src="./images/translation/nyc_img_transformed_samples.png">
-    <figcaption>
-    Sample Transformations (NYC)
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/translation/train_samples_eu.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Training Samples From MSLS - Cropped and Transformed
     </figcaption>
+    </i>
     <figure>
     </center>
+    <p>Throughout this project, I used Mapillary’s Street-Level Sequences dataset (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a>. In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
+    <p>The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.</p>
+    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Sample By Metro Area</span></span>
+    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Amman</span>     <span class="kw">|</span>  <span class="ex">1,811</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">London</span>    <span class="kw">|</span>   <span class="ex">5,983</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Toronto</span>   <span class="kw">|</span>  <span class="ex">12,802</span> <span class="kw">|</span></span>
+    <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Amsterdam</span> <span class="kw">|</span>  <span class="ex">7,908</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Manila</span>    <span class="kw">|</span>   <span class="ex">5,378</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Trondheim</span> <span class="kw">|</span>   <span class="ex">9,154</span> <span class="kw">|</span></span>
+    <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Austin</span>    <span class="kw">|</span> <span class="ex">28,462</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Melbourne</span> <span class="kw">|</span> <span class="ex">189,945</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Kampala</span>   <span class="kw">|</span>   <span class="ex">2,069</span> <span class="kw">|</span></span>
+    <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Bangkok</span>   <span class="kw">|</span> <span class="ex">40,125</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Moscow</span>    <span class="kw">|</span> <span class="ex">171,878</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Paris</span>     <span class="kw">|</span>   <span class="ex">9,503</span> <span class="kw">|</span></span>
+    <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Boston</span>    <span class="kw">|</span> <span class="ex">14,037</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Nairobi</span>   <span class="kw">|</span>     <span class="ex">887</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Phoenix</span>   <span class="kw">|</span> <span class="ex">156,477</span> <span class="kw">|</span></span>
+    <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Goa</span>       <span class="kw">|</span>  <span class="ex">5,735</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">SF</span>        <span class="kw">|</span>   <span class="ex">4,525</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Zurich</span>    <span class="kw">|</span>   <span class="ex">2,991</span> <span class="kw">|</span></span>
+    <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Budapest</span>  <span class="kw">|</span> <span class="ex">45,800</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Ottawa</span>    <span class="kw">|</span> <span class="ex">123,296</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Sao</span> Paulo <span class="kw">|</span>  <span class="ex">54,098</span> <span class="kw">|</span></span>
+    <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Helsinki</span>  <span class="kw">|</span> <span class="ex">15,228</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Tokyo</span>     <span class="kw">|</span>  <span class="ex">34,836</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Total</span>     <span class="kw">|</span> <span class="ex">942,928</span> <span class="kw">|</span></span></code></pre></div>
+    <p>Because the authors who developed MSLS for their <a href="https://research.mapillary.com/publication/cvpr20c">research</a><sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.</p>
+    <p>Originally, I was hoping to train a suite of metro-area models, but the effect of individual sequences was too pronounced and the model often reproduced images from the training set. I did some custom filtering to reduce the contribution of individual sequences, but found the most effective strategy was simply adding more metropolitan areas and converging on a single model.</p>
+    <p>The effect of multi-image sequences was further reduced by applyting random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the original DCGAN paper expects <code>(3 x 64 x 64)</code> images, I had adequate leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the model. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
     <center>
     <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/translation/train_samples_eu.png">
-    <figcaption>
-    Training Samples From MSLS (Global)
+    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="./images/translation/nyc_img_transformed_samples.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Sample Transformations - All images are shifted, center-cropped, and then scaled to <code>3 x 64 x 64</code><sup>4</sup>
     </figcaption>
+    </i>
     <figure>
     </center>
-    <h2 id="discussion-of-aws-system-architecture">Discussion of AWS System Architecture</h2>
-    <p>The core module contains the networking and security features required for the remaining resources in the infrastructure. Notably, this module deploys:</p>
+    <hr />
+    <h3 id="aws-system-architecture">AWS System Architecture</h3>
+    <center>
+    <figure>
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/infra/arch.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Simplified Model Training Architecture
+    </figcaption>
+    </i>
+    <figure>
+    </center>
+    <p>All infrastructure for this project is hosted on AWS. If you’d like a user-guide for deploying the architecture yourself, I’d direct you to my infrastructure repo, <a href="https://github.com/DMW2151/msls-infra">msls-infra</a>.</p>
+    <p>All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. Note that <code>DL1</code> and <code>P3</code> instances are not available in all regions and zones. For me, <code>us-east-1a</code> was satisfactory, but this is not uniform across <a href="https://aws.amazon.com/premiumsupport/knowledge-center/vpc-map-cross-account-availability-zones/">accounts</a>. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
     <ul>
-    <li>A VPC with two subnets (1 public, 1 private) in the same availability zone (<strong>Note:</strong> <code>DL1</code> and <code>P3</code> instances are not available in all regions and zones ).</li>
-    <li>A jump instance in the VPC’s public subnet</li>
-    <li>An AWS Elastic Filesystem (EFS) that can be mounted from the VPC’s private subnet</li>
-    </ul>
-    <p>used a <code>DL1.24xlarge</code> running the Deep Learning AMI as my main training instance. This machine runs in the VPC’s private subnet and must be accessed via SSH tunnelling.</p>
-    <p>The module <code>train-prod</code> provisions this machine and outputs the value of the instance’s internal IP as <code>training_instance_ip</code> . Using this IP and the <code>jump_ip_addr</code> from <code>mlcore</code>, a user can SSH to the instance.</p>
-    <p><a href="https://grafana.com/">Grafana</a> is an open source analytics &amp; monitoring solution that can be used to create charts from a variety of external data sources. A Grafana instance is not required to perform any model training or analysis, although many of the charts from my <a href="https://dmw2151.com/trained-a-gan">main post</a> have been generated from the Grafana UI.</p>
-    <p>The module <code>stats-monitor</code> launches a Grafana instance in the core VPC and generates a <code>metrics_ip_addr</code>. Using this address and the <code>jump_ip_addr</code> from <code>mlcore</code>, a user can SSH tunnel the metrics instance UI to <code>localhost</code> with the following:</p>
-    <h2 id="training-instances">Training Instances</h2>
-    <p>I’ve provided a full description of the AWS system architecure for training <a href="https://github.com/DMW2151/msls-dcgan-infra">here</a>. Broadly, I train the model once on a <code>DL1.24xlarge</code> instance and once on a <code>ml.p3.8xlarge</code> instance.</p>
-    <p>The <code>ml.p3.8xlarge</code> instance is not a meant to be a perfect comparison for the <code>DL1</code>. It’s simply a similarly-priced GPU instance that a team may consider for training deep-learning models. I perform an analysis of comparable instances in my <a href="https://dmw2151.com/trained-a-gan">main post</a>.</p>
-    <h2 id="modifications-for-training-on-gaudi-dl1-and-nvidia-gpu-p">Modifications for Training on Gaudi (<code>DL1</code>) and Nvidia GPU (<code>P</code>)</h2>
-    <p>At a low-level, it’s difficult to describe all of the consequences of using <code>PyTorch</code> (at least without a deep understanding of PyTorch internals). At a high level, I made the following notable changes:</p>
+    <li><p><strong>training-prod</strong> — A model training instance, either <code>DL1</code> or a cost-comparable GPU instance (<code>P</code>-type).</p></li>
+    <li><p><strong>training-nb</strong> — A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
+    <li><p><strong>metrics</strong> — A small instance used to host metrics containers. This machine ran:</p>
     <ul>
-    <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> in their paper that is a patched version of <code>pylearn2</code>’s <code>SGD</code> function. Instead, I elected for a (slightly) more modern optimizer. <code>AdamW</code> is a solid, general-purpose optimizer. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi units.</p></li>
-    <li><p>The original paper uses <code>CIFAR-10</code>, <code>MNIST</code>, and <code>TFD</code> to evaluate performance against several other generative methods. My project is not interested in demonstrating the validity of the architecture and does not report any comparative metrics. However, I use the methods described below to compare the same model across epochs:</p>
-    <blockquote>
-    <p>Estimate probability of the test set data by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution.</p>
-    </blockquote></li>
+    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — a tool for visualizing <em>machine learning metrcs</em> during training.</li>
+    <li><a href="https://grafana.com/">Grafana</a> — an analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
+    </ul></li>
     </ul>
-    <p>As I intended to test this model on both Nvidia GPUs and Gaudi acceleators, I should also note the following changes between the model’s execution on the two machines:</p>
+    <p>Each of these instances had shared access to an AWS Elastic Filesystem (EFS) with MSLS data. Using a shared filesystem saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training instances (almost on a single Gaudi accelerator!) I didn’t anticipate this being a bottleneck after the initial load.</p>
+    <hr />
+    <h3 id="modifications-for-training-on-gaudi-accelerated-instances-dl1">Modifications for Training on Gaudi Accelerated Instances (<code>DL1</code>)</h3>
+    <p>I started with a standard PyTorch model running on the GPU before instrumenting it with the code to run on the HPU. Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration <a href="https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model">guide</a>. In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:</p>
     <ul>
-    <li><p>When running on Gaudi processors, swap out a standard <code>pytorch.DataLoader</code> for <code>habana_dataloader.HabanaDataLoader</code>. Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>.</p></li>
-    <li><p>When running on Gaudi processors, use <code>Lazy Mode</code>. <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode">Lazy Mode</a> provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.</p></li>
-    <li><p>When running on Gaudi processors, use <code>FusedAdamW</code> over <code>AdamW</code>. <code>FusedAdamW</code> can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter.</p></li>
+    <li><p>Swap out a standard <code>pytorch.DataLoader</code> for <code>habana_dataloader.HabanaDataLoader</code>. Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>. Even without acceleration, I can still use the <code>HabanaDataLoader</code> with a high <code>num_workers</code> parameter to quickly shuttle data onto the device.</p></li>
+    <li><p>Use <code>Lazy Mode</code>. <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode">Lazy Mode</a> provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.</p></li>
+    <li><p>Use <code>FusedAdamW</code> over <code>AdamW</code>. <code>FusedAdamW</code> can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over <code>AdamW</code>.</p></li>
     </ul>
-    <h2 id="dcgan-results">DCGAN Results</h2>
-    <h2 id="comparative-results-w.r.t-cost-and-hardware-performance-dl1-v.-p">Comparative Results w.r.t Cost and Hardware Performance (<code>DL1</code> v. <code>P</code>)</h2>
-    <h2 id="supplemental-links-citations">Supplemental Links &amp; Citations</h2>
-    <h3 id="links">Links</h3>
-    <ul>
-    <li><a href="https://github.com/goodfeli/adversarial">DCGAN Code</a></li>
-    <li><a href="https://research.mapillary.com/publication/cvpr20c">MSLS Publication</a></li>
-    <li><a href="https://blog.mapillary.com/update/2020/04/27/Mapillary-Street-Level-Sequences.html">MSLS Release Notes</a></li>
-    </ul>
+    <hr />
+    <h3 id="dcgan-results">DCGAN Results</h3>
+    <p>TBD</p>
+    <hr />
+    <h3 id="comparative-performance">Comparative Performance</h3>
+    <p>TBD</p>
+    <hr />
+    <h3 id="appendix-1---comparable-instance-selection">Appendix 1 - Comparable Instance Selection</h3>
+    <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla M60s) to top-of-the line training instances (e.g. <code>P4</code> instances with Ampere 100s). There are many sources that publish GPU performance statistics, but for this comparison I elected to rely exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">benchmrks</a></p>
+    <table>
+    <caption>Table A.1.1 - Possible Comparable GPU Instances</caption>
+    <thead>
+    <tr class="header">
+    <th>API Name</th>
+    <th>Memory (GiB)</th>
+    <th>VCPUs</th>
+    <th>GPUs</th>
+    <th>GPU Model</th>
+    <th>GPU Mem (GiB)</th>
+    <th>USD/Hr</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td>g3.8xlarge</td>
+    <td>244</td>
+    <td>32</td>
+    <td>2</td>
+    <td>NVIDIA Tesla M60</td>
+    <td>16</td>
+    <td>$2.28</td>
+    </tr>
+    <tr class="even">
+    <td>g3.16xlarge</td>
+    <td>488</td>
+    <td>64</td>
+    <td>4</td>
+    <td>NVIDIA Tesla M60</td>
+    <td>32</td>
+    <td>$4.56</td>
+    </tr>
+    <tr class="odd">
+    <td>p2.8xlarge</td>
+    <td>488</td>
+    <td>32</td>
+    <td>8</td>
+    <td>NVIDIA Tesla K80</td>
+    <td>96</td>
+    <td>$7.20</td>
+    </tr>
+    <tr class="even">
+    <td>g4dn.12xlarge</td>
+    <td>192</td>
+    <td>48</td>
+    <td>4</td>
+    <td>NVIDIA T4 Tensor Core</td>
+    <td>64</td>
+    <td>$3.91</td>
+    </tr>
+    <tr class="odd">
+    <td>g4dn.metal</td>
+    <td>384</td>
+    <td>96</td>
+    <td>8</td>
+    <td>NVIDIA T4 Tensor Core</td>
+    <td>128</td>
+    <td>$7.82</td>
+    </tr>
+    <tr class="even">
+    <td>g5.12xlarge</td>
+    <td>192</td>
+    <td>48</td>
+    <td>4</td>
+    <td>NVIDIA A10G</td>
+    <td>96</td>
+    <td>$5.67</td>
+    </tr>
+    <tr class="odd">
+    <td>g5.24xlarge</td>
+    <td>384</td>
+    <td>96</td>
+    <td>4</td>
+    <td>NVIDIA A10G</td>
+    <td>96</td>
+    <td>$8.14</td>
+    </tr>
+    <tr class="even">
+    <td>g5.48xlarge</td>
+    <td>768</td>
+    <td>192</td>
+    <td>8</td>
+    <td>NVIDIA A10G</td>
+    <td>192</td>
+    <td>$16.29</td>
+    </tr>
+    <tr class="odd">
+    <td>p3.8xlarge</td>
+    <td>244</td>
+    <td>32</td>
+    <td>4</td>
+    <td>NVIDIA Tesla V100</td>
+    <td>64</td>
+    <td>$12.24</td>
+    </tr>
+    <tr class="even">
+    <td>p3.16xlarge</td>
+    <td>488</td>
+    <td>64</td>
+    <td>8</td>
+    <td>NVIDIA Tesla V100</td>
+    <td>128</td>
+    <td>$24.48</td>
+    </tr>
+    <tr class="odd">
+    <td>p3dn.24xlarge</td>
+    <td>768</td>
+    <td>96</td>
+    <td>8</td>
+    <td>NVIDIA Tesla V100</td>
+    <td>256</td>
+    <td>$31.21</td>
+    </tr>
+    <tr class="even">
+    <td>p4d.24xlarge</td>
+    <td>1152</td>
+    <td>96</td>
+    <td>8</td>
+    <td>NVIDIA A100</td>
+    <td>320</td>
+    <td>$32.77</td>
+    </tr>
+    </tbody>
+    </table>
+    <p>Of the instances listed in <em>Table A.1.1</em>, I chose the following for comparision tests against the <code>DL1</code>. On price, <code>p3.8xlarge</code> is the most similar to the <code>DL1</code> and offers 4 <code>V100</code>s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the <code>g4dn.12xlarge</code> instances. The <code>T4</code> is a, decidedly less powerful contemporary of the <code>V100</code>. Because these are very low cost units and I’m not sensitive to time-to-train, I wanted to experiment with these as well.</p>
+    <table>
+    <caption>Table A.1.2 - GPU Instances Evaluated</caption>
+    <thead>
+    <tr class="header">
+    <th>API Name</th>
+    <th>Memory (GiB)</th>
+    <th>VCPUs</th>
+    <th>GPUs</th>
+    <th>GPU Model</th>
+    <th>GPU Mem (GiB)</th>
+    <th>USD/Hr</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td>g4dn.12xlarge</td>
+    <td>192</td>
+    <td>48</td>
+    <td>4</td>
+    <td>NVIDIA T4 Tensor Core</td>
+    <td>64</td>
+    <td>$3.91</td>
+    </tr>
+    <tr class="even">
+    <td>p3.8xlarge</td>
+    <td>244</td>
+    <td>32</td>
+    <td>4</td>
+    <td>NVIDIA Tesla V100</td>
+    <td>64</td>
+    <td>$12.24</td>
+    </tr>
+    </tbody>
+    </table>
     <h3 id="citations">Citations</h3>
-    <p><strong>[1]</strong> <em>“Generative Adversarial Networks.” Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.</em></p>
-    <p><strong>[2]</strong> <em>F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020</em></p>
-    <p><strong>[3]</strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
-    <p><strong>[4]</strong> <em>Radford, Alec, Luke Metz, and Soumith Chintala. “Unsupervised representation learning with deep convolutional generative adversarial networks.” arXiv preprint arXiv:1511.06434 (2015).</em></p>
+    <p><strong><sup>1</sup></strong> <em>“Generative Adversarial Networks.” Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.</em></p>
+    <p><strong><sup>2</sup></strong> <em>Radford, Alec, Luke Metz, and Soumith Chintala. “Unsupervised representation learning with deep convolutional generative adversarial networks.” arXiv preprint arXiv:1511.06434 (2015).</em></p>
+    <p><strong><sup>3</sup></strong> <em>F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020</em></p>
+    <p><strong><sup>4</sup></strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
   </body>
 </html>
