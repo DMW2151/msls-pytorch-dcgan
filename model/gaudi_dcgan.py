@@ -101,6 +101,9 @@ class TrainingConfig:
                     print("device %s:" % i, torch.cuda.get_device_properties(i))
             except AttributeError:
                 pass
+
+        print("====================")
+
     def get_net_D(self):
         """
         Instantiate a Disctiminator Network:
@@ -454,8 +457,9 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss()
-    scaler_common = torch.cuda.amp.GradScaler()
-    
+    scaler_D = torch.cuda.amp.GradScaler()
+    scaler_G = torch.cuda.amp.GradScaler()
+
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
@@ -487,6 +491,8 @@ def start_or_resume_training_run(
             real_cpu = dbatch[0].to(train_cfg.dev)
             b_size = real_cpu.size(0)
 
+            # Generate batch of latent vectors
+            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
             label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
@@ -495,12 +501,10 @@ def start_or_resume_training_run(
                 err_D_real = criterion(torch.log(output / (1 - output)), label)
 
             # Calculate gradients for D in backward pass
-            scaler_common.scale(err_D_real).backward()
+            scaler_D.scale(err_D_real).backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
-            # Generate batch of latent vectors
-            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
             fake = net_G(Z)
             label.fill_(0.0)
 
@@ -512,7 +516,7 @@ def start_or_resume_training_run(
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            scaler_common.scale(err_D_fake).backward()
+            scaler_D.scale(err_D_fake).backward()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
@@ -524,13 +528,14 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             optim_D.step()
-            scaler_common.step(optim_D)
-            scaler_common.update()
+            scaler_D.step(optim_D)
+            scaler_D.update()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
             # (2) Update Net_G: maximize log(D(G(z)))
+
             net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
@@ -541,7 +546,7 @@ def start_or_resume_training_run(
                 D_G_z2 = output.mean().item()
 
             # Calculate gradients for Net_G
-            scaler_common.scale(err_G).backward()
+            scaler_G.scale(err_G).backward()
 
             # Mark Habana Steps => Generator Optim
             if HABANA_ENABLED and HABANA_LAZY:
@@ -549,8 +554,8 @@ def start_or_resume_training_run(
 
             # Update G
             optim_G.step()
-            scaler_common.step(optim_G)
-            scaler_common.update()
+            scaler_G.step(optim_G)
+            scaler_G.update()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
