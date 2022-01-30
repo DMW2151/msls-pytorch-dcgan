@@ -52,13 +52,13 @@ parser.add_argument(
     help="Root folder of training data")
 
 parser.add_argument(
-    "-k",
+    "-se",
     "--s_epoch",
     type=int,
     help="Epoch to resume training from")
 
 parser.add_argument(
-    "-n",
+    "-ne",
     "--n_epoch",
     type=int,
     help="Number of Epochs to train until")
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Root directory for dataset
     DATAROOT = args.dataroot or "/efs/samples/"
     MODEL_SEED = args.seed or 215
-    NUM_EPOCH = args.n_epoch or 16
+    NUM_EPOCHS = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
     NAME = args.name or "msls_dcgan_ml_dl_24xlarge_001"
 
@@ -151,5 +151,5 @@ if __name__ == "__main__":
 
     # Run Model
     result = dcgan.start_or_resume_training_run(
-        dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH, profile_run=True
+        dataloader, train_cfg, model_cfg, n_epochs=NUM_EPOCHS, st_epoch=START_EPOCH, profile_run=True
     )
