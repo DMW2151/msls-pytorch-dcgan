@@ -452,7 +452,9 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.HingeEmbeddingLoss()
-    scaler = torch.cuda.amp.GradScaler()
+
+    scaler_D = torch.cuda.amp.GradScaler()
+    scaler_G = torch.cuda.amp.GradScaler()
     
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
@@ -492,7 +494,8 @@ def start_or_resume_training_run(
                 err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
-            err_D_real.backward()
+            scaler_D.scale(err_D_real).backward()
+            # err_D_real.backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
@@ -506,7 +509,8 @@ def start_or_resume_training_run(
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
             
-            err_D_fake.backward()
+            scaler_D.scale(err_D_fake).backward()
+            #err_D_fake.backward()
             D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
@@ -517,7 +521,8 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
-            optim_D.step()
+            scaler_D.step(optim_D)
+            #optim_D.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
@@ -532,8 +537,9 @@ def start_or_resume_training_run(
             with torch.cuda.amp.autocast(enabled=USE_AMP):
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
-        
-            err_G.backward()
+
+            scaler_G.scale(err_G).backward()
+            #err_G.backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
@@ -541,7 +547,8 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
-            optim_G.step()
+            scaler_G.step(optim_G)
+            #optim_G.step()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
