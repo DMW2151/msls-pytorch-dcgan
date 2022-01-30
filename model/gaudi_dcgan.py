@@ -523,12 +523,12 @@ def start_or_resume_training_run(
                     torch.log(output/(1-output)), 
                     label
                 )
+                D_G_z1 = output.mean().item()
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
             
             scaler_D.scale(err_D_fake).backward()
-            D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
@@ -557,11 +557,11 @@ def start_or_resume_training_run(
                     torch.log(output/(1-output)), 
                     label
                 )
+                D_G_z2 = output.mean().item()
 
             # Calculate gradients for Net_G
             scaler_G.scale(err_G).backward()
-            D_G_z2 = output.mean().item()
-
+            
             # Mark Habana Steps => Generator Optim
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
