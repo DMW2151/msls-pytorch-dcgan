@@ -127,37 +127,37 @@ class TrainingConfig:
         """
 
         # Instantiate Discriminator Net
-        netD = Discriminator(self)
+        net_D = Discriminator(self)
 
         # Enable Data Parallelism across all available GPUs...
         # BUG: TODO: This disables the ability to run in Single GPU - In
         # practice, this is not ideal!
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
-                netD = nn.DataParallel(netD)
+                net_D = nn.DataParallel(net_D)
 
         # Put model on device(s)
-        netD.to(self.dev)
+        net_D.to(self.dev)
 
         # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
         if HABANA_ENABLED:
-            optimD = FusedAdamW(
-                netD.parameters(),
+            optim_D = FusedAdamW(
+                net_D.parameters(),
                 optimizer_class=torch.optim.Adam,
                 lr=self.lr,
                 betas=(self.beta1, self.beta2),
                 weight_decay=0.01,
             )
-            return netD, optimD
+            return net_D, optim_D
 
         # If not on Habana, then use Adam optimizer...
-        optimD = optim.AdamW(
-            netD.parameters(),
+        optim_D = optim.AdamW(
+            net_D.parameters(),
             lr=self.lr,
             betas=(self.beta1, self.beta2),
             weight_decay=0.01,
         )
-        return netD, optimD
+        return net_D, optim_D
 
     def get_net_G(self):
         """
@@ -166,33 +166,33 @@ class TrainingConfig:
         """
 
         # Instantiate Generator Net
-        netG = Generator(self)
+        net_G = Generator(self)
 
         # Enable Data Parallelism across all available GPUs...
         if torch.cuda.is_available():
             if torch.cuda.device_count() > 1:
-                netG = nn.DataParallel(netG)
+                net_G = nn.DataParallel(net_G)
 
         # Put model on device(s)
-        netG.to(self.dev)
+        net_G.to(self.dev)
 
         # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
         if HABANA_ENABLED:
-            optimG = FusedAdamW(
-                netG.parameters(),
+            optim_G = FusedAdamW(
+                net_G.parameters(),
                 optimizer_class=torch.optim.Adam,
                 lr=self.lr,
                 betas=(self.beta1, self.beta2)
             )
 
-            return netG, optimG
+            return net_G, optim_G
 
         # If not on Habana, then use Adam optimizer...
-        optimG = optim.AdamW(
-            netG.parameters(), lr=self.lr, betas=(self.beta1, self.beta2), weight_decay=0.01
+        optim_G = optim.AdamW(
+            net_G.parameters(), lr=self.lr, betas=(self.beta1, self.beta2), weight_decay=0.01
         )
 
-        return netG, optimG
+        return net_G, optim_G
 
 
 @dataclass
@@ -221,7 +221,7 @@ class ModelCheckpointConfig:
 
 def weights_init(m):
     """
-    Custom weights initialization called on netG and netD, uses the hardcoded values
+    Custom weights initialization called on net_G and net_D, uses the hardcoded values
     from the DCGAN paper (mean, std) => (0, 0.02)
     """
 
@@ -315,21 +315,21 @@ class Discriminator(nn.Module):
         return self.main(input)
 
 
-def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
+def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
     """
     Utility function to restart training from a given checkpoint file
     --------
     Args:
-        netD, netG - nn.Module - The Generator and Discriminator networks
+        net_D, net_G - nn.Module - The Generator and Discriminator networks
 
-        optimD, optimG - Union(torch.optim, torch.hpex.optimizers.FusedAdamW) - Optimizer
+        optim_D, optim_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW) - Optimizer
         function for Discriminator and Generator Nets
 
         path - str Path to file to open...
     --------
     Example:
     cur_epoch, losses, fixed_noise, img_list = instantiate_from_checkpoint(
-            netD, netG, optimD, optimG, path
+            net_D, net_G, optim_D, optim_G, path
     )
 
     TODO: Probably not the most efficient use of memory here, could so
@@ -339,12 +339,12 @@ def instantiate_from_checkpoint(netD, netG, optimD, optimG, path):
     checkpoint = torch.load(path)
 
     # Seed Discriminator
-    netD.load_state_dict(checkpoint["D_state_dict"])
-    optimD.load_state_dict(checkpoint["D_optim"])
+    net_D.load_state_dict(checkpoint["D_state_dict"])
+    optim_D.load_state_dict(checkpoint["D_optim"])
 
     # Seed Generator
-    netG.load_state_dict(checkpoint["G_state_dict"])
-    optimG.load_state_dict(checkpoint["G_optim"])
+    net_G.load_state_dict(checkpoint["G_state_dict"])
+    optim_G.load_state_dict(checkpoint["G_optim"])
 
     return (
         checkpoint["epoch"],
@@ -392,19 +392,19 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     )
 
     # Initialize empty models && initialize from `as_of_epoch`
-    netD, optimD = train_cfg.get_net_D()
-    netG, optimG = train_cfg.get_net_G()
+    net_D, optim_D = train_cfg.get_net_D()
+    net_G, optim_G = train_cfg.get_net_G()
 
     path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{as_of_epoch}.pt"
 
-    _, _, _, _ = instantiate_from_checkpoint(netD, netG, optimD, optimG, path)
+    _, _, _, _ = instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path)
 
     # Use the Generator to create "believable" fake images - You can call a plotting function
     # on this output to visualize the images vs real ones
 
     # Ideally a Generator Net can use a CPU to (slowly) generate samples, this confirms it, 
     # we can run the net through via CPU for "inference"
-    generated_imgs = netG(rd_noise).detach().cpu()
+    generated_imgs = net_G(rd_noise).detach().cpu()
     return generated_imgs
 
 
@@ -433,22 +433,22 @@ def start_or_resume_training_run(
     train_cfg._announce()
 
     # Initialize Net and Optimizers
-    netD, optimD = train_cfg.get_net_D()
-    netG, optimG = train_cfg.get_net_G()
+    net_D, optim_D = train_cfg.get_net_D()
+    net_G, optim_G = train_cfg.get_net_G()
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
         path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt"
 
         cur_epoch, losses, fixed_noise, img_list = instantiate_from_checkpoint(
-            netD, netG, optimD, optimG, path
+            net_D, net_G, optim_D, optim_G, path
         )
 
     # If no start epoch specified; then apply weights from DCGAN paper and proceed
     # w. model training...
     else:
-        netG.apply(weights_init)
-        netD.apply(weights_init)
+        net_G.apply(weights_init)
+        net_D.apply(weights_init)
         cur_epoch = 0
         img_list = []
         losses = {"_G": [], "_D": [], "D_x": [], "D_G_z1": [], "D_G_z2": []}
@@ -461,6 +461,8 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss()
+    scaler_D = torch.cuda.amp.GradScaler()
+    scaler_G = torch.cuda.amp.GradScaler()
 
     # Init Profiler
     if (profile_run) and (torch.__version__ > "1.8"):
@@ -487,7 +489,7 @@ def start_or_resume_training_run(
             # real and all fake batches
 
             # RuntimeError: torch.nn.functional.binary_cross_entropy and torch.nn.BCELoss are unsafe to autocast.
-            netD.zero_grad()
+            net_D.zero_grad()
 
             real_cpu = dbatch[0].to(train_cfg.dev)
             b_size = real_cpu.size(0)
@@ -500,33 +502,34 @@ def start_or_resume_training_run(
 
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = netD(real_cpu).view(-1)
-                errD_real = criterion(
+                output = net_D(real_cpu).view(-1)
+                err_D_real = criterion(
                     torch.log(output/(1-output)), 
                     label
                 )
 
             # Calculate gradients for D in backward pass
-            errD_real.backward()
+            scaler_D.scale(err_D_real).backward()
             D_x = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
-            fake = netG(Z)
+            fake = net_G(Z)
             label.fill_(0.0)
 
             # Classify all fake batch with D && Calculate D_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = netD(fake.detach()).view(-1)
-                errD_fake = criterion(
+                output = net_D(fake.detach()).view(-1)
+                err_D_fake = criterion(
                     torch.log(output/(1-output)), 
                     label
                 )
 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            errD_fake.backward()
+            
+            scaler_D.scale(err_D_fake).backward()
             D_G_z1 = output.mean().item()
-            errD = errD_real + errD_fake
+            err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
             # to call `htcore.mark_step()` twice per Net per training step: See
@@ -536,26 +539,27 @@ def start_or_resume_training_run(
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
-            optimD.step()
+            scaler_D.step(optim_D)
+            scaler_D.update()
 
             if HABANA_ENABLED and HABANA_LAZY:
                 htcore.mark_step()
 
             # (2) Update Net_G: maximize log(D(G(z)))
 
-            netG.zero_grad()
+            net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
             # Forward pass fake batch through Net_D; Calculate G_loss
             with torch.cuda.amp.autocast(enabled=USE_AMP):
-                output = netD(fake).view(-1)
-                errG = criterion(
+                output = net_D(fake).view(-1)
+                err_G = criterion(
                     torch.log(output/(1-output)), 
                     label
                 )
 
             # Calculate gradients for Net_G
-            errG.backward()
+            scaler.scale(err_G).backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim
@@ -563,7 +567,7 @@ def start_or_resume_training_run(
                 htcore.mark_step()
 
             # Update G
-            optimG.step()
+            optim_G.step()
 
             if (profile_run) and (torch.__version__ > "1.8"):
                 prof.step()
@@ -574,13 +578,13 @@ def start_or_resume_training_run(
             # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
-                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
                 # Write Metrics to TensorBoard...
                 for metric, val in zip(
                     ['G_loss', 'D_loss', 'D_x', 'D_G_z1', 'D_G_z2'],
-                    [errG.item(), errD.item(), D_x, D_G_z1, D_G_z2]
+                    [err_G.item(), err_D.item(), D_x, D_G_z1, D_G_z2]
                 ):
                     writer.add_scalar(metric, val, (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency))
 
@@ -592,14 +596,14 @@ def start_or_resume_training_run(
                 # And also save the progress on the fixed latent input
                 # vector...
                 with torch.no_grad():
-                    fake = netG(fixed_noise).detach().cpu()
+                    fake = net_G(fixed_noise).detach().cpu()
                     img_list.append(
                         vutils.make_grid(fake, padding=2, normalize=True)
                     )
 
             # Save Losses (and a few other function values) for plotting later
-            losses["_G"].append(errG.item())
-            losses["_D"].append(errD.item())
+            losses["_G"].append(err_G.item())
+            losses["_D"].append(err_D.item())
             losses["D_x"].append(D_x)
             losses["D_G_z1"].append(D_G_z1)
             losses["D_G_z2"].append(D_G_z2)
@@ -616,10 +620,10 @@ def start_or_resume_training_run(
             torch.save(
                 {
                     "epoch": epoch,
-                    "D_state_dict": netD.state_dict(),
-                    "G_state_dict": netG.state_dict(),
-                    "D_optim": optimD.state_dict(),
-                    "G_optim": optimG.state_dict(),
+                    "D_state_dict": net_D.state_dict(),
+                    "G_state_dict": net_G.state_dict(),
+                    "D_optim": optim_D.state_dict(),
+                    "G_optim": optim_G.state_dict(),
                     "losses": losses,
                     "img_list": img_list,
                     "noise": fixed_noise,
