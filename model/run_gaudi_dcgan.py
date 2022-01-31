@@ -33,7 +33,7 @@ parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training 
 
 parser.add_argument("-se", "--s_epoch", type=int, help="Epoch to resume training from")
 
-parser.add_argument("-p", "--profile", type=int, default=False, help="Use Torch profiler")
+parser.add_argument("-p", "--profile", type=bool, default=False, help="Use Torch profiler")
 
 parser.add_argument(
     "-ne", "--n_epoch", type=int, help="Number of Epochs to train until"
