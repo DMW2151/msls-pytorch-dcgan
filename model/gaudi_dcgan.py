@@ -472,8 +472,8 @@ def start_or_resume_training_run(
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
         
-        scaler_D = GradScaler()
-        scaler_G = GradScaler()
+        scaler_D = torch.cuda.amp.GradScaler()
+        scaler_G = torch.cuda.amp.GradScaler()
 
         for epoch_step, dbatch in enumerate(dl, 0):
 
