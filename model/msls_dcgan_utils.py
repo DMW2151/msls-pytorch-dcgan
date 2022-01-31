@@ -1,7 +1,7 @@
 import torch
 
 try:
-    from habana_frameworks.torch.core import mark_step()
+    from habana_frameworks.torch.core import mark_step
 except ImportError:
     def mark_step():
         pass 

@@ -21,6 +21,8 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 
+from msls_dcgan_utils import MarkHTStep
+
 if torch.__version__ == "1.10.0":
     import torch.profiler
 
@@ -193,8 +195,7 @@ class TrainingConfig:
 class ModelCheckpointConfig:
     """
     ModelCheckpointConfig holds the model save parameters for both the generator
-    and discriminator networks.
-
+    and discriminator networks.s
     --------
     Example: Rename the model and decrease save frequency from every epoch (1) to
     every fourth epoch (4)
@@ -470,6 +471,9 @@ def start_or_resume_training_run(
 
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
+        
+        scaler_D = GradScaler()
+        scaler_G = GradScaler()
 
         for epoch_step, dbatch in enumerate(dl, 0):
 
@@ -490,7 +494,7 @@ def start_or_resume_training_run(
                 err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
-            err_D_real.backward()
+            scaler_D.scale(err_D_real).backward()
             D_X = output.mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
@@ -504,7 +508,7 @@ def start_or_resume_training_run(
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
             
-            err_D_fake.backward()
+            scaler_D.scale(err_D_fake).backward()
             D_G_z1 = output.mean().item()
             err_D = err_D_real + err_D_fake
 
@@ -513,7 +517,8 @@ def start_or_resume_training_run(
             # comments above! Mark Habana Steps => Discriminator Optim...
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
-                optim_D.step() 
+                scaler_D.step(optim_D) # Calls: optim_D.step() 
+            scaler_D.update()
 
             # (2) Update Net_G: maximize log(D(G(z)))
             ######################################################################
@@ -526,13 +531,14 @@ def start_or_resume_training_run(
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
         
-            err_G.backward()
+            scaler_G.scale(err_G).backward()
             D_G_z2 = output.mean().item()
 
             # Mark Habana Steps => Generator Optim;
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
-                optim_G.step()
-                
+                scaler_G.step(optim_G) # Calls: optim_G.step()
+            scaler_G.update()
+
             # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(

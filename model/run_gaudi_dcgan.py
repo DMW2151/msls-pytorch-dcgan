@@ -22,7 +22,6 @@ import torchvision.transforms as transforms
 # DCGAN
 import gaudi_dcgan as dcgan
 
-torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
