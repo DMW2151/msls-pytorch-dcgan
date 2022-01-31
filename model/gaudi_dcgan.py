@@ -302,7 +302,7 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*8) x 4 x 4
             nn.Conv2d(cfg.ndf * 8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
         )
 
     def forward(self, input):
@@ -450,7 +450,7 @@ def start_or_resume_training_run(
     writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
@@ -485,8 +485,9 @@ def start_or_resume_training_run(
             label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
-            output = net_D(real_imgs).view(-1)
-            err_D_real = criterion(output, label)
+            with torch.cuda.amp.autocast():
+                output = net_D(real_imgs).view(-1)
+                err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
             err_D_real.backward()
@@ -499,8 +500,9 @@ def start_or_resume_training_run(
             # Classify all fake batch with D && Calculate D_loss 
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            output = net_D(fake.detach()).view(-1)
-            err_D_fake = criterion(output, label)
+            with torch.cuda.amp.autocast():
+                output = net_D(fake.detach()).view(-1)
+                err_D_fake = criterion(output, label)
             
             err_D_fake.backward()
             D_G_z1 = output.mean().item()
@@ -520,8 +522,9 @@ def start_or_resume_training_run(
 
             # Forward pass fake batch through Net_D; Calculate G_loss && 
             # Calculate gradients for Net_G
-            output = net_D(fake).view(-1)
-            err_G = criterion(output, label)
+            with torch.cuda.amp.autocast():
+                output = net_D(fake).view(-1)
+                err_G = criterion(output, label)
         
             err_G.backward()
             D_G_z2 = output.mean().item()
