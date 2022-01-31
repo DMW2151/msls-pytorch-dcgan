@@ -24,8 +24,16 @@ import torchvision.utils as vutils
 if torch.__version__ == "1.10.0":
     import torch.profiler
 
+# Suggested Habana Driver Improvements...
 # Habana Imports - will fail if not on a Habana DL AMI instance
 # Set Habana configuration or otherwise disable Habana...
+#
+# Use lazy mode if Habana is available; allows SynapseAI graph compiler to
+# optimize the device execution for these ops Set internal `HABANA_LAZY`
+#
+# and environment var `PT_HPU_LAZY_MODE`
+# Explicit Habana logging parameters, see: ~/.habana_logs/. and ./.graph_dumps
+# for SynapseAI
 try:
     from habana_frameworks.torch.utils.library_loader import load_habana_module
     from habana_frameworks.torch.hpex.optimizers import FusedAdamW
@@ -34,23 +42,14 @@ try:
     load_habana_module()
 
     HABANA_ENABLED = 1
-
-    # Use lazy mode if Habana is available; allows SynapseAI graph compiler to
-    # optimize the device execution for these ops Set internal `HABANA_LAZY`
-    # and environment var `PT_HPU_LAZY_MODE`
-
     HABANA_LAZY = 1
     os.environ["PT_HPU_LAZY_MODE"] = "1"
-
-    # Explicit Habana logging parameters, see: ~/.habana_logs/. and ./.graph_dumps
-    # for SynapseAI
     os.environ["GRAPH_VISUALIZATION"] = True
 
 except ImportError:
     # Failed Habana Import -> HABANA_ENABLED == 0
     HABANA_ENABLED = 0
-
-USE_AMP = False
+    HABANE_LAZY = 0
 
 @dataclass
 class TrainingConfig:
@@ -510,14 +509,9 @@ def start_or_resume_training_run(
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
             # to call `htcore.mark_step()` twice per Net per training step: See
             # comments above! Mark Habana Steps => Discriminator Optim...
-            if HABANA_ENABLED and HABANA_LAZY:
-                htcore.mark_step()
-
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
-            optim_D.step()
-
-            if HABANA_ENABLED and HABANA_LAZY:
-                htcore.mark_step()
+            with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
+                optim_D.step() 
 
             # (2) Update Net_G: maximize log(D(G(z)))
             ######################################################################
@@ -532,16 +526,10 @@ def start_or_resume_training_run(
             err_G.backward()
             D_G_z2 = output.mean().item()
 
-            # Mark Habana Steps => Generator Optim
-            if HABANA_ENABLED and HABANA_LAZY:
-                htcore.mark_step()
-
-            # Update G - optim_G.step() is called in Scalar_G.step() if no Inf...
-            optim_G.step()
-
-            if HABANA_ENABLED and HABANA_LAZY:
-                htcore.mark_step()
-
+            # Mark Habana Steps => Generator Optim;
+            with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
+                optim_G.step()
+                
             # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(

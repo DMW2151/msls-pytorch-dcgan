@@ -67,7 +67,9 @@ At a low-level, it's difficult to describe all of the internal consequences of u
 
 - Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
 
-- In *Goodfellow, et al.*, the authors "Estimate probability of the test set data by fitting a gaussian parzen window to the samples generated with G and reporting the log-likelihood under this distribution". The paper implements multiple generative methods and applies this procedure to evaluate the relative performance of each. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation.
+- In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation:
+  
+    > We estimate probability of the test set data under Pg by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
 
 --------
 
@@ -145,6 +147,8 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
 - Use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
   
 - Use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over `AdamW`.
+  
+There were however, some performance gains that I left on the table. Both models could have benefited from the use of mixed precision and the `DL1` trained model may have further benefited from the use of the `habana_frameworks.torch.hpex`. This could have been a nice addition, but would have required the additional effort of writing a custom loss function or changing the model architecture. ==For reference, `BCELoss` cannot be autocast in PyTorch, `BCEWithLogitLoss` can, but this would involve removing the final `Sigmoid` layer from the discriminator.==
 
 --------
 

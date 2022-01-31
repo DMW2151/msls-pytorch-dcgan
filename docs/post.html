@@ -286,7 +286,7 @@
     </i>
     <figure>
     </center>
-    <p>Throughout this project, I used Mapillary’s Street-Level Sequences dataset (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a>. In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
+    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a>. In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
     <p>The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.</p>
     <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Sample By Metro Area</span></span>
     <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Amman</span>     <span class="kw">|</span>  <span class="ex">1,811</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">London</span>    <span class="kw">|</span>   <span class="ex">5,983</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Toronto</span>   <span class="kw">|</span>  <span class="ex">12,802</span> <span class="kw">|</span></span>
@@ -299,7 +299,7 @@
     <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Helsinki</span>  <span class="kw">|</span> <span class="ex">15,228</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Tokyo</span>     <span class="kw">|</span>  <span class="ex">34,836</span> <span class="kw">|</span>   <span class="kw">|</span> <span class="ex">Total</span>     <span class="kw">|</span> <span class="ex">942,928</span> <span class="kw">|</span></span></code></pre></div>
     <p>Because the authors who developed MSLS for their <a href="https://research.mapillary.com/publication/cvpr20c">research</a><sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.</p>
     <p>Originally, I was hoping to train a suite of metro-area models, but the effect of individual sequences was too pronounced and the model often reproduced images from the training set. I did some custom filtering to reduce the contribution of individual sequences, but found the most effective strategy was simply adding more metropolitan areas and converging on a single model.</p>
-    <p>The effect of multi-image sequences was further reduced by applyting random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the original DCGAN paper expects <code>(3 x 64 x 64)</code> images, I had adequate leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the model. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
+    <p>The effect of multi-image sequences was further reduced by applying random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the original DCGAN paper expects <code>(3 x 64 x 64)</code> images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the model. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
     <center>
     <figure>
     <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="./images/translation/nyc_img_transformed_samples.png"> <i>
@@ -348,7 +348,7 @@
     <p>TBD</p>
     <hr />
     <h3 id="appendix-1---comparable-instance-selection">Appendix 1 - Comparable Instance Selection</h3>
-    <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla M60s) to top-of-the line training instances (e.g. <code>P4</code> instances with Ampere 100s). There are many sources that publish GPU performance statistics, but for this comparison I elected to rely exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">benchmrks</a></p>
+    <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla M60s) to top-of-the line training instances (e.g. <code>P4</code> instances with Ampere 100s). There are many sources that publish GPU performance statistics, but for this comparison I elected to rely exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">benchmarks</a></p>
     <table>
     <caption>Table A.1.1 - Possible Comparable GPU Instances</caption>
     <thead>
@@ -473,7 +473,7 @@
     </tr>
     </tbody>
     </table>
-    <p>Of the instances listed in <em>Table A.1.1</em>, I chose the following for comparision tests against the <code>DL1</code>. On price, <code>p3.8xlarge</code> is the most similar to the <code>DL1</code> and offers 4 <code>V100</code>s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the <code>g4dn.12xlarge</code> instances. The <code>T4</code> is a, decidedly less powerful contemporary of the <code>V100</code>. Because these are very low cost units and I’m not sensitive to time-to-train, I wanted to experiment with these as well.</p>
+    <p>Of the instances listed in <em>Table A.1.1</em>, I chose the following for comparison tests against the <code>DL1</code>. On price, <code>p3.8xlarge</code> is the most similar to the <code>DL1</code> and offers 4 <code>V100</code>s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the <code>g4dn.12xlarge</code> instances. The <code>T4</code> is a decidedly less powerful contemporary of the <code>V100</code>. Because these are very low cost units and I’m not sensitive to time-to-train, I wanted to experiment with these as well.</p>
     <table>
     <caption>Table A.1.2 - GPU Instances Evaluated</caption>
     <thead>
@@ -489,6 +489,15 @@
     </thead>
     <tbody>
     <tr class="odd">
+    <td>p2.8xlarge</td>
+    <td>488</td>
+    <td>32</td>
+    <td>8</td>
+    <td>NVIDIA Tesla K80</td>
+    <td>96</td>
+    <td>$7.20</td>
+    </tr>
+    <tr class="even">
     <td>g4dn.12xlarge</td>
     <td>192</td>
     <td>48</td>
@@ -497,7 +506,7 @@
     <td>64</td>
     <td>$3.91</td>
     </tr>
-    <tr class="even">
+    <tr class="odd">
     <td>p3.8xlarge</td>
     <td>244</td>
     <td>32</td>

@@ -22,6 +22,7 @@ import torchvision.transforms as transforms
 # DCGAN
 import gaudi_dcgan as dcgan
 
+torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
@@ -32,6 +33,8 @@ parser.add_argument("-n", "--name", type=str, help="An integer to seed Pytorch")
 parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
 
 parser.add_argument("-se", "--s_epoch", type=int, help="Epoch to resume training from")
+
+parser.add_argument("-p", "--profile", type=int, default=False, help="Use Torch profiler")
 
 parser.add_argument(
     "-ne", "--n_epoch", type=int, help="Number of Epochs to train until"
@@ -48,6 +51,7 @@ if __name__ == "__main__":
     NUM_EPOCHS = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
     NAME = args.name or "msls_dcgan_ml_dl_24xlarge_001"
+    PROFILE = args.profile or False
 
     # Seed Model
     random.seed(MODEL_SEED)
@@ -130,5 +134,5 @@ if __name__ == "__main__":
         model_cfg,
         n_epochs=NUM_EPOCHS,
         st_epoch=START_EPOCH,
-        profile_run=True,
+        profile_run=PROFILE,
     )
