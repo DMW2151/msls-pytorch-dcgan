@@ -16,10 +16,10 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-from torch.utils.tensorboard import SummaryWriter
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+from torch.utils.tensorboard import SummaryWriter
 
 from msls_dcgan_utils import MarkHTStep
 
@@ -52,6 +52,7 @@ except ImportError:
     # Failed Habana Import -> HABANA_ENABLED == 0
     HABANA_ENABLED = 0
     HABANE_LAZY = 0
+
 
 @dataclass
 class TrainingConfig:
@@ -123,7 +124,7 @@ class TrainingConfig:
         on Habana machines, enable this, otherwise use regular `AdamW`.
         """
 
-        # Instantiate Discriminator Net, # Put model on device(s), 
+        # Instantiate Discriminator Net, # Put model on device(s),
         # Enable Data Parallelism across all available GPUs
         net_D = Discriminator(self)
 
@@ -160,7 +161,6 @@ class TrainingConfig:
         """
 
         # Enable Data Parallelism across all available GPUs && Put model on device(s)
-
         net_G = Generator(self)
 
         if torch.cuda.is_available():
@@ -211,7 +211,7 @@ class ModelCheckpointConfig:
     model_dir: str = "/efs/trained_model"  # Requires `/efs/trained_model` has permissions s.t. ec2-user/ubuntu can write.
     save_frequency: int = 1  # Save a model checkpoint every N epochs
     log_frequency: int = 50  # Print logs to STDOUT every N batches
-    gen_progress_frequency: int = 250  # Save progress images every N batches
+    gen_progress_frequency: int = 1000  # Save progress images every N batches
 
 
 def weights_init(m):
@@ -303,7 +303,7 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*8) x 4 x 4
             nn.Conv2d(cfg.ndf * 8, 1, 4, 1, 0, bias=False),
-            #nn.sigmoid(),
+            # nn.sigmoid(),
         )
 
     def forward(self, input):
@@ -452,7 +452,7 @@ def start_or_resume_training_run(
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss()
-    
+
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
@@ -471,7 +471,7 @@ def start_or_resume_training_run(
 
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
-        
+
         scaler_D = torch.cuda.amp.GradScaler()
         scaler_G = torch.cuda.amp.GradScaler()
 
@@ -501,13 +501,13 @@ def start_or_resume_training_run(
             fake = net_G(Z)
             label.fill_(0.0)
 
-            # Classify all fake batch with D && Calculate D_loss 
+            # Classify all fake batch with D && Calculate D_loss
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
             with torch.cuda.amp.autocast():
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
-            
+
             scaler_D.scale(err_D_fake).backward()
             D_G_z1 = torch.sigmoid(output).mean().item()
             err_D = err_D_real + err_D_fake
@@ -517,7 +517,7 @@ def start_or_resume_training_run(
             # comments above! Mark Habana Steps => Discriminator Optim...
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
-                scaler_D.step(optim_D) # Calls: optim_D.step() 
+                scaler_D.step(optim_D)  # Calls: optim_D.step()
             scaler_D.update()
 
             # (2) Update Net_G: maximize log(D(G(z)))
@@ -525,18 +525,18 @@ def start_or_resume_training_run(
             net_G.zero_grad()
             label.fill_(1.0)  # fake labels are real for generator cost
 
-            # Forward pass fake batch through Net_D; Calculate G_loss && 
+            # Forward pass fake batch through Net_D; Calculate G_loss &&
             # Calculate gradients for Net_G
             with torch.cuda.amp.autocast():
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
-        
+
             scaler_G.scale(err_G).backward()
             D_G_z2 = torch.sigmoid(output).mean().item()
 
             # Mark Habana Steps => Generator Optim;
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
-                scaler_G.step(optim_G) # Calls: optim_G.step()
+                scaler_G.step(optim_G)  # Calls: optim_G.step()
             scaler_G.update()
 
             # With default params - this shows loss every 6,400 images (50 training steps * 128/step)

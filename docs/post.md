@@ -21,6 +21,7 @@ This post is a companion to my entry in the [AWS Deep Learning Challenge](https:
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
 - [AWS System Architecture](#AWS-System-Architecture)
 - [Modifications for Training on Gaudi Accelerated Instances (`DL1`)](#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL1)
+- [Training the Model](#Training-the-Model)
 - [DCGAN Results](#DCGAN-Results)
 - [Comparative Performance](#Comparative-Performance)
 - [Appendix 1 - Comparable Instance Selection](#Appendix-1---Comparable-Instance-Selection)
@@ -30,7 +31,7 @@ This post is a companion to my entry in the [AWS Deep Learning Challenge](https:
 
 ### Theory and Background
 
-In this project I re-implement elements of Ian Goodfellow's [Generative Adversarial Networks (2014)](https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf)<sup>1</sup> and Alec Radford's [Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)](https://arxiv.org/pdf/1511.06434.pdf)<sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs,Generative Adversarial Networks.
+In this project I re-implement elements of Ian Goodfellow's [Generative Adversarial Networks (2014)](https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf)<sup>1</sup> and Alec Radford's [Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)](https://arxiv.org/pdf/1511.06434.pdf)<sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs, Generative Adversarial Networks.
 
 Before discussing specific elements of the project, let's discuss the *way* GANs work. Put simply, GANs consist of two competing functions. A generator (`G`) tries to create believable data and a discriminator (`D`) tries to maximize the probability it correctly classifies real and generated data.
 
@@ -46,7 +47,7 @@ Before discussing specific elements of the project, let's discuss the *way* GANs
   
 - `D(G(Z))` &mdash; Given an output of the generator, the probability that the discriminator believes the image to be real. A high `D(G(Z))` suggests the generator has "tricked" the discriminator.
 
-Overall, our GAN is trying to maximize the sum of the two terms. The critical steps in each training iteration involve measuring the values of the following terms. For the formula-inclined, the GAN is simply maximizing the following function:
+The critical steps in each training iteration involve measuring the values of the following terms. For the formula-inclined, the GAN is simply maximizing the following function:
 
 <center>`min​`<sub>`G`</sub>`max​`<sub>`V`</sub>`(D,G) = E`<sub>`x∼pdata​(x)`</sub>​`[logD(x)] + E`<sub>`z∼pz​(z)​`</sub>`[log(1−D(G(z)))]`</center>
 
@@ -54,7 +55,7 @@ Overall, our GAN is trying to maximize the sum of the two terms. The critical st
 
 - `E`<sub>`z∼pz​(z)​`</sub>`[log(1−D(G(z)))]` &mdash; The expected value of `D`'s prediction when given samples produced from `G(Z)`, Because all images in this batch are fake, a better discriminator would predict a lower `D(G(Z))`, also returning values near *0*.
 
-In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both are convolutional neural networks with a specific layer structure. My implementation replicates the architecture of both networks presented in *Radford et. al.*:
+In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both are convolutional neural networks with a specific layer structure.
 
 <center>
     <figure>
@@ -67,11 +68,11 @@ At a low-level, it's difficult to describe all of the internal consequences of u
 
 - Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
 
-- Remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the model to the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.
-
 - In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation:
   
     > We estimate probability of the test set data under Pg by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
+
+- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.
 
 --------
 
@@ -90,14 +91,14 @@ The model presented here was trained on a sample of ~940,000 images. The remaini
 
 ```bash
 # Training Sample By Metro Area
-| Amman     |  1,811 |   | London    |   5,983 |   | Toronto   |  12,802 |
-| Amsterdam |  7,908 |   | Manila    |   5,378 |   | Trondheim |   9,154 |
-| Austin    | 28,462 |   | Melbourne | 189,945 |   | Kampala   |   2,069 |
-| Bangkok   | 40,125 |   | Moscow    | 171,878 |   | Paris     |   9,503 |
-| Boston    | 14,037 |   | Nairobi   |     887 |   | Phoenix   | 156,477 |
-| Goa       |  5,735 |   | SF        |   4,525 |   | Zurich    |   2,991 |
-| Budapest  | 45,800 |   | Ottawa    | 123,296 |   | Sao Paulo |  54,098 |
-| Helsinki  | 15,228 |   | Tokyo     |  34,836 |   | Total     | 942,928 |
+| Amman     |  1,811 |     | London    |   5,983 |     | Toronto   |  12,802 |
+| Amsterdam |  7,908 |     | Manila    |   5,378 |     | Trondheim |   9,154 |
+| Austin    | 28,462 |     | Melbourne | 189,945 |     | Kampala   |   2,069 |
+| Bangkok   | 40,125 |     | Moscow    | 171,878 |     | Paris     |   9,503 |
+| Boston    | 14,037 |     | Nairobi   |     887 |     | Phoenix   | 156,477 |
+| Goa       |  5,735 |     | SF        |   4,525 |     | Zurich    |   2,991 |
+| Budapest  | 45,800 |     | Ottawa    | 123,296 |     | Sao Paulo |  54,098 |
+| Helsinki  | 15,228 |     | Tokyo     |  34,836 |     | Total     | 942,928 |
 ```
 
 Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.
@@ -124,11 +125,9 @@ The effect of multi-image sequences was further reduced by applying random trans
     <figure>
 </center>
 
-All infrastructure for this project is hosted on AWS. If you'd like a user-guide for deploying the architecture yourself, I'd direct you to my infrastructure repo, [msls-infra](https://github.com/DMW2151/msls-infra).
+All infrastructure for this project is hosted on AWS. If you'd like a user-guide for deploying the architecture yourself, I'd direct you to my infrastructure [repo](https://github.com/DMW2151/msls-infra). All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
 
-All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. Note that `DL1` and `P3` instances are not available in all regions and zones. For me, `us-east-1a` was satisfactory, but this is not uniform across [accounts](https://aws.amazon.com/premiumsupport/knowledge-center/vpc-map-cross-account-availability-zones/). I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
-
-- **training-prod** &mdash; A model training instance, either `DL1` or a cost-comparable GPU instance (`P`-type).
+- **training-prod** &mdash; A model training instance, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
   
 - **training-nb** &mdash; A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.
   
@@ -136,7 +135,7 @@ All training resources run in a single VPC with two subnets (1 public, 1 private
   - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
   - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
 
-Each of these instances had shared access to an AWS Elastic Filesystem (EFS) with MSLS data. Using a shared filesystem saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training instances (almost on a single Gaudi accelerator!) I didn't anticipate this being a bottleneck after the initial load.
+Each of these instances has access to an AWS Elastic Filesystem (EFS) with MSLS data. Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training devices this wasn't a bottleneck in training speed after the initial load.
 
 --------
 
@@ -152,6 +151,18 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
   
 --------
 
+### Training the Model
+
+I designed model training to be as simple as possible. Once on an instance running a DLAMI, the following command kicks off the full model training cycle on a directory of images. I provide a more in-depth user guide in the [model repo](https://github.com/DMW2151/msls-pytorch-dcgan). In general, If you're just interested in generating a GAN (and not reproducibility, or training and instance metrics), cloning that repo into a DLAMI is the fastet way to get started training.
+
+```bash
+source activate pytorch_p38 # For PyTorch 1.10 with Python3.8 (CUDA 11.1 and Intel MKL)
+cd ~/msls-pytorch-dcgan/model
+
+
+```
+
+--------
 ### DCGAN Results
 
 TBD
