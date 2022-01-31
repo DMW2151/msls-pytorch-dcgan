@@ -495,7 +495,7 @@ def start_or_resume_training_run(
 
             # Calculate gradients for D in backward pass
             scaler_D.scale(err_D_real).backward()
-            D_X = torch.sigmoid(output.mean().item())
+            D_X = torch.sigmoid(output).mean().item()
 
             # (1.2) Update D Network; Train with All-fake batch
             fake = net_G(Z)
@@ -509,7 +509,7 @@ def start_or_resume_training_run(
                 err_D_fake = criterion(output, label)
             
             scaler_D.scale(err_D_fake).backward()
-            D_G_z1 = torch.sigmoid(output.mean().item())
+            D_G_z1 = torch.sigmoid(output).mean().item()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
@@ -532,7 +532,7 @@ def start_or_resume_training_run(
                 err_G = criterion(output, label)
         
             scaler_G.scale(err_G).backward()
-            D_G_z2 = torch.sigmoid(output.mean().item())
+            D_G_z2 = torch.sigmoid(output).mean().item()
 
             # Mark Habana Steps => Generator Optim;
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
