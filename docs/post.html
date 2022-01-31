@@ -52,10 +52,10 @@
               margin: 1em 0;
             }
             a {
-              color: #1a0dab;
+              color: #5858d9;
             }
             a:visited {
-              color: #74438d;
+              color: #9292f2;
             }
             img {
               max-width: 100%;
@@ -273,7 +273,11 @@
     <p>At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
     <ul>
     <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
-    <li><p>In <em>Goodfellow, et al.</em>, the authors “Estimate probability of the test set data by fitting a gaussian parzen window to the samples generated with G and reporting the log-likelihood under this distribution”. The paper implements multiple generative methods and applies this procedure to evaluate the relative performance of each. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see <a href="#DCGAN-Results">results</a> for a deeper discussion of model validation.</p></li>
+    <li><p>Remove the final <code>Sigmoid</code> layer from <code>D</code>. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the model to the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.</p></li>
+    <li><p>In <em>Goodfellow, et al.</em>, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see <a href="#DCGAN-Results">results</a> for a deeper discussion of model validation:</p>
+    <blockquote>
+    <p>We estimate probability of the test set data under Pg by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.</p>
+    </blockquote></li>
     </ul>
     <hr />
     <h3 id="mapillary-street-level-imagery-data">Mapillary Street Level Imagery Data</h3>
@@ -327,8 +331,8 @@
     <li><p><strong>training-nb</strong> — A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
     <li><p><strong>metrics</strong> — A small instance used to host metrics containers. This machine ran:</p>
     <ul>
-    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — a tool for visualizing <em>machine learning metrcs</em> during training.</li>
-    <li><a href="https://grafana.com/">Grafana</a> — an analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
+    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — A tool for visualizing <em>machine learning metrcs</em> during training.</li>
+    <li><a href="https://grafana.com/">Grafana</a> — An analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
     </ul></li>
     </ul>
     <p>Each of these instances had shared access to an AWS Elastic Filesystem (EFS) with MSLS data. Using a shared filesystem saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training instances (almost on a single Gaudi accelerator!) I didn’t anticipate this being a bottleneck after the initial load.</p>
@@ -348,7 +352,7 @@
     <p>TBD</p>
     <hr />
     <h3 id="appendix-1---comparable-instance-selection">Appendix 1 - Comparable Instance Selection</h3>
-    <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla M60s) to top-of-the line training instances (e.g. <code>P4</code> instances with Ampere 100s). There are many sources that publish GPU performance statistics, but for this comparison I elected to rely exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">benchmarks</a></p>
+    <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla <code>M60</code>s) to top-of-the line training instances (e.g. <code>P4</code> instances with <code>A100</code>s). I relied exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">resnext-101 benchmarks</a> as a proxy for my model’s performance. On price, <code>p3.8xlarge</code> instances are the most similar to the <code>DL1</code> and offer 4 <code>V100</code>. Although <code>g4dn.12xlarge</code>(<code>T4</code>) and <code>p2.8xlarge</code> (<code>K80</code>) instances are priced well relative to their performance, I elected to only run a full test on the <code>p3.8xlarge</code>.</p>
     <table>
     <caption>Table A.1.1 - Possible Comparable GPU Instances</caption>
     <thead>
@@ -470,50 +474,6 @@
     <td>NVIDIA A100</td>
     <td>320</td>
     <td>$32.77</td>
-    </tr>
-    </tbody>
-    </table>
-    <p>Of the instances listed in <em>Table A.1.1</em>, I chose the following for comparison tests against the <code>DL1</code>. On price, <code>p3.8xlarge</code> is the most similar to the <code>DL1</code> and offers 4 <code>V100</code>s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the <code>g4dn.12xlarge</code> instances. The <code>T4</code> is a decidedly less powerful contemporary of the <code>V100</code>. Because these are very low cost units and I’m not sensitive to time-to-train, I wanted to experiment with these as well.</p>
-    <table>
-    <caption>Table A.1.2 - GPU Instances Evaluated</caption>
-    <thead>
-    <tr class="header">
-    <th>API Name</th>
-    <th>Memory (GiB)</th>
-    <th>VCPUs</th>
-    <th>GPUs</th>
-    <th>GPU Model</th>
-    <th>GPU Mem (GiB)</th>
-    <th>USD/Hr</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr class="odd">
-    <td>p2.8xlarge</td>
-    <td>488</td>
-    <td>32</td>
-    <td>8</td>
-    <td>NVIDIA Tesla K80</td>
-    <td>96</td>
-    <td>$7.20</td>
-    </tr>
-    <tr class="even">
-    <td>g4dn.12xlarge</td>
-    <td>192</td>
-    <td>48</td>
-    <td>4</td>
-    <td>NVIDIA T4 Tensor Core</td>
-    <td>64</td>
-    <td>$3.91</td>
-    </tr>
-    <tr class="odd">
-    <td>p3.8xlarge</td>
-    <td>244</td>
-    <td>32</td>
-    <td>4</td>
-    <td>NVIDIA Tesla V100</td>
-    <td>64</td>
-    <td>$12.24</td>
     </tr>
     </tbody>
     </table>

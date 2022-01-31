@@ -1,0 +1,22 @@
+
+name: Deploy Post
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest 
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      
+    steps:      
+      - uses: actions/checkout@v2
+
+      - name: Deploy post
+        run: |
+          pandoc --standalone --template ./docs/templates/template.html ./docs/post.md -o ./docs/post.html &&\
+          aws s3 sync ./docs/ s3://dmw2151.com/ --region us-east-1

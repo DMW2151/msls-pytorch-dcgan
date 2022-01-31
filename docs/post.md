@@ -67,6 +67,8 @@ At a low-level, it's difficult to describe all of the internal consequences of u
 
 - Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
 
+- Remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the model to the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.
+
 - In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation:
   
     > We estimate probability of the test set data under Pg by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
@@ -125,14 +127,14 @@ The effect of multi-image sequences was further reduced by applying random trans
 All infrastructure for this project is hosted on AWS. If you'd like a user-guide for deploying the architecture yourself, I'd direct you to my infrastructure repo, [msls-infra](https://github.com/DMW2151/msls-infra).
 
 All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. Note that `DL1` and `P3` instances are not available in all regions and zones. For me, `us-east-1a` was satisfactory, but this is not uniform across [accounts](https://aws.amazon.com/premiumsupport/knowledge-center/vpc-map-cross-account-availability-zones/). I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
-  
+
 - **training-prod** &mdash; A model training instance, either `DL1` or a cost-comparable GPU instance (`P`-type).
   
 - **training-nb** &mdash; A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.
   
 - **metrics** &mdash; A small instance used to host metrics containers. This machine ran:
-  - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; a tool for visualizing *machine learning metrcs* during training.
-  - [Grafana](https://grafana.com/) &mdash; an analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
+  - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
+  - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
 
 Each of these instances had shared access to an AWS Elastic Filesystem (EFS) with MSLS data. Using a shared filesystem saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training instances (almost on a single Gaudi accelerator!) I didn't anticipate this being a bottleneck after the initial load.
 
@@ -148,8 +150,6 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
   
 - Use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over `AdamW`.
   
-There were however, some performance gains that I left on the table. Both models could have benefited from the use of mixed precision and the `DL1` trained model may have further benefited from the use of the `habana_frameworks.torch.hpex`. This could have been a nice addition, but would have required the additional effort of writing a custom loss function or changing the model architecture. ==For reference, `BCELoss` cannot be autocast in PyTorch, `BCEWithLogitLoss` can, but this would involve removing the final `Sigmoid` layer from the discriminator.==
-
 --------
 
 ### DCGAN Results
@@ -166,7 +166,7 @@ TBD
 
 ### Appendix 1 - Comparable Instance Selection
 
-Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-instances`, I aggregated data for all EC2 instances available in `us-east-1` with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. `G3` instances with Tesla M60s) to top-of-the line training instances (e.g. `P4` instances with Ampere 100s). There are many sources that publish GPU performance statistics, but for this comparison I elected to rely exclusively on Nvidia's most recent [benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference)
+Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-instances`, I aggregated data for all EC2 instances available in `us-east-1` with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. `G3` instances with Tesla `M60`s) to top-of-the line training instances (e.g. `P4` instances with `A100`s). I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100`. Although `g4dn.12xlarge`(`T4`) and `p2.8xlarge` (`K80`) instances are priced well relative to their performance, I elected to only run a full test on the `p3.8xlarge`.
 
 | API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) | USD/Hr |
 |---------------|--------------|-------|------|-----------------------|---------------|--------|
@@ -183,15 +183,6 @@ Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-in
 | p3dn.24xlarge |          768 |    96 |    8 | NVIDIA Tesla V100     |           256 | $31.21 |
 | p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 | $32.77 |
 Table: Table A.1.1 - Possible Comparable GPU Instances
-
-Of the instances listed in *Table A.1.1*, I chose the following for comparison tests against the `DL1`. On price, `p3.8xlarge` is the most similar to the `DL1` and offers 4 `V100`s, this instance class would be an uncontroversial choice for model training under most conditions. I also wanted to test the `g4dn.12xlarge` instances. The `T4` is a decidedly less powerful contemporary of the `V100`. Because these are very low cost units and I'm not sensitive to time-to-train, I wanted to experiment with these as well.
-
-| API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) | USD/Hr |
-|---------------|--------------|-------|------|-----------------------|---------------|--------|
-| p2.8xlarge    |          488 |    32 |    8 | NVIDIA Tesla K80      |            96 |  $7.20 |
-| g4dn.12xlarge |          192 |    48 |    4 | NVIDIA T4 Tensor Core |            64 |  $3.91 |
-| p3.8xlarge    |          244 |    32 |    4 | NVIDIA Tesla V100     |            64 | $12.24 |
-Table: Table A.1.2 - GPU Instances Evaluated
 
 ### Citations
 
