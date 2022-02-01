@@ -116,7 +116,7 @@ if __name__ == "__main__":
     PROFILE = args.profile or False
 
     IMG_SIZE = 64
-    BATCH_SIZE = args.batch_size or 512
+    BATCH_SIZE = args.batch or 512
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64
