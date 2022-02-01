@@ -60,6 +60,7 @@ parser.add_argument(
     "--model_dir",
     type=str,
     help="Root folder to save model artifacts and traces",
+    default="/efs/trained_model/"
 )
 
 parser.add_argument(
@@ -67,7 +68,7 @@ parser.add_argument(
     "--progress_freq",
     type=int,
     help="Save progress images every N batches",
-    default=sys.maxsize,
+    default=1000,
 )
 
 parser.add_argument(
@@ -93,16 +94,18 @@ if __name__ == "__main__":
 
     # Model Config Args
     MODEL_NAME = args.name
-    MODEL_DIR = args.model_dir
+    MODEL_DIR = args.model_dir or "/efs/trained_model/"
     PROGRESS_FREQ = args.progress_freq
-    LOG_FREQ = arg.logging_freq
-    CHECKPOINT_FREQ = checkpoint_freq
+    LOG_FREQ = args.logging_freq
+    CHECKPOINT_FREQ = args.checkpoint_freq
 
     # Training Args
     NUM_EPOCHS = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
     DATAROOT = args.dataroot or "/data/imgs/train_val"
     PROFILE = args.profile or False
+
+    IMG_SIZE = 64
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64
