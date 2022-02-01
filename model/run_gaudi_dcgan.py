@@ -121,28 +121,13 @@ if __name__ == "__main__":
     # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)
     dataset = dset.ImageFolder(
         root=DATAROOT,
-        transform=transforms.Compose(
-            [
-                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
-                transforms.CenterCrop(
-                    train_cfg.img_size * 4
-                ),  # Use the Middle 256 x 256
-                transforms.Resize(train_cfg.img_size),  # Downsize to 64 x 64
-                transforms.ToTensor(),  # Cast from ND -> Tensor
-                transforms.Normalize(  # Normalize Normalize with mean and standard deviation.
-                    (
-                        0.5,
-                        0.5,
-                        0.5,
-                    ),
-                    (
-                        0.5,
-                        0.5,
-                        0.5,
-                    ),
-                ),
-            ]
-        ),
+        transform=transforms.Compose([
+            transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
+            transforms.CenterCrop(IMG_SIZE * 4),
+            transforms.Resize(IMG_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]),
     )
 
     # Create the dataloader

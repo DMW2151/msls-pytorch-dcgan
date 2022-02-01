@@ -515,13 +515,13 @@ def start_or_resume_training_run(
             # comments above! Mark Habana Steps => Discriminator Optim...
             # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
-                scaler_D.step(optim_D)  # Calls: optim_D.step()
+                scaler_D.step(optim_D)  # Calls: optim_D.step() internally
             scaler_D.update()
 
             # (2) Update Net_G: maximize log(D(G(z)))
             ######################################################################
             net_G.zero_grad()
-            label.fill_(1.0)  # fake labels are real for generator cost
+            label.fill_(1.0)  # `fake` labels are real for generator cost
 
             # Forward pass fake batch through Net_D; Calculate G_loss &&
             # Calculate gradients for Net_G

@@ -15,15 +15,22 @@ date: January 29, 2022
     </figure>
 </center>
 
-This post is a companion to my entry in the [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com). The event encouraged participants to use AWS' DL1 instances to scale deep learning model training. I'm not much of an ML engineer, but this event offered a perfect opportunity to implement a model, instrument my code to train on [Gaudi accelerators](https://habana.ai/wp-content/uploads/2019/06/Habana-Gaudi-Training-Platform-whitepaper.pdf), and then perform a comparative analysis of performance across training environments. At a high level, my project involved re-implementing elements of foundational papers in the study of generative computer vision and then training a model on over 1.5 million street-level images.
+For a few months now, I've wanted to create something like [ThisPersonDoesNotExist](https://thispersondoesnotexist.com/) for street scenes. Luckily, the [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com) gave me an excuse to do so. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on over 1.1 million street-level images.
+
+It's not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. Critically, the challenge encouraged participants to use AWS' `DL1` instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, and then performed a comparative analysis of performance across training environments.
 
 - [Theory and Background](#Theory-and-Background)
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
 - [AWS System Architecture](#AWS-System-Architecture)
-- [Modifications for Training on Gaudi Accelerated Instances (`DL1`)](#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL1)
-- [Training the Model](#Training-the-Model)
 - [DCGAN Results](#DCGAN-Results)
-- [Comparative Performance](#Comparative-Performance)
+  - [Results](#Results)
+  - [Loss](#Loss)
+  - [Training Progress](#Training-Progress)
+- [Evaluating a First Training run on GPU Instances (`P3.8x`)](#Evaluating-a-First-Training-run-on-GPU-Instances-P38x)
+- [Modifications for Training on Gaudi Accelerated Instances (`DL1.24x`)](#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL124x)
+- [Comparative Performance (`DL1` & `P`)](#Comparative-Performance-DL1--P)
+  - [Hardware and Cost-To-Train](#Hardware-and-Cost-To-Train)
+- [Model Performance and Evaluation](#Model-Performance-and-Evaluation)
 - [Appendix 1 - Comparable Instance Selection](#Appendix-1---Comparable-Instance-Selection)
 - [Citations](#Citations)
 
@@ -60,7 +67,7 @@ In the DCGAN paper, the method by which this function is maximized is by putting
 <center>
     <figure>
         <img style="padding-top: 20px;" align="center" width="600" src="./images/translation/gan.png">
-        <i><figcaption style="font-size: 12px;">DBGAN Architecture - As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
+        <i><figcaption style="font-size: 12px;">DBGAN Generator Architecture -  As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
     <figure>
 </center>
 
@@ -72,7 +79,7 @@ At a low-level, it's difficult to describe all of the internal consequences of u
   
     > We estimate probability of the test set data under *Pg* by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
 
-- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.
+- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function.
 
 --------
 
@@ -139,11 +146,26 @@ Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving
 
 Of course, EFS is slower than NVME EBS volumes, although the data (~45GB) fits comfortably in memory of my training devices, the initial load was a significant bottleneck. An EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.
 
-To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *1200%* speed up in time until first training iteration. Although EBS is more expensive than EFS, the decision paid for itself by saving me from hours of idle instance time.
+To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *1200%* speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.
 
 --------
 
-### Modifications for Training on Gaudi Accelerated Instances (`DL1`)
+### DCGAN Results
+
+#### Results
+
+#### Loss
+
+#### Training Progress
+
+--------
+
+### Evaluating a First Training run on GPU Instances (`P3.8x`)
+
+
+--------
+
+### Modifications for Training on Gaudi Accelerated Instances (`DL1.24x`)
 
 I started with a standard PyTorch model running on the GPU before instrumenting it with the code to run on the HPU. Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration [guide](https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model). In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:
 
@@ -152,33 +174,17 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
 - Use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
   
 - Use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over `AdamW`.
-  
---------
 
-### Training the Model
-
-I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I provide a more in-depth user guide in the [model repo](https://github.com/DMW2151/msls-pytorch-dcgan). In general, If you're just interested in generating a GAN (and not intermediate training or hardware metrics), cloning that repo into a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI. I activated `pytorch_p38`, installed a few additional prerequites, and let my model train:
-
-```bash
-    # Train model using all images in `/msls/data/images/**` 
-python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
-    --dataroot /msls/data/images/ \
-    --name msls_dl1_global \
-    --s_epoch 0 \
-    --n_epoch 16
-```
 
 --------
 
-### DCGAN Results
+### Comparative Performance (`DL1` & `P`)
 
-TBD
+#### Hardware and Cost-To-Train
 
---------
 
-### Comparative Performance
+### Model Performance and Evaluation
 
-TBD
 
 --------
 
@@ -186,20 +192,20 @@ TBD
 
 Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-instances`, I aggregated data for all EC2 instances available in `us-east-1` with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. `G3` instances with Tesla `M60`s) to top-of-the line training instances (e.g. `P4` instances with `A100`s). I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100`. Although `g4dn.12xlarge`(`T4`) and `p2.8xlarge` (`K80`) instances are priced well relative to their performance, I elected to only run a full test on the `p3.8xlarge`.
 
-| API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) | USD/Hr |
+| API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) |   $/Hr |
 |---------------|--------------|-------|------|-----------------------|---------------|--------|
-| g3.8xlarge    |          244 |    32 |    2 | NVIDIA Tesla M60      |            16 |  $2.28 |
-| g3.16xlarge   |          488 |    64 |    4 | NVIDIA Tesla M60      |            32 |  $4.56 |
-| p2.8xlarge    |          488 |    32 |    8 | NVIDIA Tesla K80      |            96 |  $7.20 |
-| g4dn.12xlarge |          192 |    48 |    4 | NVIDIA T4 Tensor Core |            64 |  $3.91 |
-| g4dn.metal    |          384 |    96 |    8 | NVIDIA T4 Tensor Core |           128 |  $7.82 |
-| g5.12xlarge   |          192 |    48 |    4 | NVIDIA A10G           |            96 |  $5.67 |
-| g5.24xlarge   |          384 |    96 |    4 | NVIDIA A10G           |            96 |  $8.14 |
-| g5.48xlarge   |          768 |   192 |    8 | NVIDIA A10G           |           192 | $16.29 |
-| p3.8xlarge    |          244 |    32 |    4 | NVIDIA Tesla V100     |            64 | $12.24 |
-| p3.16xlarge   |          488 |    64 |    8 | NVIDIA Tesla V100     |           128 | $24.48 |
-| p3dn.24xlarge |          768 |    96 |    8 | NVIDIA Tesla V100     |           256 | $31.21 |
-| p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 | $32.77 |
+| g3.8xlarge    |          244 |    32 |    2 | NVIDIA Tesla M60      |            16 |   2.28 |
+| g3.16xlarge   |          488 |    64 |    4 | NVIDIA Tesla M60      |            32 |   4.56 |
+| p2.8xlarge    |          488 |    32 |    8 | NVIDIA Tesla K80      |            96 |   7.20 |
+| g4dn.12xlarge |          192 |    48 |    4 | NVIDIA T4 Tensor Core |            64 |   3.91 |
+| g4dn.metal    |          384 |    96 |    8 | NVIDIA T4 Tensor Core |           128 |   7.82 |
+| g5.12xlarge   |          192 |    48 |    4 | NVIDIA A10G           |            96 |   5.67 |
+| g5.24xlarge   |          384 |    96 |    4 | NVIDIA A10G           |            96 |   8.14 |
+| g5.48xlarge   |          768 |   192 |    8 | NVIDIA A10G           |           192 |  16.29 |
+| p3.8xlarge    |          244 |    32 |    4 | NVIDIA Tesla V100     |            64 |  12.24 |
+| p3.16xlarge   |          488 |    64 |    8 | NVIDIA Tesla V100     |           128 |  24.48 |
+| p3dn.24xlarge |          768 |    96 |    8 | NVIDIA Tesla V100     |           256 |  31.21 |
+| p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 |  32.77 |
 Table: Table A.1.1 - Possible Comparable GPU Instances
 
 ### Citations

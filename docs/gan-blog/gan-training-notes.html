@@ -16,6 +16,11 @@
               color: #1a1a1a;
               background-color: #202025;
             }
+            .header {
+              text-align: center;
+              background: gray;
+              color: white;
+            }
             body {
               margin: 0 auto;
               max-width: 54em;
@@ -108,14 +113,22 @@
               height: 1px;
               margin: 1em 0;
             }
+            .gan-test-img {
+              transition: background-color .2s;
+            }
+            .gan-test-img:hover {
+              mix-blend-mode: hard-light;
+              width: min-content;
+            }
             table {
               margin: 1em 0;
               border-collapse: collapse;
               width: 100%;
               overflow-x: auto;
-              display: block;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
+              margin-left: auto;
+              margin-right: auto;
             }
             table caption {
               margin-bottom: 0.75em;
@@ -124,6 +137,8 @@
               margin-top: 0.5em;
               border-top: 1px solid #202025;
               border-bottom: 1px solid #202025;
+              margin-left: auto;
+              margin-right: auto;
             }
             th {
               border-top: 1px solid #202025;
@@ -216,27 +231,33 @@
           </style>
   </head>
   <body style="background-color:#202025; color: #e6e6e6"></body>
+    <header>
+        <div style="background-color:#202025; color: #e6e6e6" class="header">
+            <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
+            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Infrastructure & Model Guide</a>
+            <a href="./beat-the-gan.html" style="padding: 10px; font-size: 12px;">Beat The GAN</a>
+        </div>
+    </header>
     <h1> Model Training Notes - Generative Street Level Imagery on DL1 Instances </h1>
     <p>Dustin Wilson &#8212 January 29, 2022</p>
-    <p>This post is included along with my <a href="./trained-a-gan.html">main post</a> to serve as a user guide for those interested in training their own GANs with the code presented here</p>
+    <p>This post is included along with my <a href="./trained-a-gan.html">main post</a> to serve as a user guide for those interested in training their own GANs with the code presented here.</p>
     <h2 id="data-preparation">Data Preparation</h2>
-    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-k</span> <span class="at">-XGET</span> <span class="va">${A_SIGNED_DOWNLOAD_URL}</span> <span class="at">--output</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
-    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> unzip <span class="at">-qq</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="at">-d</span> /data/imgs</span></code></pre></div>
+    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-k</span> <span class="at">-XGET</span> <span class="va">${A_SIGNED_DOWNLOAD_URL}</span> <span class="at">--output</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
+    <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> unzip <span class="at">-qq</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="at">-d</span> /data/imgs</span></code></pre></div>
     <h2 id="model-training">Model Training</h2>
-    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run Model</span></span>
-    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> activate pytorch_p38</span>
-    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Test on A smaller sample first!</span></span>
-    <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> /home/ubuntu/msls-pytorch-dcgan/model/run_gaudi_dcgan.py <span class="dt">\</span></span>
-    <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--dataroot</span> <span class="st">&quot;/data/imgs/&quot;</span> <span class="dt">\</span></span>
-    <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> msls_test_001 <span class="dt">\</span></span>
-    <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">--s_epoch</span> 0 <span class="dt">\</span></span>
-    <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">--n_epoch</span> 16</span></code></pre></div>
-    <div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-m</span> cProfile <span class="at">-o</span> profile_name.prof <span class="dt">\</span></span>
-    <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    /home/ubuntu/msls-pytorch-dcgan/model/run_gaudi_dcgan.py <span class="dt">\</span></span>
-    <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--dataroot</span> <span class="st">&quot;/data/imgs/train_val/london/database/&quot;</span> <span class="dt">\</span></span>
-    <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> msls_test_001 <span class="dt">\</span></span>
-    <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">--s_epoch</span> 0 <span class="dt">\</span></span>
-    <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--n_epoch</span> 2</span></code></pre></div>
+    <p>I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I activated <code>pytorch_p38</code>, installed a few additional dependencies, and let my model train for a few hours.</p>
+    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    <span class="bu">source</span> activate pytorch_p38</span>
+    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Train model using all images in `/msls/data/images/**`</span></span>
+    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py <span class="dt">\</span></span>
+    <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">--dataroot</span> /msls/data/images/ <span class="dt">\</span></span>
+    <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> msls_dl1_global <span class="dt">\</span></span>
+    <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--s_epoch</span> 0 <span class="dt">\</span></span>
+    <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">--n_epoch</span> 16</span></code></pre></div>
+    <p>In general, If you’re just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model <a href="https://github.com/DMW2151/msls-pytorch-dcgan">repo</a> onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, <code>DL1</code>, <code>P</code>, and <code>G</code> type instances have access to AWS’ Deep Learning AMI.</p>
+    <footer class="site-footer">
+        <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
+    </footer>
   </body>
 </html>
