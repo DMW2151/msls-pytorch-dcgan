@@ -36,6 +36,7 @@ parser.add_argument(
     "--dataroot",
     type=str,
     help="Root folder of training data; recursively selects all *.jpg, *.png, *.tiff, *.ppm files.",
+    default="/data/imgs/test/"
 )
 
 parser.add_argument(
@@ -43,17 +44,18 @@ parser.add_argument(
     "--s_epoch",
     type=int,
     help="Epoch to resume training from - requires a prior checkpoint",
+    default=0
 )
 
 parser.add_argument(
     "-p",
     "--profile",
     type=bool,
-    default=False,
     help="Run the Torch profiler/save traces during training",
+    default=False,
 )
 
-parser.add_argument("-ne", "--n_epoch", type=int, help="Train model through N epochs")
+parser.add_argument("-ne", "--n_epoch", type=int, help="Train model through N epochs", default=16)
 
 parser.add_argument(
     "-md",
