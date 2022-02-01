@@ -89,6 +89,14 @@ parser.add_argument(
     default=1,
 )
 
+parser.add_argument(
+    "-b",
+    "--batch",
+    type=int,
+    help="Batch size...",
+    default=512,
+)
+
 
 if __name__ == "__main__":
 
@@ -108,6 +116,7 @@ if __name__ == "__main__":
     PROFILE = args.profile or False
 
     IMG_SIZE = 64
+    BATCH_SIZE = args.batch_size or 512
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64
@@ -120,7 +129,9 @@ if __name__ == "__main__":
         gen_progress_frequency=PROGRESS_FREQ,
     )
 
-    train_cfg = dcgan.TrainingConfig()
+    train_cfg = dcgan.TrainingConfig(
+        batch_size=BATCH_SIZE # At Recommendation of Pytorch Profiler
+    )
 
     # We can use an image folder dataset; depending on the size of the training directory this can take a
     # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)

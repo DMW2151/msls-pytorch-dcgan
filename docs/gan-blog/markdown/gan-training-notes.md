@@ -23,7 +23,9 @@ I designed model training to be as simple as possible. Once on an instance runni
     source activate pytorch_p38
 
 # Extra installs to drive tensorboard <-> Pytorch traces
-pip3 install tensorboard 
+pip3 install \
+    tensorboard \
+    torch_tb_profiler
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
 python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \

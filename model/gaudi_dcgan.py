@@ -460,6 +460,7 @@ def start_or_resume_training_run(
             ),
             record_shapes=True,
             with_stack=True,
+            profile_memory=True
         )
 
         prof.start()
