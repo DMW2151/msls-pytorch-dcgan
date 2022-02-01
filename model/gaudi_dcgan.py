@@ -1,16 +1,18 @@
-# Core Script for running DCGAN -> Implements the GAN architecture from the Original
-# DCGAN Paper in PyTorch with slight adjustments to the optimizer.
+# Core script for running DCGAN -> Implements the DCGAN architecture from the original
+# GAN/DCGAN papers in PyTorch with slight adjustments to the optimizer. Other changes
+# discussed in post
 #
 # See: https://arxiv.org/abs/1406.2661
 
+# General
 import datetime
 import os
 import random
 import re
 from dataclasses import dataclass
-
 import numpy as np
 
+# Torch
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -21,21 +23,18 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.utils.tensorboard import SummaryWriter
 
+# DCGAN
 from msls_dcgan_utils import MarkHTStep
 
 if torch.__version__ == "1.10.0":
     import torch.profiler
+    import torch.cuda.amp as amp
 
-# Suggested Habana Driver Improvements...
+# Init Habana Values
+HABANA_ENABLED = 0
+HABANA_LAZY = 0
+
 # Habana Imports - will fail if not on a Habana DL AMI instance
-# Set Habana configuration or otherwise disable Habana...
-#
-# Use lazy mode if Habana is available; allows SynapseAI graph compiler to
-# optimize the device execution for these ops Set internal `HABANA_LAZY`
-#
-# and environment var `PT_HPU_LAZY_MODE`
-# Explicit Habana logging parameters, see: ~/.habana_logs/. and ./.graph_dumps
-# for SynapseAI
 try:
     from habana_frameworks.torch.utils.library_loader import load_habana_module
     from habana_frameworks.torch.hpex.optimizers import FusedAdamW
@@ -49,9 +48,8 @@ try:
     os.environ["GRAPH_VISUALIZATION"] = True
 
 except ImportError:
-    # Failed Habana Import -> HABANA_ENABLED == 0
-    HABANA_ENABLED = 0
-    HABANE_LAZY = 0
+    # Failed imports, must be on GPU machine; will not use HPU drivers/shared libs
+    pass
 
 
 @dataclass
@@ -504,7 +502,7 @@ def start_or_resume_training_run(
             # Classify all fake batch with D && Calculate D_loss
             # Calculate the gradients for this batch, accumulated with previous gradients &&\
             # Compute error of D as sum over the fake and the real batches
-            with torch.cuda.amp.autocast():
+            with amp.autocast():
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
 
@@ -527,7 +525,7 @@ def start_or_resume_training_run(
 
             # Forward pass fake batch through Net_D; Calculate G_loss &&
             # Calculate gradients for Net_G
-            with torch.cuda.amp.autocast():
+            with amp.autocast():
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
 

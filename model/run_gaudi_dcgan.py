@@ -3,11 +3,12 @@
 # Command line wrapper around gaudi_dcgan.py
 # Sample Usage on Command Line - See Notes on Running on DL1
 #
-# python3 run_gaudi_dcgan.py --dataroot "/efs/samples/" --name msls_dl1_2022_01_24_001 --s_epoch 0 --n_epoch 16
+# python3 run_gaudi_dcgan.py --dataroot "/data/imgs/" --name msls_test_001 --s_epoch 0 --n_epoch 16
 
 # General Deps
 import random
 import os
+import sys
 
 import numpy as np
 import argparse
@@ -23,18 +24,66 @@ import gaudi_dcgan as dcgan
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
-parser.add_argument("-n", "--name", type=str, help="Model name and ID")
-
-parser.add_argument("-d", "--dataroot", type=str, help="Root folder of training data")
-
-parser.add_argument("-se", "--s_epoch", type=int, help="Epoch to resume training from - requires a prior checkpoint")
-
 parser.add_argument(
-    "-p", "--profile", type=bool, default=False, help="[y/n] use the torch profiler"
+    "-n",
+    "--name",
+    type=str,
+    help="Name to save model with; see /${model_dir}/${name} for model artifacts and traces",
 )
 
 parser.add_argument(
-    "-ne", "--n_epoch", type=int, help="Number of Epochs to train until"
+    "-d",
+    "--dataroot",
+    type=str,
+    help="Root folder of training data; recursively selects all *.jpg, *.png, *.tiff, *.ppm files.",
+)
+
+parser.add_argument(
+    "-se",
+    "--s_epoch",
+    type=int,
+    help="Epoch to resume training from - requires a prior checkpoint",
+)
+
+parser.add_argument(
+    "-p",
+    "--profile",
+    type=bool,
+    default=False,
+    help="Run the Torch profiler/save traces during training",
+)
+
+parser.add_argument("-ne", "--n_epoch", type=int, help="Train model through N epochs")
+
+parser.add_argument(
+    "-md",
+    "--model_dir",
+    type=str,
+    help="Root folder to save model artifacts and traces",
+)
+
+parser.add_argument(
+    "-pf",
+    "--progress_freq",
+    type=int,
+    help="Save progress images every N batches",
+    default=sys.maxsize,
+)
+
+parser.add_argument(
+    "-lf",
+    "--logging_freq",
+    type=int,
+    help="Print loss metrics to STDOUT every N batches",
+    default=50,
+)
+
+parser.add_argument(
+    "-cf",
+    "--checkpoint_freq",
+    type=int,
+    help="Save a model checkpoint to disk every N epochs",
+    default=1,
 )
 
 
@@ -42,17 +91,29 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Root directory for dataset
-    DATAROOT = args.dataroot or "/efs/samples/"
+    # Model Config Args
+    MODEL_NAME = args.name
+    MODEL_DIR = args.model_dir
+    PROGRESS_FREQ = args.progress_freq
+    LOG_FREQ = arg.logging_freq
+    CHECKPOINT_FREQ = checkpoint_freq
+
+    # Training Args
     NUM_EPOCHS = args.n_epoch or 16
     START_EPOCH = args.s_epoch or 0
-    NAME = args.name or "msls_dcgan_ml_dl_24xlarge_001"
+    DATAROOT = args.dataroot or "/data/imgs/train_val"
     PROFILE = args.profile or False
 
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64
     # img world!
-    model_cfg = dcgan.ModelCheckpointConfig(model_name=NAME)
+    model_cfg = dcgan.ModelCheckpointConfig(
+        model_name=MODEL_NAME,
+        model_dir=MODEL_DIR,
+        log_frequency=LOG_FREQ,
+        save_frequency=CHECKPOINT_FREQ,
+        gen_progress_frequency=PROGRESS_FREQ,
+    )
 
     train_cfg = dcgan.TrainingConfig()
 
@@ -106,7 +167,8 @@ if __name__ == "__main__":
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=train_cfg.batch_size,
-            shuffle=True,
+            pin_memory=True,
+            shuffle=False,
             num_workers=min(os.cpu_count() // 2, 8),
         )
 

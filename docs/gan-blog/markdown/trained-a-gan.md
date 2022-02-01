@@ -70,7 +70,7 @@ At a low-level, it's difficult to describe all of the internal consequences of u
 
 - In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation:
   
-    > We estimate probability of the test set data under Pg by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
+    > We estimate probability of the test set data under *Pg* by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
 
 - I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function. Because I only see ~15% improvement in training time using mixed-precision training, I may revert back to the original architecture.
 
@@ -127,15 +127,19 @@ The effect of multi-image sequences was further reduced by applying random trans
 
 All infrastructure for this project is hosted on AWS. If you'd like a user-guide for deploying the architecture yourself, I'd direct you to my infrastructure [repo](https://github.com/DMW2151/msls-infra). All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
 
-- **training-prod** &mdash; A model training instance, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
+- **training-prod** &mdash; An EC2 instance for running deep learning models, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
   
 - **training-nb** &mdash; A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.
   
-- **metrics** &mdash; A small instance used to host metrics containers. This machine ran:
+- **metrics** &mdash; A small EC2 instance used to host metrics containers. This machine ran:
   - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
   - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
 
-Each of these instances has access to an AWS Elastic Filesystem (EFS) with MSLS data. Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Of course, EFS is slower than NVME EBS volumes, but because the data (~40GB) fits comfortably in memory of our training devices this wasn't a bottleneck in training speed after the initial load.
+Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*).
+
+Of course, EFS is slower than NVME EBS volumes, although the data (~45GB) fits comfortably in memory of my training devices, the initial load was a significant bottleneck. An EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.
+
+To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *1200%* speed up in time until first training iteration. Although EBS is more expensive than EFS, the decision paid for itself by saving me from hours of idle instance time.
 
 --------
 
@@ -153,16 +157,19 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
 
 ### Training the Model
 
-I designed model training to be as simple as possible. Once on an instance running a DLAMI, the following command kicks off the full model training cycle on a directory of images. I provide a more in-depth user guide in the [model repo](https://github.com/DMW2151/msls-pytorch-dcgan). In general, If you're just interested in generating a GAN (and not reproducibility, or training and instance metrics), cloning that repo into a DLAMI is the fastet way to get started training.
+I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I provide a more in-depth user guide in the [model repo](https://github.com/DMW2151/msls-pytorch-dcgan). In general, If you're just interested in generating a GAN (and not intermediate training or hardware metrics), cloning that repo into a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI. I activated `pytorch_p38`, installed a few additional prerequites, and let my model train:
 
 ```bash
-source activate pytorch_p38 # For PyTorch 1.10 with Python3.8 (CUDA 11.1 and Intel MKL)
-cd ~/msls-pytorch-dcgan/model
-
-
+    # Train model using all images in `/msls/data/images/**` 
+python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
+    --dataroot /msls/data/images/ \
+    --name msls_dl1_global \
+    --s_epoch 0 \
+    --n_epoch 16
 ```
 
 --------
+
 ### DCGAN Results
 
 TBD

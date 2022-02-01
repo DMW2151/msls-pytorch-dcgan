@@ -1,5 +1,5 @@
 
-name: Deploy Post
+name: Deploy Blog
 
 on:
   workflow_dispatch:
@@ -16,7 +16,22 @@ jobs:
     steps:      
       - uses: actions/checkout@v2
 
-      - name: Deploy post
+      - name: Build Blog Post
         run: |
-          pandoc --standalone --template ./docs/templates/template.html ./docs/post.md -o ./docs/post.html &&\
-          aws s3 sync ./docs/ s3://dmw2151.com/ --region us-east-1
+          pandoc --standalone \
+            --template \
+            ./docs/gan-blog/templates/template.html \
+            ./docs/gan-blog/markdown/trained-a-gan.md \
+            -o ./docs/gan-blog/trained-a-gan.html
+
+      - name: Build Training Notes
+        run: |
+          pandoc --standalone \
+            --template \
+            ./docs/gan-blog/templates/template-for-code.html \
+            ./docs/gan-blog/markdown/gan-training-notes.md \
+            -o ./docs/gan-blog/gan-training-notes.html
+          
+      - name: Deploy Blog Section
+        run: |
+          aws s3 sync ./docs/gan-blog/ s3://dmw2151.com/ --region us-east-1
