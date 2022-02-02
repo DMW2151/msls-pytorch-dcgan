@@ -3,9 +3,11 @@ import io
 import h5py
 import numpy as np
 from PIL import Image
+import io
 
 import torch
 from torch.utils import data
+import glob
 
 try:
     from habana_frameworks.torch.core import mark_step
@@ -62,7 +64,7 @@ class MSLSImageDataset(torch.utils.data.Dataset):
             self._cache_file_w_metadata(fp)
 
     def __getitem__(self, index):
-        im = Image.open(self._get_data(index).tobytes())
+        im = Image.open(io.BytesIO(self._get_data(index)))
         return self.transforms(im), torch.tensor(0.0)
 
     def __len__(self):
