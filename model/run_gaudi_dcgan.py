@@ -143,25 +143,10 @@ if __name__ == "__main__":
 
     # We can use an image folder dataset; depending on the size of the training directory this can take a
     # little to instantiate; about 3 min for 40GB (also depends on EBS...)
-    if False:
-        dataset = dset.ImageFolder(
-            root=DATAROOT,
-            transform=transforms.Compose(
-                [
-                    transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
-                    transforms.CenterCrop(IMG_SIZE * 4),
-                    transforms.Resize(IMG_SIZE),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                ]
-            ),
-        )
-
-    # NOTE: TODO: Get Better Performance on this dataset!!
-    dataset = dcgan_utils.MSLSImageDataset(
+    
+    dataset = dset.ImageFolder(
         root=DATAROOT,
-        recursive=True,
-        transforms=transforms.Compose(
+        transform=transforms.Compose(
             [
                 transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
                 transforms.CenterCrop(IMG_SIZE * 4),
