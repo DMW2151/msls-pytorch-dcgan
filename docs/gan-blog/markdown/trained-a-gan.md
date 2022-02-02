@@ -26,7 +26,7 @@ It's not a novel idea, but enough work has been done in this field that I was ab
   - [Results](#Results)
   - [Loss](#Loss)
   - [Training Progress](#Training-Progress)
-- [Evaluating a First Training run on GPU Instances (`P3.8x`)](#Evaluating-a-First-Training-run-on-GPU-Instances-P38x)
+- [Evaluating a First Training run on GPU Instances (`P3`)](#Evaluating-a-First-Training-run-on-GPU-Instances-P3)
 - [Modifications for Training on Gaudi Accelerated Instances (`DL1.24x`)](#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL124x)
 - [Comparative Performance (`DL1` & `P`)](#Comparative-Performance-DL1--P)
   - [Hardware and Cost-To-Train](#Hardware-and-Cost-To-Train)
@@ -160,7 +160,7 @@ To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I pro
 
 --------
 
-### Evaluating a First Training run on GPU Instances (`P3.8x`)
+### Evaluating a First Training run on GPU Instances (`P3`)
 
 
 --------

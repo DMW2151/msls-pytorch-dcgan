@@ -36,7 +36,7 @@ parser.add_argument(
     "--dataroot",
     type=str,
     help="Root folder of training data; recursively selects all *.jpg, *.png, *.tiff, *.ppm files.",
-    default="/data/imgs/test/"
+    default="/data/imgs/test/",
 )
 
 parser.add_argument(
@@ -44,7 +44,7 @@ parser.add_argument(
     "--s_epoch",
     type=int,
     help="Epoch to resume training from - requires a prior checkpoint",
-    default=0
+    default=0,
 )
 
 parser.add_argument(
@@ -55,14 +55,16 @@ parser.add_argument(
     default=False,
 )
 
-parser.add_argument("-ne", "--n_epoch", type=int, help="Train model through N epochs", default=16)
+parser.add_argument(
+    "-ne", "--n_epoch", type=int, help="Train model through N epochs", default=16
+)
 
 parser.add_argument(
     "-md",
     "--model_dir",
     type=str,
     help="Root folder to save model artifacts and traces",
-    default="/efs/trained_model/"
+    default="/efs/trained_model/",
 )
 
 parser.add_argument(
@@ -130,20 +132,22 @@ if __name__ == "__main__":
     )
 
     train_cfg = dcgan.TrainingConfig(
-        batch_size=BATCH_SIZE # At Recommendation of Pytorch Profiler
+        batch_size=BATCH_SIZE  # At Recommendation of Pytorch Profiler
     )
 
     # We can use an image folder dataset; depending on the size of the training directory this can take a
     # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)
     dataset = dset.ImageFolder(
         root=DATAROOT,
-        transform=transforms.Compose([
-            transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
-            transforms.CenterCrop(IMG_SIZE * 4),
-            transforms.Resize(IMG_SIZE),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]),
+        transform=transforms.Compose(
+            [
+                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
+                transforms.CenterCrop(IMG_SIZE * 4),
+                transforms.Resize(IMG_SIZE),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        ),
     )
 
     # Create the dataloader
@@ -170,6 +174,8 @@ if __name__ == "__main__":
             batch_size=train_cfg.batch_size,
             pin_memory=True,
             shuffle=False,
+            prefetch_factor=2,
+            persistent_workers=True,
             num_workers=min(os.cpu_count() // 2, 8),
         )
 

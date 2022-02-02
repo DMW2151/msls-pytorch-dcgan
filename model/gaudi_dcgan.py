@@ -95,7 +95,6 @@ class TrainingConfig:
                 print("device %s:" % i, torch.cuda.get_device_properties(i))
 
             try:
-                print(torch._C._cuda_getDriverVersion(), "cuda driver")
                 print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
                 print(torch._C._nccl_version(), "nccl")
             except AttributeError:
@@ -442,14 +441,16 @@ def start_or_resume_training_run(
         net_D.apply(weights_init)
         cur_epoch = 0
         img_list = []
-        losses = {"_G": [], "_D": [], "D_X": [], "D_G_z1": [], "D_G_z2": []}
+        losses = {"_G": [], "_D": []}
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize PyTorch Writer
     writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev, non_blocking=True)
+    scaler_D = torch.cuda.amp.GradScaler()
+    scaler_G = torch.cuda.amp.GradScaler()
 
     # Init Profiler
     if (profile_run) and (torch.__version__ == "1.10.0"):
@@ -460,7 +461,7 @@ def start_or_resume_training_run(
             ),
             record_shapes=True,
             with_stack=True,
-            profile_memory=True
+            profile_memory=True,
         )
 
         prof.start()
@@ -471,11 +472,7 @@ def start_or_resume_training_run(
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
 
-        scaler_D = torch.cuda.amp.GradScaler()
-        scaler_G = torch.cuda.amp.GradScaler()
-
         for epoch_step, dbatch in enumerate(dl, 0):
-
             # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
             ######################################################################
             net_D.zero_grad()
@@ -485,11 +482,11 @@ def start_or_resume_training_run(
 
             # Generate batch of latent vectors
             Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
-            label = torch.full((b_size,), 1.0, dtype=torch.float, device=train_cfg.dev)
+            label = torch.full((b_size,), 1.0, device=train_cfg.dev)
 
             # Forward pass real batch && Calculate D_loss
             with torch.cuda.amp.autocast():
-                output = net_D(real_imgs).view(-1)
+                output = net_D(real_imgs.detach()).view(-1)
                 err_D_real = criterion(output, label)
 
             # Calculate gradients for D in backward pass
@@ -555,6 +552,10 @@ def start_or_resume_training_run(
                         (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency),
                     )
 
+                # Save Losses (and a few other function values) for plotting later
+                losses["_G"].append(err_G.item())
+                losses["_D"].append(err_D.item())
+
                 log_i += 1
                 writer.flush()
 
@@ -567,13 +568,6 @@ def start_or_resume_training_run(
 
             if (profile_run) and (torch.__version__ == "1.10.0"):
                 prof.step()
-
-            # Save Losses (and a few other function values) for plotting later
-            losses["_G"].append(err_G.item())
-            losses["_D"].append(err_D.item())
-            losses["D_X"].append(D_X)
-            losses["D_G_z1"].append(D_G_z1)
-            losses["D_G_z2"].append(D_G_z2)
 
         # Save Model && Progress Images Every N Epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
