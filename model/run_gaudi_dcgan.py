@@ -20,6 +20,7 @@ import torchvision.transforms as transforms
 
 # DCGAN
 import gaudi_dcgan as dcgan
+import msls_dcgan_utils as dcgan_utils
 
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
@@ -120,6 +121,10 @@ if __name__ == "__main__":
     IMG_SIZE = 64
     BATCH_SIZE = args.batch or 512
 
+    DEVICE = "cuda" if (torch.cuda.is_available()) else "cpu"
+    if dcgan.HABANA_ENABLED:
+        DEVICE = "hpu"
+
     # Init Model Config w. Default DCGAN Values; Disallowing any custom values here
     # because the original DCGAN is a bit unstable when outside of the 64x64
     # img world!
@@ -132,14 +137,31 @@ if __name__ == "__main__":
     )
 
     train_cfg = dcgan.TrainingConfig(
-        batch_size=BATCH_SIZE  # At Recommendation of Pytorch Profiler
+        batch_size=BATCH_SIZE,  # At Recommendation of Pytorch Profiler
+        dev=torch.device(DEVICE),
     )
 
     # We can use an image folder dataset; depending on the size of the training directory this can take a
-    # little to instantiate; about 5-8 min for 25GB (also depends on EFS burst)
-    dataset = dset.ImageFolder(
+    # little to instantiate; about 3 min for 40GB (also depends on EBS...)
+    if False:
+        dataset = dset.ImageFolder(
+            root=DATAROOT,
+            transform=transforms.Compose(
+                [
+                    transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
+                    transforms.CenterCrop(IMG_SIZE * 4),
+                    transforms.Resize(IMG_SIZE),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                ]
+            ),
+        )
+
+    # NOTE: TODO: Get Better Performance on this dataset!!
+    dataset = dcgan_utils.MSLSImageDataset(
         root=DATAROOT,
-        transform=transforms.Compose(
+        recursive=True,
+        transforms=transforms.Compose(
             [
                 transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
                 transforms.CenterCrop(IMG_SIZE * 4),

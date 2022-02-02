@@ -67,6 +67,7 @@ class TrainingConfig:
     )
     """
 
+    dev: torch.device
     batch_size: int = 128  # Batch size during training -> DCGAN: 128
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
@@ -77,9 +78,7 @@ class TrainingConfig:
     lr: float = 0.0002  # Learning rate for optimizers
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
-
-    dev: torch.device = torch.device("cuda:0" if (torch.cuda.is_available()) else "hpu")
-    ngpu: int = int(torch.cuda.is_available())  # No Support for Multi GPU!!
+    ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
 
     def _announce(self):
         """Show Pytorch and CUDA attributes before Training"""
