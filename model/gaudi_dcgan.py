@@ -642,6 +642,7 @@ def start_or_resume_training_run(
 
             # If profiling enabled; then mark step...
             if enable_prof:
+                print("--step--")
                 prof.step()
 
             # Log Metrics to STDOUT or SAVE TO DISK
