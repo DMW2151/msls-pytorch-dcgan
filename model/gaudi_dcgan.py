@@ -68,14 +68,14 @@ class TrainingConfig:
     """
 
     dev: torch.device
-    batch_size: int = 128  # Batch size during training -> DCGAN: 128
+    batch_size: int = ( 128 * 8 ) # Batch size during training -> DCGAN: 128
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
     # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
     nz: int = 100
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
-    lr: float = 0.0002  # Learning rate for optimizers
+    lr: float = ( 0.0002 * 8 ) # Learning rate for optimizers
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
     ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
@@ -685,6 +685,9 @@ def start_or_resume_training_run(
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Save Checkpoint
+            if (train_cfg.dev == torch.device("cuda")) | (train_cfg.dev == torch.device(f"cuda:{rank}")):
+                dist.barrier()
+
             torch.save(
                 {
                     "epoch": epoch,

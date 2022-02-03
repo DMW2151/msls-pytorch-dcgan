@@ -80,7 +80,7 @@ parser.add_argument(
     "--progress_freq",
     type=int,
     help="Save progress images every N batches",
-    default=1000,
+    default=50,
 )
 
 parser.add_argument(
