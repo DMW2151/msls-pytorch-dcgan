@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 # Torch
 import torch
-# import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
@@ -19,6 +18,7 @@ import torch.utils.data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+from torch.utils.tensorboard import SummaryWriter
 
 # DCGAN
 from msls_dcgan_utils import MarkHTStep
@@ -458,8 +458,35 @@ def get_msls_dataloader(rank, train_cfg):
     return dataloader
 
 
+def get_msls_profiler(
+    model_cfg, schedule={"wait": 2, "warmup": 2, "active": 6, "repeat": 2}
+):
+
+    prof = torch.profiler.profile(
+        schedule=torch.profiler.schedule(schedule),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(
+            f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
+        ),
+        record_shapes=True,
+        with_stack=True,
+        profile_memory=True,
+    )
+
+    return prof
+
+
+def get_msls_writer(model_cfg):
+    return SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
+
+
 def start_or_resume_training_run(
-    rank, train_cfg, model_cfg, n_epochs, st_epoch, prof=None, writer=None
+    rank,
+    train_cfg,
+    model_cfg,
+    n_epochs,
+    st_epoch,
+    enable_prof=None,
+    enable_logging=None,
 ):
     """
     Begin Training Model. That's It.
@@ -482,7 +509,10 @@ def start_or_resume_training_run(
     """
     if train_cfg.dev == torch.device("cuda"):
         dist.init_process_group(
-            backend="nccl", init_method="env://", world_size=torch.cuda.device_count(), rank=rank
+            backend="nccl",
+            init_method="env://",
+            world_size=torch.cuda.device_count(),
+            rank=rank,
         )
 
     # Initialize Net and Optimizers
@@ -491,10 +521,12 @@ def start_or_resume_training_run(
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt"
-
         cur_epoch, losses, fixed_noise, img_list = instantiate_from_checkpoint(
-            net_D, net_G, optim_D, optim_G, path
+            net_D,
+            net_G,
+            optim_D,
+            optim_G,
+            f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt",
         )
 
     # If no start epoch specified; then apply weights from DCGAN paper and
@@ -513,7 +545,13 @@ def start_or_resume_training_run(
     scaler_D = torch.cuda.amp.GradScaler()
     scaler_G = torch.cuda.amp.GradScaler()
 
-    dl = get_msls_dataloader(train_cfg)
+    dl = get_msls_dataloader(rank, train_cfg)
+
+    if enable_prof:
+        prof = get_msls_profiler(model_cfg)
+
+    if enable_logging:
+        writer = get_msls_writer(model_cfg)
 
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs + 1):
@@ -591,7 +629,7 @@ def start_or_resume_training_run(
             scaler_G.update()
 
             # If profiling enabled; then mark step...
-            if prof:
+            if enable_prof:
                 prof.step()
 
             # Log Metrics to STDOUT or SAVE TO DISK
@@ -601,23 +639,25 @@ def start_or_resume_training_run(
                     f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_X:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
                 )
 
-                # Write Metrics to TensorBoard...
-                for metric, val in zip(
-                    ["G_loss", "D_loss", "D_X", "D_G_z1", "D_G_z2"],
-                    [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2],
-                ):
-                    writer.add_scalar(
-                        metric,
-                        val,
-                        (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency),
-                    )
+                if enable_logging:
+                    # Write Metrics to TensorBoard...
+                    for metric, val in zip(
+                        ["G_loss", "D_loss", "D_X", "D_G_z1", "D_G_z2"],
+                        [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2],
+                    ):
+                        writer.add_scalar(
+                            metric,
+                            val,
+                            (epoch * len(dl.dataset))
+                            + (log_i * model_cfg.log_frequency),
+                        )
 
-                # Save Losses (and a few other function values) for plotting...
-                losses["_G"].append(err_G.item())
-                losses["_D"].append(err_D.item())
+                    # Save Losses (and a few other function values) for plotting...
+                    losses["_G"].append(err_G.item())
+                    losses["_D"].append(err_D.item())
 
-                log_i += 1
-                writer.flush()
+                    log_i += 1
+                    writer.flush()
 
             # Save Sample Imgs Every N Epochs && save the progress on the
             # fixed latent input vector for plotting
@@ -647,5 +687,13 @@ def start_or_resume_training_run(
                 },
                 f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
             )
+
+            # Exit Writer and Profiler
+
+        if (enable_prof) and (torch.__version__ == "1.10.0"):
+            prof.stop()
+
+        if enable_logging:
+            writer.close()
 
     return {"losses": losses, "img_list": img_list}

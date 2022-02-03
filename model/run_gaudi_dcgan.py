@@ -18,7 +18,6 @@ import argparse
 import torch
 import socket
 import torch.multiprocessing as mp
-from torch.utils.tensorboard import SummaryWriter
 
 # DCGAN
 import gaudi_dcgan as dcgan
@@ -58,7 +57,7 @@ parser.add_argument(
 
 parser.add_argument(
     "-l",
-    "--enable_logging",
+    "--logging",
     type=bool,
     help="Enable logging to tensorboard",
     default=True,
@@ -143,36 +142,16 @@ if __name__ == "__main__":
     train_cfg._announce()
 
     # ================================================================
-    # Init Profiler if profiling is enabled...
-    prof = None
-    if (args.profile is True) and (torch.__version__ == "1.10.0"):
-        prof = torch.profiler.profile(
-            schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=2),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
-            ),
-            record_shapes=True,
-            with_stack=True,
-            profile_memory=True,
-        )
-
-        prof.start()
-
-    # Init writer if logging is enabled
-    writer = None
-    if (args.enable_logging is True):
-        writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
-
     # Run in distributed mode;l but on a single node...
     mp.spawn(
         dcgan.start_or_resume_training_run,
         nprocs=torch.cuda.device_count(),
-        args=(train_cfg, model_cfg, args.n_epoch, args.s_epoch),
+        args=(
+            train_cfg,
+            model_cfg,
+            args.n_epoch,
+            args.s_epoch,
+            args.profile,
+            args.logging,
+        ),
     )
-
-    # Exit Writer and Profiler
-    if (args.profile) and (torch.__version__ == "1.10.0"):
-        prof.stop()
-
-    if args.enable_logging:
-        writer.close()
