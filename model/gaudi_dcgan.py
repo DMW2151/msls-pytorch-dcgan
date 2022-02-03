@@ -446,7 +446,7 @@ def get_msls_dataloader(rank, train_cfg):
     # Get Sampler for "Distributed" Training
     if train_cfg.dev == torch.device("cuda"):
         msls_sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=torch.cuda.device_count(), rank=rank
+            dataset, num_replicas=torch.cuda.device_count(), rank=rank, shuffle=False
         )
         default_loader_params["sampler"] = msls_sampler
 
