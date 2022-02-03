@@ -27,6 +27,11 @@ pip3 install \
     tensorboard \
     torch_tb_profiler
 
+pip uninstall pillow
+$ CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
+
+ python3 ./model/run_gaudi_dcgan.py --name 8K80 --profile True --logging True --data /data/imgs/ --batch 512
+
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
 python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
     --dataroot /data/images/ \

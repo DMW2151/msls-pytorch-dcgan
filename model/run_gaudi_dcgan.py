@@ -112,7 +112,9 @@ DEVICE = "cuda" if (torch.cuda.is_available()) else "cpu"
 if dcgan.HABANA_ENABLED:
     DEVICE = "hpu"
 
-os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
+os.environ[
+    "MASTER_ADDR"
+] = "localhost"  ## OR: socket.gethostbyname(socket.gethostname())
 os.environ["MASTER_PORT"] = "8888"
 
 if __name__ == "__main__":

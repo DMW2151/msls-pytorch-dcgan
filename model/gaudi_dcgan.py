@@ -393,8 +393,8 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     Z = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize empty models && initialize from `as_of_epoch`
-    net_D, optim_D = train_cfg.get_net_D()
-    net_G, optim_G = train_cfg.get_net_G()
+    net_D, optim_D = train_cfg.get_net_D(gpu_id=0)
+    net_G, optim_G = train_cfg.get_net_G(gpu_id=0)
 
     path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{as_of_epoch}.pt"
 
@@ -418,7 +418,7 @@ def get_msls_dataloader(rank, train_cfg):
         "num_workers": 8,
         "pin_memory": True,
         "timeout": 0,
-        "prefetch_factor": 4,
+        "prefetch_factor": 2,
         "persistent_workers": False,
     }
 
@@ -465,10 +465,7 @@ def get_msls_profiler(
 ):
 
     prof = torch.profiler.profile(
-        activities=[
-            ProfilerActivity.CPU, 
-            ProfilerActivity.CUDA
-        ],
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
         schedule=torch.profiler.schedule(**schedule),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
             f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
@@ -522,8 +519,13 @@ def start_or_resume_training_run(
         )
 
     # Initialize Net and Optimizers
-    net_D, optim_D = train_cfg.get_net_D()
-    net_G, optim_G = train_cfg.get_net_G()
+    net_D, optim_D = train_cfg.get_net_D(gpu_id=rank)
+    net_G, optim_G = train_cfg.get_net_G(gpu_id=rank)
+
+    # Be Explicit Here...
+    torch.cuda.set_device(rank)
+    net_D.cuda(rank)
+    net_G.cuda(rank)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
