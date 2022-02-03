@@ -554,14 +554,14 @@ def start_or_resume_training_run(
         writer = get_msls_writer(model_cfg)
 
     # Start new training epochs...
-    for epoch in range(cur_epoch, n_epochs + 1):
+    for epoch in range(cur_epoch, n_epochs):
 
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
 
         if enable_prof:
             prof.start()
-            
+
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1.1) Update D network: All-real batch;
@@ -670,7 +670,7 @@ def start_or_resume_training_run(
                     img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
         # Save Model && Progress Images Every N Epochs
-        if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
+        if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
 
             # Ensure the Save Directory Exists
             if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}"):
