@@ -415,7 +415,7 @@ def get_msls_dataloader(rank, train_cfg):
     default_loader_params = {
         "batch_size": train_cfg.batch_size,
         "shuffle": False,
-        "num_workers": 16,
+        "num_workers": 8,
         "pin_memory": True,
         "timeout": 0,
         "prefetch_factor": 2,
