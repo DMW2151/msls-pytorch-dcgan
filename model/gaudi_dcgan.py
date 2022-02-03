@@ -130,6 +130,7 @@ class TrainingConfig:
 
         # Instantiate Discriminator Net, # Put model on device(s),
         # Enable Data Parallelism across all available GPUs
+        self.dev = torch.device(f"cuda:{gpu_id}")
         net_D = Discriminator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
@@ -164,6 +165,7 @@ class TrainingConfig:
 
         # Enable Data Parallelism across all available GPUs && Put model on
         # device(s)
+        self.dev = torch.device(f"cuda:{gpu_id}")
         net_G = Generator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
