@@ -110,7 +110,7 @@
             hr {
               background-color: #ebebe6;
               border: none;
-              height: 1px;
+              height: 2px;
               margin: 1em 0;
             }
             .gan-test-img {
@@ -256,19 +256,10 @@
     <li><a href="#Theory-and-Background">Theory and Background</a></li>
     <li><a href="#Mapillary-Street-Level-Imagery-Data">Mapillary Street Level Imagery Data</a></li>
     <li><a href="#AWS-System-Architecture">AWS System Architecture</a></li>
-    <li><a href="#DCGAN-Results">DCGAN Results</a>
-    <ul>
-    <li><a href="#Results">Results</a></li>
-    <li><a href="#Loss">Loss</a></li>
-    <li><a href="#Training-Progress">Training Progress</a></li>
-    </ul></li>
-    <li><a href="#Evaluating-a-Training-run-on-GPU-Instances">Evaluating a Training run on GPU Instances</a></li>
-    <li><a href="#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL1">Modifications for Training on Gaudi Accelerated Instances (<code>DL1</code>)</a></li>
-    <li><a href="#Comparative-Performance-DL1--P">Comparative Performance (<code>DL1</code> &amp; <code>P</code>)</a>
-    <ul>
-    <li><a href="#Hardware-and-Cost-To-Train">Hardware and Cost-To-Train</a></li>
-    <li><a href="#Model-Performance">Model Performance</a></li>
-    </ul></li>
+    <li><a href="#DCGAN-Results">DCGAN Results</a></li>
+    <li><a href="#Evaluating-a-First-Training-run-on-GPU-Instances">Evaluating a First Training run on GPU Instances</a></li>
+    <li><a href="#Modifications-for-Training-on-Gaudi-Accelerated-Instances">Modifications for Training on Gaudi Accelerated Instances</a></li>
+    <li><a href="#Comparative-Performance">Comparative Performance</a></li>
     <li><a href="#Appendix-1---Comparable-Instance-Selection">Appendix 1 - Comparable Instance Selection</a></li>
     <li><a href="#Citations">Citations</a></li>
     </ul>
@@ -322,7 +313,7 @@
     </i>
     <figure>
     </center>
-    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a>. In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
+    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a> (<strong>Note</strong>: <a href="https://github.com/mapillary/mapillary_sls/issues/23">GH Issue</a>). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
     <p>The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.</p>
     <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Sample By Metro Area</span></span>
     <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span> <span class="ex">Amman</span>     <span class="kw">|</span>  <span class="ex">1,811</span> <span class="kw">|</span>     <span class="kw">|</span> <span class="ex">London</span>    <span class="kw">|</span>   <span class="ex">5,983</span> <span class="kw">|</span>     <span class="kw">|</span> <span class="ex">Toronto</span>   <span class="kw">|</span>  <span class="ex">12,802</span> <span class="kw">|</span></span>
@@ -368,16 +359,69 @@
     </ul>
     <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>).</p>
     <p>Of course, EFS is slower than NVME EBS volumes, although the data (~45GB) fits comfortably in memory of my training devices, the initial load was a significant bottleneck. An EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.</p>
-    <p>To alleviate this issue, I downloaded the MSLS data to a <code>gp3</code> volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a <em>1200%</em> speed up in time until first training iteration. Although EBS is more expensive than EFS, the decision paid for itself by saving me from hours of idle instance time.</p>
+    <p>To alleviate this issue, I downloaded the MSLS data to a <code>gp3</code> volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a <em>1200%</em> speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.</p>
     <hr />
     <h3 id="dcgan-results">DCGAN Results</h3>
-    <h4 id="results">Results</h4>
-    <h4 id="loss">Loss</h4>
-    <h4 id="training-progress">Training Progress</h4>
+    <ul>
+    <li>Results</li>
+    <li>Training Progress</li>
+    <li>Loss</li>
+    <li>Model Performance and Evaluation</li>
+    </ul>
     <hr />
-    <h3 id="evaluating-a-training-run-on-gpu-instances">Evaluating a Training run on GPU Instances</h3>
+    <h3 id="evaluating-a-first-training-run-on-gpu-instances">Evaluating a First Training run on GPU Instances</h3>
+    <p>I started with my PyTorch model running on a GPU instance before instrumenting it with the code to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I wasn’t leaving too much performance <em>“on the table”</em> (let’s aim for 90% GPU at least!). To validate that the model was sufficiently tuned for the GPU I referred to the metrics I wrote out to PyTorch-profiler UI and Grafana.</p>
+    <p>The Pytorch profiler is useful for showing how much time is being spent on which operations on the GPU and can be quite helpful in debugging performance issues. In a few hours, The following helped me go from very poor to <em>“OK”</em> performance.</p>
+    <ul>
+    <li><p><strong>Using AMP</strong> — This also opens the door for me to use Habana’s mixed precision <a href="https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi">modules</a> when I move over to the <code>DL1</code> instance.</p></li>
+    <li><p><strong>Minimize CUDA Copies</strong> — Training statistics, outputs, labels, etc. were being hapazardly moved to and from the GPU! I can collect and save them at the end of the epoch.</p></li>
+    <li><p><strong>Batch Size</strong> — This was very low-hanging fruit. Independent of the other changes, the right choice of batch size sped up overall execution time by ~80%.</p></li>
+    </ul>
+    <table>
+    <caption>Training Performance Summary - First Round of Improvements</caption>
+    <thead>
+    <tr class="header">
+    <th style="text-align: center;">Scenario</th>
+    <th style="text-align: center;">Avg. Step(ms)</th>
+    <th style="text-align: center;">Imgs/Sec. (theoretical)</th>
+    <th style="text-align: center;">Imgs/Sec (obs.)</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;">No AMP, Batch Size 128</td>
+    <td style="text-align: center;">121.1</td>
+    <td style="text-align: center;">1058</td>
+    <td style="text-align: center;">569</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;">AMP, Batch Size: 1024, min CUDA copies</td>
+    <td style="text-align: center;">279.1</td>
+    <td style="text-align: center;">3670</td>
+    <td style="text-align: center;">1672</td>
+    </tr>
+    </tbody>
+    </table>
+    <p>This difference between the theoretical (profiled) throughput and what I observed was troublesome. When I manually ran <code>nvidia-smi</code> (see: <a href="https://developer.nvidia.com/nvidia-system-management-interface">nvidia-smi</a>) I noticed utilization oscillated between 98% and 0% at regular intervals. It was critical to understand why this was happening.</p>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><img src="./images/training/big_batch_good.png" alt="OK" /></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><em>Figure 1.1 - Test</em></td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: center;"><img src="./images/training/gpu_poor.png" alt="Bad GPU" /></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><em>Figure 1.2 - Test</em></td>
+    </tr>
+    </tbody>
+    </table>
+    <p>Looking at the first chart, <em>GPU Execution Summary</em>, it would seem I was meaningfully closer to 90-95% GPU utilization. Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn’t include the data-loader steps! Looking at the chart, <em>GPU Utilization</em>, it would appear that in the long-run I’m closer to 40% than 90%. My next step would have to be improving the data-loader’s performance.</p>
     <hr />
-    <h3 id="modifications-for-training-on-gaudi-accelerated-instances-dl1">Modifications for Training on Gaudi Accelerated Instances (<code>DL1</code>)</h3>
+    <h3 id="modifications-for-training-on-gaudi-accelerated-instances">Modifications for Training on Gaudi Accelerated Instances</h3>
     <p>I started with a standard PyTorch model running on the GPU before instrumenting it with the code to run on the HPU. Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration <a href="https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model">guide</a>. In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:</p>
     <ul>
     <li><p>Swap out a standard <code>pytorch.DataLoader</code> for <code>habana_dataloader.HabanaDataLoader</code>. Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>. Even without acceleration, I can still use the <code>HabanaDataLoader</code> with a high <code>num_workers</code> parameter to quickly shuttle data onto the device.</p></li>
@@ -385,9 +429,10 @@
     <li><p>Use <code>FusedAdamW</code> over <code>AdamW</code>. <code>FusedAdamW</code> can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over <code>AdamW</code>.</p></li>
     </ul>
     <hr />
-    <h3 id="comparative-performance-dl1-p">Comparative Performance (<code>DL1</code> &amp; <code>P</code>)</h3>
-    <h4 id="hardware-and-cost-to-train">Hardware and Cost-To-Train</h4>
-    <h4 id="model-performance">Model Performance</h4>
+    <h3 id="comparative-performance">Comparative Performance</h3>
+    <ul>
+    <li>Hardware and Cost-To-Train</li>
+    </ul>
     <hr />
     <h3 id="appendix-1---comparable-instance-selection">Appendix 1 - Comparable Instance Selection</h3>
     <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla <code>M60</code>s) to top-of-the line training instances (e.g. <code>P4</code> instances with <code>A100</code>s). I relied exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">resnext-101 benchmarks</a> as a proxy for my model’s performance. On price, <code>p3.8xlarge</code> instances are the most similar to the <code>DL1</code> and offer 4 <code>V100</code>. Although <code>g4dn.12xlarge</code>(<code>T4</code>) and <code>p2.8xlarge</code> (<code>K80</code>) instances are priced well relative to their performance, I elected to only run a full test on the <code>p3.8xlarge</code>.</p>

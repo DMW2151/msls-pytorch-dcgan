@@ -23,14 +23,9 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
 - [AWS System Architecture](#AWS-System-Architecture)
 - [DCGAN Results](#DCGAN-Results)
-  - [Results](#Results)
-  - [Loss](#Loss)
-  - [Training Progress](#Training-Progress)
-- [Evaluating a First Training run on GPU Instances (`P3`)](#Evaluating-a-First-Training-run-on-GPU-Instances-P3)
-- [Modifications for Training on Gaudi Accelerated Instances (`DL1.24x`)](#Modifications-for-Training-on-Gaudi-Accelerated-Instances-DL124x)
-- [Comparative Performance (`DL1` & `P`)](#Comparative-Performance-DL1--P)
-  - [Hardware and Cost-To-Train](#Hardware-and-Cost-To-Train)
-- [Model Performance and Evaluation](#Model-Performance-and-Evaluation)
+- [Evaluating a First Training run on GPU Instances](#Evaluating-a-First-Training-run-on-GPU-Instances)
+- [Modifications for Training on Gaudi Accelerated Instances](#Modifications-for-Training-on-Gaudi-Accelerated-Instances)
+- [Comparative Performance](#Comparative-Performance)
 - [Appendix 1 - Comparable Instance Selection](#Appendix-1---Comparable-Instance-Selection)
 - [Citations](#Citations)
 
@@ -92,7 +87,7 @@ At a low-level, it's difficult to describe all of the internal consequences of u
     <figure>
 </center>
 
-Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.
+Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.
 
 The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.
 
@@ -152,20 +147,46 @@ To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I pro
 
 ### DCGAN Results
 
-#### Results
-
-#### Loss
-
-#### Training Progress
-
---------
-
-### Evaluating a First Training run on GPU Instances (`P3`)
-
+- Results
+- Training Progress
+- Loss
+- Model Performance and Evaluation
 
 --------
 
-### Modifications for Training on Gaudi Accelerated Instances (`DL1.24x`)
+### Evaluating a First Training run on GPU Instances
+
+I started with my PyTorch model running on a GPU instance before instrumenting it with the code to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I wasn't leaving too much performance *"on the table"* (let's aim for 90% GPU at least!). To validate that the model was sufficiently tuned for the GPU I referred to the metrics I wrote out to PyTorch-profiler UI and Grafana.
+
+The Pytorch profiler is useful for showing how much time is being spent on which operations on the GPU and can be quite helpful in debugging performance issues. In a few hours, The following helped me go from very poor to *"OK"* performance.
+
+- **Using AMP** &mdash; This also opens the door for me to use Habana's mixed precision [modules](https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi) when I move over to the `DL1` instance.
+
+- **Minimize CUDA Copies** &mdash; Training statistics, outputs, labels, etc. were being hapazardly moved to and from the GPU! I can collect and save them at the end of the epoch.
+  
+- **Batch Size** &mdash; This was very low-hanging fruit. Independent of the other changes, the right choice of batch size sped up overall execution time by ~80%.
+
+
+|          Scenario         | Avg. Step(ms)    | Imgs/Sec. (theoretical) | Imgs/Sec (obs.) |
+|:-------------------------:|:----------------:|:-----------------------:|:--------------:|
+| No AMP, Batch Size 128         | 121.1            | 1058                    | 569            |
+| AMP, Batch Size: 1024, min CUDA copies | 279.1            | 3670                    | 1672           |
+Table: Training Performance Summary - First Round of Improvements
+
+This difference between the theoretical (profiled) throughput and what I observed was troublesome. When I manually ran `nvidia-smi` (see: [nvidia-smi](https://developer.nvidia.com/nvidia-system-management-interface)) I noticed utilization oscillated between 98% and 0% at regular intervals. It was critical to understand why this was happening.
+
+|                           |
+|:-------------------------:|
+| ![OK](./images/training/big_batch_good.png) |
+| *Figure 1.1 - Test* |
+| ![Bad GPU](./images/training/gpu_poor.png) |
+| *Figure 1.2 - Test* |
+
+Looking at the first chart, *GPU Execution Summary*, it would seem I was meaningfully closer to 90-95% GPU utilization. Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn't include the data-loader steps! Looking at the chart, *GPU Utilization*, it would appear that in the long-run I'm closer to 40% than 90%. My next step would have to be improving the data-loader's performance.
+
+--------
+
+### Modifications for Training on Gaudi Accelerated Instances
 
 I started with a standard PyTorch model running on the GPU before instrumenting it with the code to run on the HPU. Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration [guide](https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model). In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:
 
@@ -175,16 +196,11 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
   
 - Use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over `AdamW`.
 
-
 --------
 
-### Comparative Performance (`DL1` & `P`)
+### Comparative Performance
 
-#### Hardware and Cost-To-Train
-
-
-### Model Performance and Evaluation
-
+- Hardware and Cost-To-Train
 
 --------
 
