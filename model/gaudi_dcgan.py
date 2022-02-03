@@ -20,11 +20,13 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.utils.tensorboard import SummaryWriter
 
+
 # DCGAN
 from msls_dcgan_utils import MarkHTStep
 
 if torch.__version__ == "1.10.0":
     import torch.profiler
+    from torch.profiler import ProfilerActivity
     import torch.cuda.amp as amp
 
 # Init Habana Values
@@ -413,7 +415,7 @@ def get_msls_dataloader(rank, train_cfg):
     default_loader_params = {
         "batch_size": train_cfg.batch_size,
         "shuffle": False,
-        "num_workers": min(os.cpu_count() // 2, 8),
+        "num_workers": 0,
         "pin_memory": True,
         "timeout": 0,
         "prefetch_factor": 2,
@@ -463,6 +465,10 @@ def get_msls_profiler(
 ):
 
     prof = torch.profiler.profile(
+        activities=[
+            ProfilerActivity.CPU, 
+            ProfilerActivity.CUDA
+        ],
         schedule=torch.profiler.schedule(**schedule),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
             f"{model_cfg.model_dir}/{model_cfg.model_name}/events"

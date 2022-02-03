@@ -39,6 +39,12 @@ python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
 In general, If you're just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model [repo](https://github.com/DMW2151/msls-pytorch-dcgan) onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI.
 
 
+## quick profilinf...
+
+```bash
+python -m torch.utils.bottleneck model/run_gaudi_dcgan.py  --dataroot /data/imgs/test/
+```
+
 
 
 ## Interpolated Images
