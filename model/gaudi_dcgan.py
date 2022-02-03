@@ -572,6 +572,7 @@ def start_or_resume_training_run(
             dl.sampler.set_epoch(epoch)
 
         for epoch_step, dbatch in enumerate(dl, 0):
+            print(epoch_step)
 
             # (1.1) Update D network: All-real batch;
             # log(D(x)) + log(1 - D(G(z)))
@@ -642,7 +643,6 @@ def start_or_resume_training_run(
 
             # If profiling enabled; then mark step...
             if enable_prof:
-                print("--step--")
                 prof.step()
 
             # Log Metrics to STDOUT or SAVE TO DISK
