@@ -130,13 +130,10 @@ class TrainingConfig:
 
         # Instantiate Discriminator Net, # Put model on device(s),
         # Enable Data Parallelism across all available GPUs
-        net_D = Discriminator(self)
+        net_D = Discriminator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
             net_D = nn.parallel.DistributedDataParallel(net_D, device_ids=[gpu_id])
-
-        else:
-            net_D.to(self.dev)
 
         if HABANA_ENABLED:
             # Will fail if not on a Habana DL AMI Instance; See Note
@@ -167,13 +164,10 @@ class TrainingConfig:
 
         # Enable Data Parallelism across all available GPUs && Put model on
         # device(s)
-        net_G = Generator(self)
+        net_G = Generator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
             net_G = nn.parallel.DistributedDataParallel(net_G, device_ids=[gpu_id])
-
-        else:
-            net_G.to(self.dev)
 
         if HABANA_ENABLED:
             # Will fail if not on a Habana DL AMI Instance; See Note on
