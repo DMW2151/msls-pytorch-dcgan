@@ -459,7 +459,7 @@ def get_msls_dataloader(rank, train_cfg):
 
 
 def start_or_resume_training_run(
-    train_cfg, model_cfg, n_epochs=64, st_epoch=0, prof=None, writer=None
+    rank, train_cfg, model_cfg, n_epochs=64, st_epoch=0, prof=None, writer=None
 ):
     """
     Begin Training Model. That's It.
@@ -481,7 +481,6 @@ def start_or_resume_training_run(
     )
     """
     if train_cfg.dev == torch.device("cuda"):
-        rank = args.nr * args.gpus + gpu
         dist.init_process_group(
             backend="nccl", init_method="env://", world_size=torch.cuda.device_count(), rank=rank
         )

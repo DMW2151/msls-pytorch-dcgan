@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # ================================================================
     # Init Profiler if profiling is enabled...
     prof = None
-    if (args.profile) and (torch.__version__ == "1.10.0"):
+    if (args.profile is True) and (torch.__version__ == "1.10.0"):
         prof = torch.profiler.profile(
             schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=2),
             on_trace_ready=torch.profiler.tensorboard_trace_handler(
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     # Init writer if logging is enabled
     writer = None
-    if args.enable_logging:
+    if (args.enable_logging is True):
         writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     # Spawn multiple iterations...
