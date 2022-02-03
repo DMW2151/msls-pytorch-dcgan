@@ -163,14 +163,14 @@ if __name__ == "__main__":
     if (args.enable_logging is True):
         writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
-    # Spawn multiple iterations...
+    # Spawn multiple iterations
     proc_args = {
         "train_cfg": train_cfg,
         "model_cfg": model_cfg,
         "n_epochs": args.n_epoch,
         "st_epoch": args.s_epoch,
-        "prof": prof,
-        "writer": writer,
+        "prof": None,
+        "writer": None,
     }
 
     # Run in distributed mode;l but on a single node...
