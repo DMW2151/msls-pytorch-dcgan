@@ -461,7 +461,7 @@ def get_msls_dataloader(rank, train_cfg):
 
 
 def get_msls_profiler(
-    model_cfg, schedule={"wait": 2, "warmup": 2, "active": 6, "repeat": 2}
+    model_cfg, schedule={"wait": 2, "warmup": 2, "active": 6, "repeat": 4}
 ):
 
     prof = torch.profiler.profile(
