@@ -130,7 +130,6 @@ class TrainingConfig:
 
         # Instantiate Discriminator Net, # Put model on device(s),
         # Enable Data Parallelism across all available GPUs
-        self.dev = torch.device(f"cuda:{gpu_id}")
         net_D = Discriminator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
@@ -165,7 +164,6 @@ class TrainingConfig:
 
         # Enable Data Parallelism across all available GPUs && Put model on
         # device(s)
-        self.dev = torch.device(f"cuda:{gpu_id}")
         net_G = Generator(self).to(self.dev)
 
         if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
@@ -507,6 +505,9 @@ def start_or_resume_training_run(
     )
     """
     if train_cfg.dev == torch.device("cuda"):
+
+        train_cfg.dev = torch.device(f"cuda:{rank}")
+
         dist.init_process_group(
             backend="nccl",
             init_method="env://",
@@ -518,7 +519,7 @@ def start_or_resume_training_run(
     net_D, optim_D = train_cfg.get_net_D(gpu_id=rank)
     net_G, optim_G = train_cfg.get_net_G(gpu_id=rank)
 
-    # Be Explicit Here...
+    # Be Explicit Here; should be done in `get_net_D`, `get_net_G`
     torch.cuda.set_device(rank)
     net_D.cuda(rank)
     net_G.cuda(rank)
@@ -570,8 +571,7 @@ def start_or_resume_training_run(
             dl.sampler.set_epoch(epoch)
 
         for epoch_step, dbatch in enumerate(dl, 0):
-            print(epoch_step)
-
+            
             # (1.1) Update D network: All-real batch;
             # log(D(x)) + log(1 - D(G(z)))
             ###################################################################
