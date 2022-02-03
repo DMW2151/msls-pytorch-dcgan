@@ -1,27 +1,24 @@
-# Core script for running DCGAN -> Implements the DCGAN architecture from the original
-# GAN/DCGAN papers in PyTorch with slight adjustments to the optimizer. Other changes
-# discussed in post
+# Core script for running DCGAN -> Implements the DCGAN architecture from
+# the original GAN/DCGAN papers in PyTorch with slight adjustments to the
+# optimizer. Other changes discussed in post
 #
 # See: https://arxiv.org/abs/1406.2661
 
 # General
 import datetime
 import os
-import random
-import re
 from dataclasses import dataclass
-import numpy as np
 
 # Torch
 import torch
-import torch.backends.cudnn as cudnn
+# import torch.backends.cudnn as cudnn
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
-from torch.utils.tensorboard import SummaryWriter
 
 # DCGAN
 from msls_dcgan_utils import MarkHTStep
@@ -39,6 +36,7 @@ try:
     from habana_frameworks.torch.utils.library_loader import load_habana_module
     from habana_frameworks.torch.hpex.optimizers import FusedAdamW
     import habana_frameworks.torch.core as htcore
+    import habana_dataloader
 
     load_habana_module()
 
@@ -48,7 +46,7 @@ try:
     os.environ["GRAPH_VISUALIZATION"] = True
 
 except ImportError:
-    # Failed imports, must be on GPU machine; will not use HPU drivers/shared libs
+    # Failed imports, will not use HPU drivers/shared libs
     pass
 
 
@@ -79,6 +77,7 @@ class TrainingConfig:
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
     ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
+    data_root: str = "/data/images/train_val"
 
     def _announce(self):
         """Show Pytorch and CUDA attributes before Training"""
@@ -101,22 +100,29 @@ class TrainingConfig:
 
         print("====================")
 
-    def get_net_D(self):
+    def get_net_D(self, gpu_id=None):
         """
         Instantiate a Disctiminator Network:
 
-        -   Note on Adam vs AdamW: Uses AdamW over Adam. In general, DCGAN and Adam are both
-            susceptible to over-fitting on early samples. AdamW adds a weight decay parameter
+        -   Note on Adam vs AdamW: Uses AdamW over Adam. In general, DCGAN and
+            Adam are both
+            susceptible to over-fitting on early samples. AdamW adds a
+            weight decay parameter
             (default=0.01) on the optimizer for each model step
 
-        -   Note on FusedAdamW vs AdamW: AdamW loops over parameters and launches kernels for
-            each parameter when running the optimizer. This is CPU bound and can be a bottleneck
-            on performance. FusedAdamW can batch the elementwise updates applied to all the
+        -   Note on FusedAdamW vs AdamW: AdamW loops over parameters and
+            launches kernels for each parameter when running the optimizer.
+            This
+            is CPU bound and can be a bottleneck
+            on performance. FusedAdamW can batch the elementwise updates
+            applied to all the
             model’s parameters into one or a few kernel launches.
 
-        See: Fixing Weight Decay Regularization in Adam - https://arxiv.org/abs/1711.05101
+        See: Fixing Weight Decay Regularization in Adam
+        # https://arxiv.org/abs/1711.05101
 
-        The Habana FusedAdamW optimizer uses a custom Habana implementation of `apex.optimizers.FusedAdam`,
+        The Habana FusedAdamW optimizer uses a custom Habana implementation of
+        `apex.optimizers.FusedAdam`,
         on Habana machines, enable this, otherwise use regular `AdamW`.
         """
 
@@ -124,14 +130,15 @@ class TrainingConfig:
         # Enable Data Parallelism across all available GPUs
         net_D = Discriminator(self)
 
-        if torch.cuda.is_available():
-            if torch.cuda.device_count() > 1:
-                net_D = nn.DataParallel(net_D)
+        if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
+            net_D = nn.parallel.DistributedDataParallel(net_D, device_ids=[gpu_id])
 
-        net_D.to(self.dev)
+        else:
+            net_D.to(self.dev)
 
         if HABANA_ENABLED:
-            # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
+            # Will fail if not on a Habana DL AMI Instance; See Note
+            # on FusedAdamW
             optim_D = FusedAdamW(
                 net_D.parameters(),
                 optimizer_class=torch.optim.Adam,
@@ -150,23 +157,25 @@ class TrainingConfig:
         )
         return net_D, optim_D
 
-    def get_net_G(self):
+    def get_net_G(self, gpu_id=None):
         """
         Instantiate a Generator Network - See notes on `get_net_D` re specific
         optimizer choices.
         """
 
-        # Enable Data Parallelism across all available GPUs && Put model on device(s)
+        # Enable Data Parallelism across all available GPUs && Put model on
+        # device(s)
         net_G = Generator(self)
 
-        if torch.cuda.is_available():
-            if torch.cuda.device_count() > 1:
-                net_G = nn.DataParallel(net_G)
+        if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
+            net_G = nn.parallel.DistributedDataParallel(net_G, device_ids=[gpu_id])
 
-        net_G.to(self.dev)
+        else:
+            net_G.to(self.dev)
 
         if HABANA_ENABLED:
-            # Will fail if not on a Habana DL AMI Instance; See Note on FusedAdamW
+            # Will fail if not on a Habana DL AMI Instance; See Note on
+            # FusedAdamW
             optim_G = FusedAdamW(
                 net_G.parameters(),
                 optimizer_class=torch.optim.Adam,
@@ -190,11 +199,11 @@ class TrainingConfig:
 @dataclass
 class ModelCheckpointConfig:
     """
-    ModelCheckpointConfig holds the model save parameters for both the generator
-    and discriminator networks.s
+    ModelCheckpointConfig holds the model save parameters for both the
+    generator and discriminator networks.s
     --------
-    Example: Rename the model and decrease save frequency from every epoch (1) to
-    every fourth epoch (4)
+    Example: Rename the model and decrease save frequency from every epoch (1)
+    to every fourth epoch (4)
 
     model_cfg = dcgan.ModelCheckpointConfig(
         model_name=msls_dcgan_habana_001,
@@ -203,8 +212,9 @@ class ModelCheckpointConfig:
     """
 
     model_name: str = "msls_dcgan_001"  # Name of the Model
-    # Directory to save the model checkpoints to...
-    model_dir: str = "/efs/trained_model"  # Requires `/efs/trained_model` has permissions s.t. ec2-user/ubuntu can write.
+    # Directory to save the model checkpoints to; Requires `/efs/trained_model`
+    # has permissions s.t. ${USER} can write.
+    model_dir: str = "/efs/trained_model"
     save_frequency: int = 1  # Save a model checkpoint every N epochs
     log_frequency: int = 50  # Print logs to STDOUT every N batches
     gen_progress_frequency: int = 1000  # Save progress images every N batches
@@ -212,8 +222,8 @@ class ModelCheckpointConfig:
 
 def weights_init(m):
     """
-    Custom weights initialization called on net_G and net_D, uses the hardcoded values
-    from the DCGAN paper (mean, std) => (0, 0.02)
+    Custom weights initialization called on net_G and net_D, uses the
+    hardcoded values from the DCGAN paper (mean, std) => (0, 0.02)
     """
 
     classname = m.__class__.__name__
@@ -229,12 +239,12 @@ def weights_init(m):
 # Generator Code
 class Generator(nn.Module):
     """
-    Generator Net. The generator is designed to map the latent space vector (z) to believable data.
-    Since our data are images, this means transforming (by default) a [1 x 100] latent vector to a
-    3 x 64 x 64 RGB image.
+    Generator Net. The generator is designed to map the latent space vector (z)
+    to believable data. Since our data are images, this means transforming (by
+    default) a [1 x 100] latent vector to a 3 x 64 x 64 RGB image.
 
-    Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH layer to transform the
-    output data to (-1, 1) for each channel (color)...
+    Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH
+    layer to transform the output data to (-1, 1) for each channel (color)...
     """
 
     def __init__(self, cfg):
@@ -269,13 +279,13 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     """
-    Discriminator Net. Discriminator is a classifier network that (by default) takes a
-    3 x 64 x 64 image as input and outputs a probability that the image is from the set
-    of real images.
+    Discriminator Net. Discriminator is a classifier network that (by default)
+    takes a 3 x 64 x 64 image as input and outputs a probability that the image
+    is from the set of real images
 
-    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu) layers,
-    and then a sigmoid layer to transform the output data to (0, 1). No different from
-    Logit ;)
+    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu)
+    layers, and then a sigmoid layer to transform the output data to (0, 1).
+    No different from Logit ;)
     """
 
     def __init__(self, cfg):
@@ -313,8 +323,8 @@ def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
     Args:
         net_D, net_G - nn.Module - The Generator and Discriminator networks
 
-        optim_D, optim_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW) - Optimizer
-        function for Discriminator and Generator Nets
+        optim_D, optim_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW)
+        Optimizer function for Discriminator and Generator Nets
 
         path - str Path to file to open...
     --------
@@ -347,15 +357,16 @@ def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
 
 def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     """
-    Generates samples from a model checkpoint saved to disk, writes a few sample grids to disk
-    and also returns last to the user
+    Generates samples from a model checkpoint saved to disk, writes a few
+    sample grids to disk and also returns last to the user
     --------
     Args:
         - n_samples - int - Number of samples to generate
         - train_cfg - TrainingConfig - Used to initialize the Generator model
-        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model checkpoint from disk
-        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model
-            checkpoint is available
+        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model
+            checkpoint from disk
+        - as_of_epoch - int - Epoch to generate samples as of - will fail
+            if no model checkpoint is available
     --------
     Example: Plot 16 sample images from the 16th epoch of training
 
@@ -377,7 +388,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
     """
 
     # Generate Noise - Latent Vector for the Model...
-    rd_noise = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
+    Z = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize empty models && initialize from `as_of_epoch`
     net_D, optim_D = train_cfg.get_net_D()
@@ -387,39 +398,93 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
 
     _, _, _, _ = instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path)
 
-    # Use the Generator to create "believable" fake images - You can call a plotting function
-    # on this output to visualize the images vs real ones
+    # Use the Generator to create "believable" fake images - You can call a
+    # plotting function on this output to visualize the images vs real ones
 
-    # Ideally a Generator Net can use a CPU to (slowly) generate samples, this confirms it,
-    # we can run the net through via CPU for "inference"
-    generated_imgs = net_G(rd_noise).detach().cpu()
+    # Ideally a Generator Net can use a CPU to (slowly) generate samples,
+    # this confirms it, we can run the net through via CPU for "inference"
+    generated_imgs = net_G(Z).detach().cpu()
     return generated_imgs
 
 
+def get_msls_dataloader(rank, train_cfg):
+    """ """
+
+    default_loader_params = {
+        "batch_size": train_cfg.batch_size,
+        "shuffle": False,
+        "num_workers": min(os.cpu_count() // 2, 8),
+        "pin_memory": True,
+        "timeout": 0,
+        "prefetch_factor": 2,
+        "persistent_workers": False,
+    }
+
+    # We can use an image folder dataset; depending on the size of the training
+    # directory this can take a little to instantiate; about 3 min for 40GB
+    #
+    # Unclear why these specific parameters are needed for acceleration,
+    # unclear if the `transforms.RandomAffine` ruins it.
+    # See: https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html
+    dataset = dset.ImageFolder(
+        root=train_cfg.data_root,
+        transform=transforms.Compose(
+            [
+                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
+                transforms.CenterCrop(train_cfg.img_size * 4),
+                transforms.Resize(train_cfg.img_size),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 406), (0.229, 0.224, 0.225)),
+            ]
+        ),
+    )
+
+    default_loader_params["dataset"] = dataset
+
+    # Get Sampler for "Distributed" Training
+    if train_cfg.dev == torch.device("cuda"):
+        msls_sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=torch.cuda.device_count(), rank=rank
+        )
+        default_loader_params["sampler"] = msls_sampler
+
+    # If using Habana -> Try to Use the Habana DataLoader w. the params
+    if HABANA_ENABLED:
+        dataloader = habana_dataloader.HabanaDataLoader(**default_loader_params)
+
+    else:
+        dataloader = torch.utils.data.DataLoader(**default_loader_params)
+
+    return dataloader
+
+
 def start_or_resume_training_run(
-    dl, train_cfg, model_cfg, n_epochs=256, st_epoch=0, profile_run=False
+    train_cfg, model_cfg, n_epochs=64, st_epoch=0, prof=None, writer=None
 ):
     """
     Begin Training Model. That's It.
     --------
     Args:
-        - dl - pytorch.dataloader
         - train_cfg - TrainingConfig - Used to initialize the Generator model
-        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model checkpoint from disk
-        - n_epochs - intt - Number of Epochs to train through...
-        - as_of_epoch - int - Epoch to generate samples as of - will fail if no model
-        checkpoint is available
+        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model
+                    checkpoint from disk
+        - n_epochs - int - Number of Epochs to train through...
+        - as_of_epoch - int - Epoch to generate samples as of - will fail if
+            no model checkpoint is available
 
     --------
-    Example: Start a training run from `START_EPOCH` and go until `NUM_EPOCHS` using the
-    parameters given in `train_cfg` and `model_cfg`
+    Example: Start a training run from `START_EPOCH` and go until `NUM_EPOCHS`
+    using the parameters given in `train_cfg` and `model_cfg`
 
     result = dcgan.start_or_resume_training_run(
-        dataloader, train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
+        train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
     )
     """
-    # Announce
-    train_cfg._announce()
+    if train_cfg.dev == torch.device("cuda"):
+        rank = args.nr * args.gpus + gpu
+        dist.init_process_group(
+            backend="nccl", init_method="env://", world_size=torch.cuda.device_count(), rank=rank
+        )
 
     # Initialize Net and Optimizers
     net_D, optim_D = train_cfg.get_net_D()
@@ -433,8 +498,8 @@ def start_or_resume_training_run(
             net_D, net_G, optim_D, optim_G, path
         )
 
-    # If no start epoch specified; then apply weights from DCGAN paper and proceed
-    # w. model training...
+    # If no start epoch specified; then apply weights from DCGAN paper and
+    # proceed w. model training...
     else:
         net_G.apply(weights_init)
         net_D.apply(weights_init)
@@ -443,27 +508,13 @@ def start_or_resume_training_run(
         losses = {"_G": [], "_D": []}
         fixed_noise = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
-    # Initialize PyTorch Writer
-    writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
-
     # Initialize Stateless BCELoss Function
-    criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev, non_blocking=True)
+    torch.manual_seed(0)
+    criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
     scaler_D = torch.cuda.amp.GradScaler()
     scaler_G = torch.cuda.amp.GradScaler()
 
-    # Init Profiler
-    if (profile_run) and (torch.__version__ == "1.10.0"):
-        prof = torch.profiler.profile(
-            schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
-            ),
-            record_shapes=True,
-            with_stack=True,
-            profile_memory=True,
-        )
-
-        prof.start()
+    dl = get_msls_dataloader(train_cfg)
 
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs + 1):
@@ -472,8 +523,10 @@ def start_or_resume_training_run(
         log_i = 0
 
         for epoch_step, dbatch in enumerate(dl, 0):
-            # (1.1) Update D network: All-real batch; log(D(x)) + log(1 - D(G(z)))
-            ######################################################################
+
+            # (1.1) Update D network: All-real batch;
+            # log(D(x)) + log(1 - D(G(z)))
+            ###################################################################
             net_D.zero_grad()
 
             real_imgs = dbatch[0].to(train_cfg.dev)
@@ -497,8 +550,9 @@ def start_or_resume_training_run(
             label.fill_(0.0)
 
             # Classify all fake batch with D && Calculate D_loss
-            # Calculate the gradients for this batch, accumulated with previous gradients &&\
-            # Compute error of D as sum over the fake and the real batches
+            # Calculate the gradients for this batch, accumulated with
+            # previous gradients &&\ Compute error of D as sum over the
+            # fake and the real batches
             with amp.autocast():
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
@@ -507,16 +561,19 @@ def start_or_resume_training_run(
             D_G_z1 = torch.sigmoid(output).mean().item()
             err_D = err_D_real + err_D_fake
 
-            # NOTE: This assumes we're using a custom Habana optimizer, in which case we need
-            # to call `htcore.mark_step()` twice per Net per training step: See
-            # comments above! Mark Habana Steps => Discriminator Optim...
-            # Update D - optim_D.step() is called in Scalar_D.step() if no Inf...
+            # NOTE: This assumes we're using a custom Habana optimizer, in
+            #  which case we need to call `htcore.mark_step()` twice per
+            # Net per training step: See comments above! Mark Habana Steps
+            # => Discriminator Optim...
+            #
+            # Update D - optim_D.step() is called in Scalar_D.step()
+            # if no Inf...
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
                 scaler_D.step(optim_D)  # Calls: optim_D.step() internally
             scaler_D.update()
 
             # (2) Update Net_G: maximize log(D(G(z)))
-            ######################################################################
+            ###################################################################
             net_G.zero_grad()
             label.fill_(1.0)  # `fake` labels are real for generator cost
 
@@ -534,7 +591,12 @@ def start_or_resume_training_run(
                 scaler_G.step(optim_G)  # Calls: optim_G.step()
             scaler_G.update()
 
-            # With default params - this shows loss every 6,400 images (50 training steps * 128/step)
+            # If profiling enabled; then mark step...
+            if prof:
+                prof.step()
+
+            # Log Metrics to STDOUT or SAVE TO DISK
+            ###################################################################
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
                     f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_X:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
@@ -551,22 +613,19 @@ def start_or_resume_training_run(
                         (epoch * len(dl.dataset)) + (log_i * model_cfg.log_frequency),
                     )
 
-                # Save Losses (and a few other function values) for plotting later
+                # Save Losses (and a few other function values) for plotting...
                 losses["_G"].append(err_G.item())
                 losses["_D"].append(err_D.item())
 
                 log_i += 1
                 writer.flush()
 
-            # Save Sample Imgs Every N Epochs...
+            # Save Sample Imgs Every N Epochs && save the progress on the
+            # fixed latent input vector for plotting
             if (epoch_step % model_cfg.gen_progress_frequency) == 0:
-                # And also save the progress on the fixed latent input vector...
                 with torch.no_grad():
                     fake = net_G(fixed_noise).detach().cpu()
                     img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-
-            if (profile_run) and (torch.__version__ == "1.10.0"):
-                prof.step()
 
         # Save Model && Progress Images Every N Epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
@@ -589,10 +648,5 @@ def start_or_resume_training_run(
                 },
                 f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
             )
-
-    writer.close()
-
-    if (profile_run) and (torch.__version__ == "1.10.0"):
-        prof.stop()
 
     return {"losses": losses, "img_list": img_list}
