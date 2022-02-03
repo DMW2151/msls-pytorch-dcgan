@@ -163,21 +163,11 @@ if __name__ == "__main__":
     if (args.enable_logging is True):
         writer = SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
-    # Spawn multiple iterations
-    proc_args = {
-        "train_cfg": train_cfg,
-        "model_cfg": model_cfg,
-        "n_epochs": args.n_epoch,
-        "st_epoch": args.s_epoch,
-        "prof": None,
-        "writer": None,
-    }
-
     # Run in distributed mode;l but on a single node...
     mp.spawn(
         dcgan.start_or_resume_training_run,
         nprocs=torch.cuda.device_count(),
-        args=(proc_args,),
+        args=(train_cfg, model_cfg, args.n_epoch, args.s_epoch),
     )
 
     # Exit Writer and Profiler

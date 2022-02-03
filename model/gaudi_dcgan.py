@@ -459,7 +459,7 @@ def get_msls_dataloader(rank, train_cfg):
 
 
 def start_or_resume_training_run(
-    rank, train_cfg, model_cfg, n_epochs=64, st_epoch=0, prof=None, writer=None
+    rank, train_cfg, model_cfg, n_epochs, st_epoch, prof=None, writer=None
 ):
     """
     Begin Training Model. That's It.
