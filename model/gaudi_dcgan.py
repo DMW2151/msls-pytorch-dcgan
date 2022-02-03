@@ -463,7 +463,7 @@ def get_msls_profiler(
 ):
 
     prof = torch.profiler.profile(
-        schedule=torch.profiler.schedule(schedule),
+        schedule=torch.profiler.schedule(**schedule),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
             f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
         ),
@@ -485,8 +485,8 @@ def start_or_resume_training_run(
     model_cfg,
     n_epochs,
     st_epoch,
-    enable_prof=None,
-    enable_logging=None,
+    enable_prof=True,
+    enable_logging=True,
 ):
     """
     Begin Training Model. That's It.
@@ -559,6 +559,9 @@ def start_or_resume_training_run(
         # Set Epoch Logging Iteration to 0 - For Plotting!
         log_i = 0
 
+        if enable_prof:
+            prof.start()
+            
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1.1) Update D network: All-real batch;
