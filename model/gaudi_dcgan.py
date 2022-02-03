@@ -568,6 +568,9 @@ def start_or_resume_training_run(
         if enable_prof:
             prof.start()
 
+        if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
+            dl.sampler.set_epoch(epoch)
+
         for epoch_step, dbatch in enumerate(dl, 0):
 
             # (1.1) Update D network: All-real batch;
