@@ -1,10 +1,15 @@
 ---
-title: Model Training Notes - Generative Street Level Imagery on DL1 Instances
+title: Model Training Notes
 author: Dustin Wilson
 date: January 29, 2022
 ---
 
-This post is included along with my [main post](./trained-a-gan.html) to serve as a user guide for those interested in training their own GANs with the code presented here. 
+This post is included along with my [main post](./trained-a-gan.html) to serve as a user guide for those interested in training their own GANs with the code presented [here](https://github.com/DMW2151/msls-pytorch-dcgan). 
+
+## Infrastructure
+
+```bash
+```
 
 ## Data Preparation
 
@@ -27,39 +32,26 @@ pip3 install \
     tensorboard \
     torch_tb_profiler
 
+# Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
  python3 ./model/run_gaudi_dcgan.py \
-    --name 8K80 \
+    --name p3_2xl \
     --data /data/imgs/ \
     --batch 1024 \
     --profile True \
-    --logging True 
-
-# Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
-python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
-    --dataroot /data/images/ \
-    --name collect_vanity_metrics \
-    --s_epoch 0 \
-    --n_epoch 16 \
-    --profile 
-```
-
-Experimental SIMD pillow...
-
-```bash
-pip uninstall pillow
-$ CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
+    --logging True
 ```
 
 In general, If you're just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model [repo](https://github.com/DMW2151/msls-pytorch-dcgan) onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI.
 
-
-## quick profilinf...
+## Miscellaneous, Useful Commands
 
 ```bash
-python -m torch.utils.bottleneck model/run_gaudi_dcgan.py  --dataroot /data/imgs/test/
+    # Quick Model Profiling
+python -m torch.utils.bottleneck model/run_gaudi_dcgan.py  --dataroot /data/imgs/test/ --n_epochs 1
 ```
 
-
-
-## Interpolated Images
-
+```bash
+    # Try out SIMD Pillow...
+pip uninstall pillow &&\
+    CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
+```

@@ -21,12 +21,13 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 
 - [Theory and Background](#Theory-and-Background)
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
-- [AWS System Architecture](#AWS-System-Architecture)
 - [DCGAN Results](#DCGAN-Results)
+- [AWS System Architecture](#AWS-System-Architecture)
 - [Evaluating a First Training run on GPU Instances](#Evaluating-a-First-Training-run-on-GPU-Instances)
 - [Modifications for Training on Gaudi Accelerated Instances](#Modifications-for-Training-on-Gaudi-Accelerated-Instances)
 - [Comparative Performance](#Comparative-Performance)
 - [Appendix 1 - Comparable Instance Selection](#Appendix-1---Comparable-Instance-Selection)
+- [Appendix 2 - PIL Benchmarks](#Appendix-2---PIL-Benchmarks)
 - [Citations](#Citations)
 
 --------
@@ -91,17 +92,17 @@ Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). 
 
 The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.
 
-```bash
-# Training Sample By Metro Area
-| Amman     |  1,811 |     | London    |   5,983 |     | Toronto   |  12,802 |
-| Amsterdam |  7,908 |     | Manila    |   5,378 |     | Trondheim |   9,154 |
-| Austin    | 28,462 |     | Melbourne | 189,945 |     | Kampala   |   2,069 |
-| Bangkok   | 40,125 |     | Moscow    | 171,878 |     | Paris     |   9,503 |
-| Boston    | 14,037 |     | Nairobi   |     887 |     | Phoenix   | 156,477 |
-| Goa       |  5,735 |     | SF        |   4,525 |     | Zurich    |   2,991 |
-| Budapest  | 45,800 |     | Ottawa    | 123,296 |     | Sao Paulo |  54,098 |
-| Helsinki  | 15,228 |     | Tokyo     |  34,836 |     | Total     | 942,928 |
-```
+| MSA       | Count  || MSA       | Count   || MSA       | Count   |
+|:--------- |-------:|:-----:|:---------|--------:|:-----:|:----------|--------:|
+| Amman     |  1,811 |\|| London    |  5,983  |\|| Toronto   |  12,802 |
+| Amsterdam | 7,908  |\|| Manila    | 5,378   |\|| Trondheim | 9,154   |
+| Austin    | 28,462 |\|| Melbourne | 189,945 |\|| Kampala   | 2,069   |
+| Bangkok   | 40,125 |\|| Moscow    | 171,878 |\|| Paris     | 9,503   |
+| Boston    | 14,037 |\|| Nairobi   | 887     |\|| Phoenix   | 156,477 |
+| Goa       | 5,735  |\|| SF        | 4,525   |\|| Zurich    | 2,991   |
+| Budapest  | 45,800 |\|| Ottawa    | 123,296 |\|| Sao Paulo | 54,098  |
+| Helsinki  | 15,228 |\|| Tokyo     | 34,836  |\|| **Total**     | **942,928** |
+Table: Training Sample By Metro Area
 
 Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.
 
@@ -115,6 +116,15 @@ The effect of multi-image sequences was further reduced by applying random trans
     <i><figcaption style="font-size: 12px;" >Sample Transformations - All images are shifted, center-cropped, and then scaled to `3 x 64 x 64`<sup>4</sup> </figcaption></i>
     <figure>
 </center>
+
+--------
+
+### DCGAN Results
+
+- Results
+- Training Progress
+- Loss
+- Model Performance and Evaluation
 
 --------
 
@@ -137,20 +147,9 @@ All infrastructure for this project is hosted on AWS. If you'd like a user-guide
   - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
   - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
 
-Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*).
+Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Regrettably, an EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.
 
-Of course, EFS is slower than NVME EBS volumes, although the data (~45GB) fits comfortably in memory of my training devices, the initial load was a significant bottleneck. An EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.
-
-To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *1200%* speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.
-
---------
-
-### DCGAN Results
-
-- Results
-- Training Progress
-- Loss
-- Model Performance and Evaluation
+To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *2000%* speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.
 
 --------
 
@@ -160,13 +159,13 @@ I started with a PyTorch model running on a GPU (`V100`) before instrumenting it
 
 - **Batch Size** &mdash; This was low-hanging fruit. Independent of the other changes, the right choice of batch size sped up overall execution time by ~80%.
 
-- **Minimize CUDA Copies** &mdash; Training statistics, outputs, labels, etc. were being haphazardly moved to and from the GPU! I can collect and save or display them at the end of the epoch.
+- **Minimize CUDA Copies** &mdash; Training statistics, outputs, labels, etc. were being haphazardly moved to and from the GPU! I can collect and display them at the end of the epoch.
 
 - **Using AMP** &mdash; Automatic Mixed Precision (AMP) allows for model training to run with FP16 values where possible and F32 where needed. This allows for lower memory consumption and faster training time. It also opens the door for me to use Habana's mixed precision [modules](https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi) when I move over to the `DL1` instance.
 
-- **Distributed Data Processing** &mdash; In isolation, distributed data processing doesn't improve the model's training performance, but it does lend towards a more robust training environment. Although this is a problem that uses a moderate of small images, I still wanted to instrument my code to run across multiple GPUs.
+- **Distributed Data Processing** &mdash; In isolation, distributed data processing doesn't improve the model's training performance, but it does lend towards a more robust training environment. Although this is a problem that uses a moderate of small images, I still wanted to instrument my code to run across multiple GPUs (and nodes).
 
-Looking at the first chart below, *PyTorch Profiler - GPU Execution Summary*, it would seem I was quite close to "perfect" GPU utilization. Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn't include the data-loader steps!
+Looking at the first chart below, *PyTorch Profiler - GPU Execution Summary*, it would seem I was quite close to "perfect" GPU utilization. Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn't include the dataloader steps!
 
 |                           |
 |:-------------------------:|
@@ -178,11 +177,13 @@ Looking at the first chart below, *PyTorch Profiler - GPU Execution Summary*, it
 | *Figure 1.2 - Grafana - GPU Utilization Rates* |
 | ![Bad GPU](./images/training/gpu_poor.png) |
 
-At this point things got quite difficult. I tried tweaking the number of workers and the pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a SIMD fork of PIL to increase image processing performance. Unfortunately, none of it made a meaningful difference on the `V100`. I did some research into [GPU profiling](https://pytorch.org/blog/pytorch-profiler-1.9-released/) and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective.
+At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a [SIMD fork of PIL](https://github.com/uploadcare/pillow-simd) to increase image processing performance. Unfortunately, none of it made a meaningful difference on the `V100`. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks (see [Appendix 2](#Appendix-2---PIL-Benchmarks)) to make sense of things.
+
+I did some research into [GPU profiling](https://pytorch.org/blog/pytorch-profiler-1.9-released/) and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective.
 
 > Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. ... As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.
 
-This low GPU utilization was still a bit unsettling, but my Est. Achieved Occupancy was good, so I had to move along. Finally, I did a full "GPU" run on a multi-GPU instance (`p3.8xlarge`, 4 x `V100`) and I could finally move along to training on the Gaudi-accelerated instances.
+This low GPU utilization was still a bit unsettling, but my Est. Achieved Occupancy was good and the standard `pytorch.DataLoader` would stay in the code. Finally, I did a full "GPU" run on a multi-GPU instance (`p3.8xlarge`, 4 x `V100`) and I could  move along to training on the Gaudi-accelerated instances satisfied that I gave the GPU a fair shake.
 
 |                           |
 |:-------------------------:|
@@ -228,6 +229,28 @@ Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-in
 | p3dn.24xlarge |          768 |    96 |    8 | NVIDIA Tesla V100     |           256 |  31.21 |
 | p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 |  32.77 |
 Table: Table A.1.1 - Possible Comparable GPU Instances
+
+### Appendix 2 - PIL Benchmarks
+
+I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of `PIL.open()` calls ([source](https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249), if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.
+
+- **Let's just use a worse GPU!** &mdash; I spun up a `p2.8xlarge` with 8 `K80`s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won't see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity's sake, but the charts below confirm my hypothesis. This was an excellent discovery!
+
+|                           |
+|:-------------------------:|
+| *Figure A2.1.1 - GPU Training - GPU Usage - P2.8xLarge* |
+| ![OK](./images/training/vanity_gpu.png) |
+
+- **Why not profile the disk?** &mdash;  Back on the `p3.2xlarge`, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out `gp3` would have been adequate, but maybe I should have sprung for the `io1` or `io2`. In figure *A2.2.1 - XXXX*, you can see the results of `atop` and `nvidia-smi` during a training run. When the GPU is at low utilization. the disk where `MSLS` is mounted (`/dev/xvdh`) is **working!**.
+
+|                           |
+|:-------------------------:|
+| *Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile - P3.8xLarge* |
+| ![OK](./images/training/disk_saturated.png) |
+
+Thinking about it in retrospect, this all makes sense. We're opening images that are `(3 x 360 x 480)` and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just `(3 x 64 x 64)`.
+
+--------
 
 ### Citations
 

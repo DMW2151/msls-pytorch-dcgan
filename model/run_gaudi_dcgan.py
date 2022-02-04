@@ -16,7 +16,6 @@ import argparse
 
 # Torch Deps
 import torch
-import socket
 import torch.multiprocessing as mp
 
 # DCGAN
