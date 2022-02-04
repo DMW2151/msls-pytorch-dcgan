@@ -27,10 +27,12 @@ pip3 install \
     tensorboard \
     torch_tb_profiler
 
-pip uninstall pillow
-$ CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
-
- python3 ./model/run_gaudi_dcgan.py --name 8K80 --profile True --logging True --data /data/imgs/ --batch 512
+ python3 ./model/run_gaudi_dcgan.py \
+    --name 8K80 \
+    --data /data/imgs/ \
+    --batch 1024 \
+    --profile True \
+    --logging True 
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
 python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
@@ -39,6 +41,13 @@ python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
     --s_epoch 0 \
     --n_epoch 16 \
     --profile 
+```
+
+Experimental SIMD pillow...
+
+```bash
+pip uninstall pillow
+$ CC="cc -mavx2" pip install -U --force-reinstall pillow-simd
 ```
 
 In general, If you're just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model [repo](https://github.com/DMW2151/msls-pytorch-dcgan) onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI.
