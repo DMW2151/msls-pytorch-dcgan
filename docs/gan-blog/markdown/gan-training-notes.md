@@ -34,7 +34,7 @@ pip3 install \
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
  python3 ./model/run_gaudi_dcgan.py \
-    --name p3_2xl \
+    --name p2_8xlarge \
     --data /data/imgs/ \
     --batch 1024 \
     --profile True \

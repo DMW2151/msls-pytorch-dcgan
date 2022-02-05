@@ -92,16 +92,31 @@ Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). 
 
 The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.
 
-| MSA       | Count  || MSA       | Count   || MSA       | Count   |
-|:--------- |-------:|:-----:|:---------|--------:|:-----:|:----------|--------:|
-| Amman     |  1,811 |\|| London    |  5,983  |\|| Toronto   |  12,802 |
-| Amsterdam | 7,908  |\|| Manila    | 5,378   |\|| Trondheim | 9,154   |
-| Austin    | 28,462 |\|| Melbourne | 189,945 |\|| Kampala   | 2,069   |
-| Bangkok   | 40,125 |\|| Moscow    | 171,878 |\|| Paris     | 9,503   |
-| Boston    | 14,037 |\|| Nairobi   | 887     |\|| Phoenix   | 156,477 |
-| Goa       | 5,735  |\|| SF        | 4,525   |\|| Zurich    | 2,991   |
-| Budapest  | 45,800 |\|| Ottawa    | 123,296 |\|| Sao Paulo | 54,098  |
-| Helsinki  | 15,228 |\|| Tokyo     | 34,836  |\|| **Total**     | **942,928** |
+| Metro Area    | % of Sample | Approx. Count |
+|:--------------|:-----------:|----------:|
+| Amman         |       0.14% |     1,702 |
+| Amsterdam     |       1.37% |    16,487 |
+| Austin        |       1.90% |    22,847 |
+| Bangkok       |       3.26% |    39,055 |
+| Boston        |       1.27% |    15,204 |
+| Budapest      |      17.67% |   212,015 |
+| Goa           |       1.11% |    13,307 |
+| Helsinki      |       1.75% |    20,978 |
+| London        |       0.65% |     7,755 |
+| Manila        |       0.53% |     6,416 |
+| Melbourne     |      15.58% |   186,908 |
+| Moscow        |      18.14% |   217,594 |
+| Nairobi       |       0.06% |       725 |
+| Ottawa        |      12.09% |   145,063 |
+| Paris         |       1.62% |    19,416 |
+| Phoenix       |      12.56% |   150,642 |
+| Sao Paulo     |       4.65% |    55,793 |
+| San Fransisco |       0.43% |     5,133 |
+| Tokyo         |       3.49% |    41,845 |
+| Toronto       |       1.27% |    15,176 |
+| Trondheim     |       1.07% |    12,888 |
+| Zurich        |       0.51% |     6,081 |
+| **Total**         |             | **1,199,556** |
 Table: Training Sample By Metro Area
 
 Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.

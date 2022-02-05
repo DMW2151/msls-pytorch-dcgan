@@ -332,7 +332,7 @@ def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
     TODO: Probably not the most efficient use of memory here, could so
     something clever w. (de)serialization, but IMO, this is OK for now...
     """
-
+    if cuda.
     checkpoint = torch.load(path)
 
     # Seed Discriminator
@@ -691,10 +691,10 @@ def start_or_resume_training_run(
             torch.save(
                 {
                     "epoch": epoch,
-                    "D_state_dict": net_D.state_dict(),
-                    "G_state_dict": net_G.state_dict(),
-                    "D_optim": optim_D.state_dict(),
-                    "G_optim": optim_G.state_dict(),
+                    "D_state_dict": net_D.module.state_dict(),
+                    "G_state_dict": net_G.module.state_dict(),
+                    "D_optim": optim_D.module.state_dict(),
+                    "G_optim": optim_G.module.state_dict(),
                     "losses": losses,
                     "img_list": img_list,
                     "noise": fixed_noise,
