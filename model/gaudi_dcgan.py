@@ -142,7 +142,7 @@ class TrainingConfig:
                 optimizer_class=torch.optim.Adam,
                 lr=self.lr,
                 betas=(self.beta1, self.beta2),
-                weight_decay=0.01,
+                weight_decay=0.05,
             )
             return net_D, optim_D
 
