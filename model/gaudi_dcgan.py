@@ -71,7 +71,7 @@ class TrainingConfig:
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
     # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
-    nz: int = 100
+    nz: int = 200
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
     lr: float = 0.0002 # Learning rate for optimizers
