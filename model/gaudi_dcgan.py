@@ -71,7 +71,7 @@ class TrainingConfig:
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
     # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
-    nz: int = 512 # NOTE: TODO: LARGER LATENT INPUT SPACE....
+    nz: int = 256 # NOTE: TODO: LARGER LATENT INPUT SPACE....
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
     lr: float = 0.0002 # Learning rate for optimizers
@@ -664,20 +664,17 @@ def start_or_resume_training_run(
                     losses["_G"].append(err_G.item())
                     losses["_D"].append(err_D.item())
             
-
-            # Save Sample Imgs Every N Epochs && save the progress on the
-            # fixed latent input vector for plotting
-            if (epoch_step % model_cfg.gen_progress_frequency) == 0:
-                with torch.no_grad():
-                    fake = net_G(fixed_noise).detach().cpu()
-                    img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-
         # Save Model && Progress Images Every N Epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
 
             # Ensure the Save Directory Exists
             if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}"):
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
+
+            # Add Epoch End Imgs...
+            with torch.no_grad():
+                fake = net_G(fixed_noise).detach().cpu()
+                img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
             # Save Checkpoint
             if (train_cfg.dev == torch.device(f"cuda:{rank}")):
