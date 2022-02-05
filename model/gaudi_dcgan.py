@@ -185,7 +185,7 @@ class TrainingConfig:
             net_G.parameters(),
             lr=self.lr,
             betas=(self.beta1, self.beta2),
-            weight_decay=0.01,
+            weight_decay=0.05,
         )
 
         return net_G, optim_G
