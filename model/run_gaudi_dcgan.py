@@ -13,6 +13,7 @@
 import os
 
 import argparse
+import socket
 
 # Torch Deps
 import torch
@@ -111,8 +112,8 @@ DEVICE = "cuda" if (torch.cuda.is_available()) else "cpu"
 if dcgan.HABANA_ENABLED:
     DEVICE = "hpu"
 
-## OR: socket.gethostbyname(socket.gethostname())
-os.environ["MASTER_ADDR"] = "localhost"  
+# Assumes Single Node...
+os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
 os.environ["MASTER_PORT"] = "8888"
 
 if __name__ == "__main__":

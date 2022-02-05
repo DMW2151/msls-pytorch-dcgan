@@ -20,7 +20,6 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.utils.tensorboard import SummaryWriter
 
-
 # DCGAN
 from msls_dcgan_utils import MarkHTStep
 
@@ -68,14 +67,14 @@ class TrainingConfig:
     """
 
     dev: torch.device
-    batch_size: int = ( 128 * 8 ) # Batch size during training -> DCGAN: 128
+    batch_size: int = ( 128 * 2 )  # Batch size during training -> DCGAN: 128
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
     # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
     nz: int = 100
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
-    lr: float = ( 0.0002 * 8 ) # Learning rate for optimizers
+    lr: float = 0.0002 * 2  # Learning rate for optimizers
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
     ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
@@ -432,7 +431,7 @@ def get_msls_dataloader(rank, train_cfg):
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 406), (0.229, 0.224, 0.225)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         ),
     )
@@ -451,10 +450,6 @@ def get_msls_dataloader(rank, train_cfg):
         dataloader = habana_dataloader.HabanaDataLoader(**default_loader_params)
 
     else:
-        if (torch.__version__ == "1.5.1"):
-            # This Fails on Sagemaker (or versions 1.5.1...)
-            del default_loader_params["prefetch_factor"]
-
         dataloader = torch.utils.data.DataLoader(**default_loader_params)
 
     return dataloader
@@ -511,9 +506,7 @@ def start_or_resume_training_run(
     )
     """
     if train_cfg.dev == torch.device("cuda"):
-
         train_cfg.dev = torch.device(f"cuda:{rank}")
-
         dist.init_process_group(
             backend="nccl",
             init_method="env://",
@@ -594,7 +587,7 @@ def start_or_resume_training_run(
             with torch.cuda.amp.autocast():
                 output = net_D(real_imgs.detach()).view(-1)
                 err_D_real = criterion(output, label)
-
+            
             # Calculate gradients for D in backward pass
             scaler_D.scale(err_D_real).backward()
             D_X = torch.sigmoid(output).mean().item()
@@ -607,10 +600,10 @@ def start_or_resume_training_run(
             # Calculate the gradients for this batch, accumulated with
             # previous gradients &&\ Compute error of D as sum over the
             # fake and the real batches
-            with amp.autocast():
+            with torch.cuda.amp.autocast():
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
-
+            
             scaler_D.scale(err_D_fake).backward()
             D_G_z1 = torch.sigmoid(output).mean().item()
             err_D = err_D_real + err_D_fake
@@ -633,10 +626,10 @@ def start_or_resume_training_run(
 
             # Forward pass fake batch through Net_D; Calculate G_loss &&
             # Calculate gradients for Net_G
-            with amp.autocast():
+            with torch.cuda.amp.autocast():
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
-
+            
             scaler_G.scale(err_G).backward()
             D_G_z2 = torch.sigmoid(output).mean().item()
 
@@ -691,7 +684,7 @@ def start_or_resume_training_run(
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Save Checkpoint
-            if (train_cfg.dev == torch.device("cuda")) | (train_cfg.dev == torch.device(f"cuda:{rank}")):
+            if (train_cfg.dev == torch.device(f"cuda:{rank}")):
                 dist.barrier()
 
             torch.save(
