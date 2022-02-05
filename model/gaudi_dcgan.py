@@ -312,7 +312,7 @@ class Discriminator(nn.Module):
         return self.main(input)
 
 
-def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
+def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path, cpu_bailout=False):
     """
     Utility function to restart training from a given checkpoint file
     --------
@@ -332,7 +332,10 @@ def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
     TODO: Probably not the most efficient use of memory here, could so
     something clever w. (de)serialization, but IMO, this is OK for now...
     """
-    checkpoint = torch.load(path)
+    if cpu_bailout:
+        checkpoint = torch.load(path, map_location=torch.device('cpu'))
+    else:
+        checkpoint = torch.load(path)
 
     # Seed Discriminator
     net_D.load_state_dict(checkpoint["D_state_dict"])
@@ -350,7 +353,7 @@ def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path):
     )
 
 
-def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
+def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, cpu_bailout=False):
     """
     Generates samples from a model checkpoint saved to disk, writes a few
     sample grids to disk and also returns last to the user
@@ -391,7 +394,7 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16):
 
     path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{as_of_epoch}.pt"
 
-    _, _, _, _ = instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path)
+    _, _, _, _ = instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path, cpu_bailout)
 
     # Use the Generator to create "believable" fake images - You can call a
     # plotting function on this output to visualize the images vs real ones
