@@ -42,7 +42,7 @@ class MarkHTStep(object):
 
 
 class GaussianNoise(object):
-    def __init__(self, mean=0., std=1.):
+    def __init__(self, mean=0., std=0.1):
         self.std = std
         self.mean = mean
         

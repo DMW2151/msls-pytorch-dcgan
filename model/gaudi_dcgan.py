@@ -432,7 +432,7 @@ def get_msls_dataloader(rank, train_cfg):
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                GaussianNoise(0.0, 1.0)
+                GaussianNoise(0.0, 0.1)
             ]
         ),
     )

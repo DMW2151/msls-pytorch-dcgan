@@ -34,7 +34,7 @@ pip3 install \
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
  python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
-    --name p3 \
+    --name p3-w-noise \
     --data /data/imgs/ \
     --batch 512 \
     --profile True \

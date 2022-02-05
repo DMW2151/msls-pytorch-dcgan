@@ -179,6 +179,16 @@ Generator(
 - Training Progress
 - Loss
 - Model Performance and Evaluation
+  
+- Tips and Tricks
+
+  - lr: 0.0002
+  - Z: 256
+  - Noise w. std: 0, 1
+  - batch: 1
+  - Single GPU, Single Node
+  - Weight Decay: 0.05
+
 
 --------
 
