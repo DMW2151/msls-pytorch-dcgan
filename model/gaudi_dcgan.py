@@ -21,7 +21,7 @@ import torchvision.utils as vutils
 from torch.utils.tensorboard import SummaryWriter
 
 # DCGAN
-from msls_dcgan_utils import MarkHTStep
+from msls_dcgan_utils import MarkHTStep, GaussianNoise
 
 if torch.__version__ == "1.10.0":
     import torch.profiler
@@ -71,7 +71,7 @@ class TrainingConfig:
     img_size: int = 64  # Spatial size of training images -> DCGAN: 64
     nc: int = 3  # Number of channels in the training image -> DCGAN: 3
     # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
-    nz: int = 400 # NOTE: TODO: LARGER LATENT INPUT SPACE....
+    nz: int = 512 # NOTE: TODO: LARGER LATENT INPUT SPACE....
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
     lr: float = 0.0002 # Learning rate for optimizers
@@ -432,6 +432,7 @@ def get_msls_dataloader(rank, train_cfg):
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                GaussianNoise(0.0, 1.0)
             ]
         ),
     )
@@ -601,8 +602,8 @@ def start_or_resume_training_run(
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
             
-            scaler_D.scale(err_D_fake).backward()
             D_G_z1 = torch.sigmoid(output).mean().item()
+            scaler_D.scale(err_D_fake).backward()
             err_D = err_D_real + err_D_fake
 
             # NOTE: This assumes we're using a custom Habana optimizer, in
@@ -627,8 +628,8 @@ def start_or_resume_training_run(
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
             
-            scaler_G.scale(err_G).backward()
             D_G_z2 = torch.sigmoid(output).mean().item()
+            scaler_G.scale(err_G).backward()
 
             # Mark Habana Steps => Generator Optim;
             with MarkHTStep(HABANA_ENABLED and HABANA_LAZY):
