@@ -560,9 +560,6 @@ def start_or_resume_training_run(
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs):
 
-        # Set Epoch Logging Iteration to 0 - For Plotting!
-        log_i = 0
-
         if enable_prof:
             prof.start()
 
@@ -658,16 +655,14 @@ def start_or_resume_training_run(
                         writer.add_scalar(
                             metric,
                             val,
-                            (epoch * len(dl.dataset))
-                            + (log_i * model_cfg.log_frequency),
+                            (epoch * len(dl.dataset)) + (epoch_step * len(dl)),
                         )
 
                     # Save Losses (and a few other function values) for plotting...
                     losses["_G"].append(err_G.item())
                     losses["_D"].append(err_D.item())
 
-                    log_i += 1
-                    writer.flush()
+                writer.flush()
 
             # Save Sample Imgs Every N Epochs && save the progress on the
             # fixed latent input vector for plotting
