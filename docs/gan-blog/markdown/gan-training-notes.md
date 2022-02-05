@@ -33,10 +33,10 @@ pip3 install \
     torch_tb_profiler
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
- python3 ./model/run_gaudi_dcgan.py \
-    --name p2_8xlarge \
+ python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
+    --name p3 \
     --data /data/imgs/ \
-    --batch 1024 \
+    --batch 512 \
     --profile True \
     --logging True
 ```

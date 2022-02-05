@@ -74,7 +74,7 @@ class TrainingConfig:
     nz: int = 100
     ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
     ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
-    lr: float = 0.0002 * 2  # Learning rate for optimizers
+    lr: float = 0.0002 # Learning rate for optimizers
     beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
     beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
     ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
@@ -687,11 +687,19 @@ def start_or_resume_training_run(
             if (train_cfg.dev == torch.device(f"cuda:{rank}")):
                 dist.barrier()
 
+            if hasattr(net_D, "module"):
+                state_D = net_D.module.state_dict()
+                state_G = net_G.module.state_dict()
+
+            else: 
+                state_D = net_D.state_dict()
+                state_G = net_G.state_dict()
+
             torch.save(
                 {
                     "epoch": epoch,
-                    "D_state_dict": net_D.module.state_dict(),
-                    "G_state_dict": net_G.module.state_dict(),
+                    "D_state_dict": state_D,
+                    "G_state_dict": state_G,
                     "D_optim": optim_D.state_dict(),
                     "G_optim": optim_G.state_dict(),
                     "losses": losses,
