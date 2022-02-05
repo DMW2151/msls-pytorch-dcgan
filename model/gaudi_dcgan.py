@@ -451,6 +451,10 @@ def get_msls_dataloader(rank, train_cfg):
         dataloader = habana_dataloader.HabanaDataLoader(**default_loader_params)
 
     else:
+        if (torch.__version__ == "1.5.1"):
+            # This Fails on Sagemaker (or versions 1.5.1...)
+            del default_loader_params["prefetch_factor"]
+
         dataloader = torch.utils.data.DataLoader(**default_loader_params)
 
     return dataloader
