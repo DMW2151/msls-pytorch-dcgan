@@ -655,14 +655,14 @@ def start_or_resume_training_run(
                         writer.add_scalar(
                             metric,
                             val,
-                            (epoch * len(dl.dataset)) + (epoch_step * model_cfg.log_frequency),
+                            (epoch * len(dl.dataset)) + (epoch_step * model_cfg.log_frequency * len(dl)),
                         )
+                        writer.flush()
 
                     # Save Losses (and a few other function values) for plotting...
                     losses["_G"].append(err_G.item())
                     losses["_D"].append(err_D.item())
             
-                writer.flush()
 
             # Save Sample Imgs Every N Epochs && save the progress on the
             # fixed latent input vector for plotting
