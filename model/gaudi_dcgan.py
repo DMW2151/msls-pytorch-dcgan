@@ -655,7 +655,7 @@ def start_or_resume_training_run(
                         writer.add_scalar(
                             metric,
                             val,
-                            (epoch * len(dl.dataset)) + (epoch_step * model_cfg.log_frequency * len(dl)),
+                            (epoch * len(dl.dataset)) + (epoch_step * train_cfg.batch_size),
                         )
                         writer.flush()
 
