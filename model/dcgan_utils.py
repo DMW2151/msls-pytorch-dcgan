@@ -129,7 +129,7 @@ class ModelCheckpointConfig:
     log_frequency: int = 50
     gen_progress_frequency: int = 1000
 
-    def get_profiler(self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE):
+    def get_msls_profiler(self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE):
         """Returns a standard PyTorch.profiler"""
 
         return torch.profiler.profile(
