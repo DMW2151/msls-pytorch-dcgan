@@ -142,7 +142,7 @@ class ModelCheckpointConfig:
             profile_memory=True,
         )
 
-    def get_writer(self):
+    def get_msls_writer(self):
         return SummaryWriter(f"{self.model_dir}/{self.model_name}/events")
 
     def make_all_paths(self):
