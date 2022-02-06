@@ -21,18 +21,25 @@ if version.parse(torch.__version__).release >= (1, 10, 0):
     import torch.cuda.amp as amp
 
 
+WORLD_SIZE = torch.cuda.device_count()
+
+
 class GaussianNoise(object):
     """Add Noise to a tensor; reduce tendency for model collapse"""
 
-    def __init__(self, mean=0.0, std=0.1):
+    def __init__(self, mean: float = 0.0, std: float = 0.1):
         self.std = std
         self.mean = mean
 
-    def __call__(self, tensor):
-        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    def __call__(self, t: torch.Tensor) -> torch.Tensor:
+        return t + torch.randn(t.size()) * self.std + self.mean
 
 
-def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
+def get_msls_dataloader(
+    rank: int,
+    train_cfg: utils.TrainingConfig,
+    params: dict = utils.DEFAULT_LOADER_PARAMS,
+) -> torch.utils.data.DataLoader:
     """Returns a PyTorch DataLoader w. special handling for MSLS dataset"""
 
     # Apply transformations tailored for MSLS
@@ -45,9 +52,7 @@ def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
                 GaussianNoise(0.0, 0.1),
-                transforms.Normalize(
-                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-                ),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         ),
     )
@@ -68,14 +73,14 @@ def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
 
 
 def start_or_resume_training_run(
-    rank,
-    train_cfg,
-    model_cfg,
-    n_epochs,
-    st_epoch,
-    enable_prof=True,
-    enable_logging=True,
-):
+    rank: int,
+    train_cfg: utils.TrainingConfig,
+    model_cfg: utils.ModelCheckpointConfig,
+    n_epochs: int,
+    st_epoch: int,
+    enable_prof: bool = True,
+    enable_logging: bool = True,
+) -> dict:
     """
     Start a training run from `START_EPOCH` and go until `NUM_EPOCHS`
     using the parameters given in `train_cfg` and `model_cfg`.
@@ -101,11 +106,8 @@ def start_or_resume_training_run(
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        loc = (
-            f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt",
-        )
         cur_epoch, losses, Z, img_list = utils.restore_model(
-            G, D, opt_G, opt_D, loc
+            G, D, opt_G, opt_D, model_cfg.checkpoint_path(st_epoch)
         )
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
@@ -257,7 +259,7 @@ def start_or_resume_training_run(
                     "img_list": img_list,
                     "noise": Z,
                 },
-                f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
+                model_cfg.checkpoint_path(epoch),
             )
 
     return {"losses": losses, "img_list": img_list}

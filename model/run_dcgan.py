@@ -4,9 +4,18 @@ import argparse
 import os
 import socket
 
-import gaudi_dcgan as dcgan
 import torch
 import torch.multiprocessing as mp
+
+if torch.cuda.is_available():
+    import gpu_dcgan as dcgan
+
+    DEVICE = "cuda"
+else:
+    import gaudi_dcgan as dcgan
+
+    DEVICE = "hpu"
+
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
@@ -97,10 +106,7 @@ parser.add_argument(
     default=1024,
 )
 
-# Set Device to CPU, GPU or **HPU**
-DEVICE = "cuda" if (torch.cuda.is_available()) else "hpu"
-
-# Assumes Single Node...
+# Assumes Single Node w. DDP...
 os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
 os.environ["MASTER_PORT"] = "8888"
 
@@ -117,6 +123,9 @@ if __name__ == "__main__":
         gen_progress_frequency=args.progress_freq,
     )
 
+    # Create Location For Model Outputs
+    model_cfg.make_all_paths()
+
     # Create Training Config && Announce Model Training Situation...
     train_cfg = dcgan.TrainingConfig(
         batch_size=args.batch,
@@ -124,19 +133,13 @@ if __name__ == "__main__":
         data_root=args.dataroot,
     )
 
-    # Create Location For Model Outputs
-    if not os.path.exists(
-        f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
-    ):
-        os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
-
     train_cfg._announce()
 
     # ================================================================
     # Run in distributed mode;l but on a single node...
     mp.spawn(
         dcgan.start_or_resume_training_run,
-        nprocs=torch.cuda.device_count(),
+        nprocs=dcgan.WORLD_SIZE,
         args=(
             train_cfg,
             model_cfg,

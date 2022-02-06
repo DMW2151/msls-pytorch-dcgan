@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import Tuple, Dict
 
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,7 +17,12 @@ DEFAULT_LOADER_PARAMS = {
     "persistent_workers": False,
 }
 
-PROF_SCHEDULE = {"wait": 2, "warmup": 2, "active": 6, "repeat": 4}
+DEFAULT_TORCH_PROFILER_SCHEDULE = {
+    "wait": 2,
+    "warmup": 2,
+    "active": 6,
+    "repeat": 4,
+}
 
 
 @dataclass
@@ -67,16 +74,17 @@ class TrainingConfig:
                 print("device %s:" % i, torch.cuda.get_device_properties(i))
         print("====================")
 
-    def get_network(self, network, device_rank=None):
+    def get_network(
+        self, network: nn.Module, world_size: int = 1, device_rank: int = 0
+    ):
         """Instantiate a Disctiminator Network:"""
 
         # Put model on device(s)
         N = network(self).to(self.dev)
 
-        # If we have multiple devices - Enable DDP...
-        DEVICE_COUNT = (
-            max(torch.cuda.device_count(), torch.cuda.device_count()) > 1
-        )
+        # If we have multiple devices - Enable DDP
+        # TODO: Would be nice to check Num. HPUs here....
+        DEVICE_COUNT = max(torch.cuda.device_count(), world_size) > 0
 
         if (torch.cuda.is_available()) and (DEVICE_COUNT):
             N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
@@ -109,15 +117,19 @@ class ModelCheckpointConfig:
     """
     ModelCheckpointConfig holds the model parameters for writing the model
     artifact + checkpoint data to disk...
+
+    # Save a model checkpoint every N epochs
+    # Print logs to STDOUT every N batches
+    # Save progress images every N batches
     """
 
     model_name: str = "msls_dcgan_001"
     model_dir: str = "/efs/trained_model"
-    save_frequency: int = 1  # Save a model checkpoint every N epochs
-    log_frequency: int = 50  # Print logs to STDOUT every N batches
-    gen_progress_frequency: int = 1000  # Save progress images every N batches
+    save_frequency: int = 1
+    log_frequency: int = 50
+    gen_progress_frequency: int = 1000
 
-    def get_profiler(self, schedule=PROF_SCHEDULE):
+    def get_profiler(self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE):
         """Returns a standard PyTorch.profiler"""
 
         return torch.profiler.profile(
@@ -133,8 +145,20 @@ class ModelCheckpointConfig:
     def get_writer(self):
         return SummaryWriter(f"{self.model_dir}/{self.model_name}/events")
 
+    def make_all_paths(self):
+        trace_path = f"{self.model_dir}/{self.model_name}/events"
+        if not os.path.exists(trace_path):
+            os.makedirs(trace_path)
 
-def weights_init(m):
+    def checkpoint_path(self, checkpoint: int) -> str:
+        expected_path = (
+            f"{self.model_dir}/{self.model_name}/checkpoint_{checkpoint}.pt"
+        )
+        self.make_all_paths(os.path.dirname(expected_path))
+        return expected_path
+
+
+def weights_init(m: nn.Module):
     """
     Custom weights initialization called on net_G and net_D, uses the
     hardcoded values from the DCGAN paper (mean, std) => (0, 0.02)
@@ -150,7 +174,13 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-def generate_fake_samples(n_samples, train_cfg, model_cfg, epoch=16, cpu=False):
+def generate_fake_samples(
+    n_samples: int,
+    train_cfg: TrainingConfig,
+    model_cfg: ModelCheckpointConfig,
+    epoch: int = 16,
+    cpu: bool = True,
+) -> torch.Tensor:
     """
     Generates samples from a model checkpoint saved to disk, writes a few
     sample grids to disk and also returns last to the user
@@ -191,7 +221,14 @@ def generate_fake_samples(n_samples, train_cfg, model_cfg, epoch=16, cpu=False):
     return generated_imgs
 
 
-def restore_model(G, D, opt_G, opt_D, cpu, path):
+def restore_model(
+    G: nn.Module,
+    D: nn.Module,
+    opt_G: torch.optim.AdamW,
+    opt_D: torch.optim.AdamW,
+    cpu: bool,
+    path: str,
+) -> Tuple[int, Dict[str, float], torch.Tensor, torch.Tensor]:
     """
     Utility function to restart training from a given checkpoint file
     --------

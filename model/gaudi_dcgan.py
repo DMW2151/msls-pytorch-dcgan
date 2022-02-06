@@ -10,6 +10,7 @@ import os
 
 # DCGAN
 from gan import Discriminator, Generator
+import dcgan.utils as utils
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -31,6 +32,7 @@ from torch.utils.tensorboard import SummaryWriter
 # Immport Torch Habana && Init Values
 HABANA_ENABLED = 1
 HABANA_LAZY = 1
+WORLD_SIZE = 8
 
 
 os.environ["PT_HPU_LAZY_MODE"] = "1"
@@ -111,16 +113,16 @@ def start_or_resume_training_run(
     )
 
     # Initialize Net and Optimizers
-    net_D, optim_D = train_cfg.get_neywork(gan.Discriminator, device_rank=rank)
-    net_G, optim_G = train_cfg.get_net_G(gan.Generator, device_rank=rank)
+    net_D, optim_D = train_cfg.get_network(Discriminator, device_rank=rank)
+    net_G, optim_G = train_cfg.get_network(Generator, device_rank=rank)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
         cur_epoch, losses, fixed_noise, img_list = utils.restore_model(
-            net_D,
             net_G,
-            optim_D,
+            net_D,
             optim_G,
+            optim_D,
             f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt",
         )
 
@@ -259,12 +261,6 @@ def start_or_resume_training_run(
 
         # Save Model && Progress Images Every N Epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
-
-            # Ensure the Save Directory Exists
-            if not os.path.exists(
-                f"{model_cfg.model_dir}/{model_cfg.model_name}"
-            ):
-                os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Add Epoch End Imgs...
             with torch.no_grad():
