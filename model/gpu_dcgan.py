@@ -59,7 +59,8 @@ def get_msls_dataloader(
 
     # Replace default args w. training config where overlap
     for field in train_cfg.__dataclass_fields__:
-        params[field] = train_cfg.__getattribute__(field)
+        if field in params.keys():
+            params[field] = train_cfg.__getattribute__(field)
 
     # Create a torch.DDPSampler for DDP Loading...
     sampler = torch.utils.data.distributed.DistributedSampler(
