@@ -18,10 +18,13 @@ DEFAULT_LOADER_PARAMS = {
     "batch_size": 256
 }
 
+# NOTE: in `start_or_resume_training_run` we're assuming there are at least
+# as many batches as (wait + (warmup + active)) * repeat
+# See torch docs: 
 DEFAULT_TORCH_PROFILER_SCHEDULE = {
     "wait": 2,
     "warmup": 2,
-    "active": 1,
+    "active": 1, 
     "repeat": 1,
 }
 

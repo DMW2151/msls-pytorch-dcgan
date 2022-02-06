@@ -131,7 +131,7 @@ def start_or_resume_training_run(
     scaler_G = torch.cuda.amp.GradScaler()
 
     # BUG [RESOLVED]: Profiling results can get distorted if this is placed
-    # @ the wrong location, see profiling examples:
+    # @ the wrong location AND the number of batches/epoch is too small
     if enable_prof:
         prof = model_cfg.get_msls_profiler()
         prof.start()
@@ -270,7 +270,8 @@ def start_or_resume_training_run(
                 model_cfg.checkpoint_path(epoch),
             )
 
-        # Stop Profiling!
-        prof.stop() if enable_logging else None
+    # Epoch's over; Stop Profiling!; This explicitly closes the profiler; will fail
+    # if wait, warmup, active, and repeat batches can't fit on the first epoch
+    prof.stop() if enable_logging else None
 
     return {"losses": losses, "img_list": img_list}
