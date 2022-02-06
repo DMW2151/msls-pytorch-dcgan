@@ -39,6 +39,7 @@ def get_msls_dataloader(
     rank: int,
     train_cfg: utils.TrainingConfig,
     params: dict = utils.DEFAULT_LOADER_PARAMS,
+    use_ddp: bool = False
 ) -> torch.utils.data.DataLoader:
     """Returns a PyTorch DataLoader w. special handling for MSLS dataset"""
 
@@ -62,17 +63,25 @@ def get_msls_dataloader(
         if field in params.keys():
             params[field] = train_cfg.__getattribute__(field)
 
+        # Do not move `prefetch_factor` or `persistent_workers` when
+        # trying to plot a chart on Sagemaker (or any other old torch)
+        if version.parse(torch.__version__).release < (1, 8, 0):
+            params.pop("persistent_workers", None)
+            params.pop("prefetch_factor", None)
+            
+
     # Create a torch.DDPSampler for DDP Loading...
-    sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset,
-        num_replicas=torch.cuda.device_count(),
-        rank=rank,
-        shuffle=False,
-    )
+    if use_ddp:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset,
+            num_replicas=torch.cuda.device_count(),
+            rank=rank,
+            shuffle=False,
+        )
+        params["sampler"] = sampler
 
     # Add dataset and sampler to DEFAULT_LOADER_PARAMS...
     params["dataset"] = dataset
-    params["sampler"] = sampler
 
     return torch.utils.data.DataLoader(**params)
 
@@ -119,7 +128,7 @@ def start_or_resume_training_run(
 
         cur_epoch = checkpt["epoch"]
         losses = checkpt["losses"]
-        Z = checkpt["noise"]
+        Z_fixed = checkpt["noise"]
         img_list = checkpt["img_list"]
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
@@ -130,7 +139,7 @@ def start_or_resume_training_run(
         cur_epoch = 0
         img_list = []
         losses = {"_G": [], "_D": []}
-        Z = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
+        Z_fixed = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
@@ -146,7 +155,7 @@ def start_or_resume_training_run(
     if enable_logging:
         writer = model_cfg.get_msls_writer()
 
-    dl = get_msls_dataloader(rank, train_cfg)
+    dl = get_msls_dataloader(rank, train_cfg, use_ddp=True)
 
     # Begin the Training Cycle...
     for epoch in range(cur_epoch, n_epochs):
@@ -249,7 +258,7 @@ def start_or_resume_training_run(
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
 
             with torch.no_grad():
-                generated_images = G(Z).detach().cpu()
+                generated_images = G(Z_fixed).detach().cpu()
                 img_list.append(
                     vutils.make_grid(
                         generated_images, padding=2, normalize=True
