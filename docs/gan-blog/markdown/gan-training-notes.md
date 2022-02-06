@@ -26,7 +26,13 @@ curl -k -XGET ${A_SIGNED_DOWNLOAD_URL} --output /data/msls_${BATCH_NUM}.zip &&\
     sudo unzip -qq /data/msls_${BATCH_NUM}.zip -d /data/imgs
 ```
 
-## Model Training - Habana Instance
+## Model Training
+
+I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I activated `pytorch_p38`, installed a few additional dependencies, and let my model train for a few hours.
+
+### Training on a DL1 - Deep Learning Base / Habana Deep Learning AMI 
+
+These instances have the habana drivers pre-installed, the only additional level of complication is running the correct docker container on top of the machine.
 
 ```bash
 ## Copy to good drive - 10 min?
@@ -43,7 +49,7 @@ docker run -ti --runtime=habana \
     --ipc=host \
     vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585
 
-
+## Once Attached to Container Instance
 pip3 install \
     tensorboard \
     torch_tb_profiler
@@ -59,7 +65,6 @@ pip3 install \
 
 ## Model Training - GPU Instance
 
-I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I activated `pytorch_p38`, installed a few additional dependencies, and let my model train for a few hours.
 
 ```bash
     source activate pytorch_p38
@@ -70,7 +75,7 @@ pip3 install \
     torch_tb_profiler
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
- python3 ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
+ python3 ~/msls-pytorch-dcgan/model/run_dcgan.py \
     --name p3-w-noise \
     --data /data/imgs/ \
     --batch 512 \

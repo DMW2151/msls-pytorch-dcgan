@@ -1,4 +1,4 @@
-import torch.mn as nn
+import torch.nn as nn
 
 
 class Generator(nn.Module):
