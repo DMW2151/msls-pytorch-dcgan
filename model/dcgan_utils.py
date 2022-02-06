@@ -21,8 +21,8 @@ DEFAULT_LOADER_PARAMS = {
 DEFAULT_TORCH_PROFILER_SCHEDULE = {
     "wait": 2,
     "warmup": 2,
-    "active": 6,
-    "repeat": 4,
+    "active": 1,
+    "repeat": 1,
 }
 
 

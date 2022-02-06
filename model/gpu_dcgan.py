@@ -130,6 +130,8 @@ def start_or_resume_training_run(
     scaler_D = torch.cuda.amp.GradScaler()
     scaler_G = torch.cuda.amp.GradScaler()
 
+    # BUG [RESOLVED]: Profiling results can get distorted if this is placed
+    # @ the wrong location, see profiling examples:
     if enable_prof:
         prof = model_cfg.get_msls_profiler()
         prof.start()
