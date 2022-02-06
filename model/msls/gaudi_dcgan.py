@@ -49,7 +49,7 @@ def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
     # See: https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html
 
     # transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)), ## NOT SUPPORTED w, AEON
-    # GaussianNoise(0.0, 0.1),
+    # GaussianNoise(0.0, 0.05),
 
     dataset = torchvision.datasets.ImageFolder(
         root=train_cfg.data_root,

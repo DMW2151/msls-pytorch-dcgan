@@ -26,7 +26,7 @@ WORLD_SIZE = torch.cuda.device_count()
 class GaussianNoise(object):
     """Add Noise to a tensor; reduce tendency for model collapse"""
 
-    def __init__(self, mean: float = 0.0, std: float = 0.1):
+    def __init__(self, mean: float = 0.0, std: float = 0.05):
         self.std = std
         self.mean = mean
 
@@ -38,7 +38,7 @@ def get_msls_dataloader(
     rank: int,
     train_cfg: utils.TrainingConfig,
     params: dict = utils.DEFAULT_LOADER_PARAMS,
-    use_ddp: bool = False
+    use_ddp: bool = False,
 ) -> torch.utils.data.DataLoader:
     """Returns a PyTorch DataLoader w. special handling for MSLS dataset"""
 
@@ -51,7 +51,7 @@ def get_msls_dataloader(
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                GaussianNoise(0.0, 0.1),
+                GaussianNoise(0.0, 0.05),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         ),
@@ -67,7 +67,6 @@ def get_msls_dataloader(
         if version.parse(torch.__version__).release < (1, 8, 0):
             params.pop("persistent_workers", None)
             params.pop("prefetch_factor", None)
-            
 
     # Create a torch.DDPSampler for DDP Loading...
     if use_ddp:
@@ -259,7 +258,7 @@ def start_or_resume_training_run(
             with torch.no_grad():
                 generated_images = G(Z_fixed).detach().cpu()
                 img_list.append(generated_images)
-                    
+
             # Save Checkpoint - block if running DDP
             if train_cfg.dev == torch.device(f"cuda:{rank}"):
                 dist.barrier()

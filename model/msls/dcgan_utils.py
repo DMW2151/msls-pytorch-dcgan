@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, Dict
+import collections
 
 import os
 import torch
@@ -182,56 +182,23 @@ def weights_init(m: nn.Module):
         nn.init.constant_(m.bias.data, 0)
 
 
-def generate_fake_samples(
-    n_samples: int,
-    train_cfg: TrainingConfig,
-    model_cfg: ModelCheckpointConfig,
-    epoch: int = 16,
-    cpu: bool = True,
-) -> torch.Tensor:
-    """
-    Generates samples from a model checkpoint saved to disk, writes a few
-    sample grids to disk and also returns last to the user
-
-    Use the Generator to create "believable" fake images - You can call a
-    plotting function on this output to visualize the images vs real ones
-
-    Ideally a Generator Net can use a CPU to (slowly) generate samples,
-    this confirms it, we can run the net through via CPU for "inference"
-    --------
-    Args:
-        - n_samples - int - Number of samples to generate
-        - train_cfg - TrainingConfig - Used to initialize the Generator model
-        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model
-            checkpoint from disk
-        - as_of_epoch - int - Epoch to generate samples as of - will fail
-            if no model checkpoint is available
-    """
-
-    # Generate Noise - Latent Vector for the Model...
-    Z = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
-
-    # Initialize empty models && initialize from `as_of_epoch`
-    # Device rank constant because we do inference from a single machine...
-    D, opt_D = train_cfg.get_network(Discriminator, device_rank=0)
-    G, opt_G = train_cfg.get_network(Generator, device_rank=0)
-
-    checkpoint = get_checkpoint(
-        path=f"{model_cfg.root}/{model_cfg.name}/checkpoint_{EPOCH}.pt",
-        cpu=True,
-    )
-
-    # To generate new samples; we do not need the loss figures
-    # just the state dicts...
-    restore_model(checkpoint, G, D, opt_G, opt_D)
-
-    generated_imgs = G(Z).detach().cpu()
-    return generated_imgs
-
-
 def get_checkpoint(path: str, cpu: bool) -> dict:
     dev = "cuda" if (torch.cuda.is_available()) else "cpu"
     return torch.load(path, map_location=torch.device(dev))
+
+
+def restore_G_for_inference(checkpoint: dict, G: nn.Module):
+    gsd = checkpoint["G_state_dict"]
+    mutated_gsd = collections.OrderedDict()
+
+    for k, v in gsd.items():
+        if "module." in k:
+            inference_k = k.replace("module.", "")
+            mutated_gsd[inference_k] = v
+        else:
+            mutated_gsd[k] = v
+
+    G.load_state_dict(mutated_gsd)
 
 
 def restore_model(
