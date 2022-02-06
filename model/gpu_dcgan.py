@@ -130,14 +130,14 @@ def start_or_resume_training_run(
     scaler_D = torch.cuda.amp.GradScaler()
     scaler_G = torch.cuda.amp.GradScaler()
 
-    dl = get_msls_dataloader(rank, train_cfg)
-
     if enable_prof:
         prof = model_cfg.get_msls_profiler()
         prof.start()
 
     if enable_logging:
         writer = model_cfg.get_msls_writer()
+
+    dl = get_msls_dataloader(rank, train_cfg)
 
     # Begin the Training Cycle...
     for epoch in range(cur_epoch, n_epochs):
@@ -267,5 +267,8 @@ def start_or_resume_training_run(
                 },
                 model_cfg.checkpoint_path(epoch),
             )
+
+        # Stop Profiling!
+        prof.stop() if enable_logging else None
 
     return {"losses": losses, "img_list": img_list}
