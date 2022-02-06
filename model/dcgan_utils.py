@@ -10,7 +10,7 @@ from gan import Generator, Discriminator
 
 DEFAULT_LOADER_PARAMS = {
     "shuffle": False,
-    "num_workers": 8,
+    "num_workers": min(8, os.cpu_count() // 2),
     "pin_memory": True,
     "timeout": 0,
     "prefetch_factor": 2,
