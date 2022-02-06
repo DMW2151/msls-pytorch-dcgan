@@ -26,8 +26,9 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 - [Evaluating a First Training run on GPU Instances](#Evaluating-a-First-Training-run-on-GPU-Instances)
 - [Modifications for Training on Gaudi Accelerated Instances](#Modifications-for-Training-on-Gaudi-Accelerated-Instances)
 - [Comparative Performance](#Comparative-Performance)
-- [Appendix 1 - Comparable Instance Selection](#Appendix-1---Comparable-Instance-Selection)
-- [Appendix 2 - PIL Benchmarks](#Appendix-2---PIL-Benchmarks)
+- [Appendix 1 - Modeling Choices](#Appendix-1---Modeling-Choices)
+- [Appendix 2 - Comparable Instance Selection](#Appendix-2---Comparable-Instance-Selection)
+- [Appendix 3 - PIL Benchmarks](#Appendix-3---PIL-Benchmarks)
 - [Citations](#Citations)
 
 --------
@@ -81,12 +82,15 @@ At a low-level, it's difficult to describe all of the internal consequences of u
 
 ### Mapillary Street Level Imagery Data
 
+
 <center>
     <figure>
     <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/translation/train_samples_eu.png">
     <i><figcaption style="font-size: 12px;" >Training Samples From MSLS - Cropped and Transformed</figcaption></i>
     <figure>
 </center>
+
+
 
 Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The model presented here was trained on a sample of ~1.2M images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.
 
@@ -132,62 +136,10 @@ The effect of multi-image sequences was reduced by applying random transformatio
 
 ### DCGAN Results
 
-- Model
-
-```bash
-Discriminator(
-  (main): Sequential(
-    (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (1): LeakyReLU(negative_slope=0.2, inplace=True)
-    (2): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (4): LeakyReLU(negative_slope=0.2, inplace=True)
-    (5): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (6): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (7): LeakyReLU(negative_slope=0.2, inplace=True)
-    (8): Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (9): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (10): LeakyReLU(negative_slope=0.2, inplace=True)
-    (11): Conv2d(512, 1, kernel_size=(4, 4), stride=(1, 1), bias=False)
-  )
-)
-```
-
-```bash
-Generator(
-  (main): Sequential(
-    (0): ConvTranspose2d(100, 512, kernel_size=(4, 4), stride=(1, 1), bias=False)
-    (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (2): ReLU(inplace=True)
-    (3): ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (4): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (5): ReLU(inplace=True)
-    (6): ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (7): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (8): ReLU(inplace=True)
-    (9): ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (10): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (11): ReLU(inplace=True)
-    (12): ConvTranspose2d(64, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (13): Tanh()
-  )
-)
-```
-
-
 - Results
 - Training Progress
 - Loss
 - Model Performance and Evaluation
-  
-- Tips and Tricks
-
-  - lr: 0.0002
-  - Z: 256
-  - Noise w. std: 0, 1
-  - batch: 1
-  - Single GPU, Single Node
-  - Weight Decay: 0.05
 
 
 --------
@@ -247,12 +199,7 @@ I did some research into [GPU profiling](https://pytorch.org/blog/pytorch-profil
 
 > Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. ... As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.
 
-This low GPU utilization was still a bit unsettling, but my Est. Achieved Occupancy was good and the standard `pytorch.DataLoader` would stay in the code. Finally, I did a full "GPU" run on a multi-GPU instance (`p3.8xlarge`, 4 x `V100`) and I could  move along to training on the Gaudi-accelerated instances satisfied that I gave the GPU a fair shake.
-
-|                           |
-|:-------------------------:|
-| *Figure 1.3 - GPU Training - PyTorch Profile - P3.8xLarge* |
-| ![OK](./images/training/p3_8xlarge_profile.png) |
+This low GPU utilization was still a bit unsettling, but my Est. Achieved Occupancy was good and the standard `pytorch.DataLoader` would stay in the code. Finally, I did a full "GPU" run on a multi-GPU instance (`p3.8xlarge`, 4 x `V100`) and I could  move along to training on the Gaudi-accelerated instances confident that I gave the GPU a fair shot.
 
 --------
 
@@ -270,11 +217,70 @@ I started with a standard PyTorch model running on the GPU before instrumenting 
 
 ### Comparative Performance
 
-- Hardware and Cost-To-Train
+|           Model Run           |  Instance  | Average Throughput (Imgs/Hr) |  Rate ($) | Throughput / $ (Est.) |   Spot Rate ($)  | Spot Throughput / $  (Est.) |
+|:------------------------------|:----------:|-----------------------------:|----------:|-----------------------:|------------:|-----------------------:|
+| Naive-Params-Multi-GPU        | p2.8xlarge |                    7,780,000 |     $7.20 |              1,080,556 |       $2.16 |              3,601,852 |
+| Naive-Params-Single-GPU       | p3.2xlarge |                    5,830,000 |     $3.06 |              1,905,229 |       $0.92 |              6,336,957 |
+| Safe-Params-w-Noise-Batch-512 | p3.2xlarge |                    5,020,000 |     $3.06 |              1,640,523 |       $0.92 |              5,456,522 |
 
 --------
 
-### Appendix 1 - Comparable Instance Selection
+### Appendix 1 - Modeling Choices
+
+DCGAN is unstable in comparison to modern generative models. After a few test runs, It became clear that the default values suggested in the paper may not be ideal for my use-case or hardware. The most common failure mode I observed involved was `D` learning the difference between test and real images too quickly; some property of fake images that made them easy to identify, and that left `G` to make trivial progress in generating better images over time. I didn't have the time or resources to do a full hyper-parameter tuning, so I used a few ~~tricks~~ heuristics suggested [here](https://github.com/pytorch/examples/issues/70) and [here](https://github.com/soumith/dcgan.torch/issues/2#issuecomment-164862299) to temper this tendency towards model collapse. I ran ~10 short test runs and treated that as a pseudo grid search. Of the variations I tried the following set of values gave me (anecdotally) the best results on a `P3.2xlarge` (1 x `V100`).
+
+- **Learning Rate** &mdash; 0.0002
+- **Latent Vector Size** &mdash; 256
+- **Additional Noise Layer in Transformations**: (0, 0.2)
+- **Batch Size** &mdash; 512
+- **Adam Optimizer w. Weight Decay:** 0.05
+
+The most transformative of these changes was the addition of an extra noise layer in the dataloader, setting this value high does produce grainy results, but it was an effective remedy against the generator collapsing. There is support for this method in [literature](https://www.inference.vc/instance-noise-a-trick-for-stabilising-gan-training/)<sup>5</sup> dating back to at least 2016.
+
+All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability. Using a more modern model architecture, I may have been able to get away with default parameters. Both networks' architecture (as presented in the DCGAN paper) is show below. I would advise leaving this unchanged (except for maybe the size of the latent vector, `Z` passed to the generator).
+
+```bash
+Discriminator(
+  (main): Sequential(
+    (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (1): LeakyReLU(negative_slope=0.2, inplace=True)
+    (2): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (4): LeakyReLU(negative_slope=0.2, inplace=True)
+    (5): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (6): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): LeakyReLU(negative_slope=0.2, inplace=True)
+    (8): Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (9): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (10): LeakyReLU(negative_slope=0.2, inplace=True)
+    (11): Conv2d(512, 1, kernel_size=(4, 4), stride=(1, 1), bias=False)
+    (12): # Sigmoid() ## NOTE: We Removed The Sigmoid Here Because of Our Change from BCELoss to BCEwithLogitLoss
+  )
+)
+```
+
+```bash
+Generator(
+  (main): Sequential(
+    (0): ConvTranspose2d(100, 512, kernel_size=(4, 4), stride=(1, 1), bias=False)
+    (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+    (6): ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (7): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (8): ReLU(inplace=True)
+    (9): ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (10): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): ReLU(inplace=True)
+    (12): ConvTranspose2d(64, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (13): Tanh()
+  )
+)
+```
+
+### Appendix 2 - Comparable Instance Selection
 
 Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-instances`, I aggregated data for all EC2 instances available in `us-east-1` with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. `G3` instances with Tesla `M60`s) to top-of-the line training instances (e.g. `P4` instances with `A100`s). I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100`. Although `g4dn.12xlarge`(`T4`) and `p2.8xlarge` (`K80`) instances are priced well relative to their performance, I elected to only run a full test on the `p3.8xlarge`.
 
@@ -294,22 +300,22 @@ Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-in
 | p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 |  32.77 |
 Table: Table A.1.1 - Possible Comparable GPU Instances
 
-### Appendix 2 - PIL Benchmarks
+### Appendix 3 - PIL Benchmarks
 
-I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of `PIL.open()` calls ([source](https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249), if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.
+I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of `PIL.open()` calls ([source](https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249)), if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.
 
-- **Let's just use a worse GPU!** &mdash; I spun up a `p2.8xlarge` with 8 `K80`s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won't see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity's sake, but the charts below confirm my hypothesis. This was an excellent discovery!
+- **Let's just use a worse GPU!** &mdash; I spun up a `p2.8xlarge` with `K80`s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won't see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity's sake, but the charts below confirm my hypothesis. This was an excellent discovery!
 
 |                           |
 |:-------------------------:|
 | *Figure A2.1.1 - GPU Training - GPU Usage - P2.8xLarge* |
 | ![OK](./images/training/vanity_gpu.png) |
 
-- **Why not profile the disk?** &mdash;  Back on the `p3.2xlarge`, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out `gp3` would have been adequate, but maybe I should have sprung for the `io1` or `io2`. In figure *A2.2.1 - XXXX*, you can see the results of `atop` and `nvidia-smi` during a training run. When the GPU is at low utilization. the disk where `MSLS` is mounted (`/dev/xvdh`) is **working!**.
+- **Why not profile the disk?** &mdash;  Back on the `p3.2xlarge`, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out `gp3` would have been adequate, but maybe I should have sprung for the `io1` or `io2`. In *Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile* , you can see the results of `atop` and `nvidia-smi` during a training run. When the GPU is at low utilization. the disk where `MSLS` is mounted (`/dev/xvdh`) is **working!**.
 
 |                           |
 |:-------------------------:|
-| *Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile - P3.8xLarge* |
+| *Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile* |
 | ![OK](./images/training/disk_saturated.png) |
 
 Thinking about it in retrospect, this all makes sense. We're opening images that are `(3 x 360 x 480)` and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just `(3 x 64 x 64)`.
@@ -325,3 +331,6 @@ Thinking about it in retrospect, this all makes sense. We're opening images that
 **<sup>3</sup>** *F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020*
 
 **<sup>4</sup>** *File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&oldid=457344851* 
+
+
+**<sup>5</sup>** *Sønderby, Casper Kaae, et al. "Amortised map inference for image super-resolution." arXiv preprint arXiv:1610.04490 (2016).*

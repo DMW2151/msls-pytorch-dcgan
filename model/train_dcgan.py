@@ -1,26 +1,12 @@
-# USE:
-
 # Command line wrapper around gaudi_dcgan.py
-# Sample Usage on Command Line - See Notes on Running on DL1
-#
-# python3 run_gaudi_dcgan.py \
-#   --dataroot "/data/imgs/"\
-#    --name msls_test_001 \
-#   --s_epoch 0 \
-#   --n_epoch 16
-
-# General Deps
-import os
 
 import argparse
+import os
 import socket
 
-# Torch Deps
+import gaudi_dcgan as dcgan
 import torch
 import torch.multiprocessing as mp
-
-# DCGAN
-import gaudi_dcgan as dcgan
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
@@ -64,7 +50,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-ne", "--n_epoch", type=int, help="Train model through N epochs", default=16
+    "-ne",
+    "--n_epoch",
+    type=int,
+    help="Train model through N epochs",
+    default=16,
 )
 
 parser.add_argument(
@@ -108,9 +98,7 @@ parser.add_argument(
 )
 
 # Set Device to CPU, GPU or **HPU**
-DEVICE = "cuda" if (torch.cuda.is_available()) else "cpu"
-if dcgan.HABANA_ENABLED:
-    DEVICE = "hpu"
+DEVICE = "cuda" if (torch.cuda.is_available()) else "hpu"
 
 # Assumes Single Node...
 os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
@@ -137,7 +125,9 @@ if __name__ == "__main__":
     )
 
     # Create Location For Model Outputs
-    if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}/events"):
+    if not os.path.exists(
+        f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
+    ):
         os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
 
     train_cfg._announce()
@@ -155,5 +145,5 @@ if __name__ == "__main__":
             args.profile,
             args.logging,
         ),
-        join=True
+        join=True,
     )

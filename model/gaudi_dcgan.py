@@ -7,415 +7,37 @@
 # General
 import datetime
 import os
-from dataclasses import dataclass
 
-# Torch
+# DCGAN
+from gan import Discriminator, Generator
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
+import torch.profiler
 import torch.utils.data
-import torchvision.datasets as dset
+import torchvision
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+
+from habana_frameworks.torch.utils.library_loader import load_habana_module
+
+load_habana_module()
+from habana_dataloader import HabanaDataLoader
+from habana_frameworks.torch.core import mark_step
+from habana_frameworks.torch.hpex.optimizers import FusedAdamW
 from torch.utils.tensorboard import SummaryWriter
 
-# DCGAN
-from msls_dcgan_utils import MarkHTStep, GaussianNoise
+# Immport Torch Habana && Init Values
+HABANA_ENABLED = 1
+HABANA_LAZY = 1
 
-if torch.__version__ == "1.10.0":
-    import torch.profiler
-    from torch.profiler import ProfilerActivity
-    import torch.cuda.amp as amp
 
-# Init Habana Values
-HABANA_ENABLED = 0
-HABANA_LAZY = 0
+os.environ["PT_HPU_LAZY_MODE"] = "1"
+os.environ["GRAPH_VISUALIZATION"] = "True"
 
-# Habana Imports - will fail if not on a Habana DL AMI instance
-try:
-    from habana_frameworks.torch.utils.library_loader import load_habana_module
-    from habana_frameworks.torch.hpex.optimizers import FusedAdamW
-    import habana_frameworks.torch.core as htcore
-    import habana_dataloader
 
-    load_habana_module()
-
-    HABANA_ENABLED = 1
-    HABANA_LAZY = 1
-    os.environ["PT_HPU_LAZY_MODE"] = "1"
-    os.environ["GRAPH_VISUALIZATION"] = True
-
-except ImportError:
-    # Failed imports, will not use HPU drivers/shared libs
-    pass
-
-
-@dataclass
-class TrainingConfig:
-    """
-    TrainingConfig holds the training parameters for both the generator
-    and discriminator networks.
-
-    --------
-    Example - Increase learning rate from default (0.0002) -> (0.0004) and
-    batch size from default (128) -> (512).
-
-    train_cfg = dcgan.TrainingConfig(
-        lr=0.0004, batch_size=512
-    )
-    """
-
-    dev: torch.device
-    batch_size: int = ( 128 * 2 )  # Batch size during training -> DCGAN: 128
-    img_size: int = 64  # Spatial size of training images -> DCGAN: 64
-    nc: int = 3  # Number of channels in the training image -> DCGAN: 3
-    # Size of Z vector (i.e. size of generator input) -> DCGAN: 100
-    nz: int = 256 # NOTE: TODO: LARGER LATENT INPUT SPACE....
-    ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
-    ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
-    lr: float = 0.0002 # Learning rate for optimizers
-    beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
-    beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
-    ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
-    data_root: str = "/data/images/train_val"
-
-    def _announce(self):
-        """Show Pytorch and CUDA attributes before Training"""
-
-        print("====================")
-        print(self.dev.__repr__())
-        print(f"Pytorch Version: {torch.__version__}")
-
-        if torch.cuda.device_count():
-            print(f"Running with {torch.cuda.device_count()} GPUs Available.")
-            print(f"CUDA Available: {torch.cuda.is_available()}")
-            for i in range(torch.cuda.device_count()):
-                print("device %s:" % i, torch.cuda.get_device_properties(i))
-
-            try:
-                print(torch._C._cuda_getCompiledVersion(), "cuda compiled version")
-                print(torch._C._nccl_version(), "nccl")
-            except AttributeError:
-                pass
-
-        print("====================")
-
-    def get_net_D(self, gpu_id=None):
-        """
-        Instantiate a Disctiminator Network:
-
-        -   Note on Adam vs AdamW: Uses AdamW over Adam. In general, DCGAN and
-            Adam are both
-            susceptible to over-fitting on early samples. AdamW adds a
-            weight decay parameter
-            (default=0.01) on the optimizer for each model step
-
-        -   Note on FusedAdamW vs AdamW: AdamW loops over parameters and
-            launches kernels for each parameter when running the optimizer.
-            This
-            is CPU bound and can be a bottleneck
-            on performance. FusedAdamW can batch the elementwise updates
-            applied to all the
-            model’s parameters into one or a few kernel launches.
-
-        See: Fixing Weight Decay Regularization in Adam
-        # https://arxiv.org/abs/1711.05101
-
-        The Habana FusedAdamW optimizer uses a custom Habana implementation of
-        `apex.optimizers.FusedAdam`,
-        on Habana machines, enable this, otherwise use regular `AdamW`.
-        """
-
-        # Instantiate Discriminator Net, # Put model on device(s),
-        # Enable Data Parallelism across all available GPUs
-        net_D = Discriminator(self).to(self.dev)
-
-        if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
-            net_D = nn.parallel.DistributedDataParallel(net_D, device_ids=[gpu_id])
-
-        if HABANA_ENABLED:
-            # Will fail if not on a Habana DL AMI Instance; See Note
-            # on FusedAdamW
-            optim_D = FusedAdamW(
-                net_D.parameters(),
-                optimizer_class=torch.optim.Adam,
-                lr=self.lr,
-                betas=(self.beta1, self.beta2),
-                weight_decay=0.05,
-            )
-            return net_D, optim_D
-
-        # If not on Habana, then use Adam optimizer...
-        optim_D = optim.AdamW(
-            net_D.parameters(),
-            lr=self.lr,
-            betas=(self.beta1, self.beta2),
-            weight_decay=0.05,
-        )
-        return net_D, optim_D
-
-    def get_net_G(self, gpu_id=None):
-        """
-        Instantiate a Generator Network - See notes on `get_net_D` re specific
-        optimizer choices.
-        """
-
-        # Enable Data Parallelism across all available GPUs && Put model on
-        # device(s)
-        net_G = Generator(self).to(self.dev)
-
-        if (torch.cuda.is_available()) and (torch.cuda.device_count() > 1):
-            net_G = nn.parallel.DistributedDataParallel(net_G, device_ids=[gpu_id])
-
-        if HABANA_ENABLED:
-            # Will fail if not on a Habana DL AMI Instance; See Note on
-            # FusedAdamW
-            optim_G = FusedAdamW(
-                net_G.parameters(),
-                optimizer_class=torch.optim.Adam,
-                lr=self.lr,
-                betas=(self.beta1, self.beta2),
-            )
-
-            return net_G, optim_G
-
-        # If not on Habana, then use Adam optimizer...
-        optim_G = optim.AdamW(
-            net_G.parameters(),
-            lr=self.lr,
-            betas=(self.beta1, self.beta2),
-            weight_decay=0.05,
-        )
-
-        return net_G, optim_G
-
-
-@dataclass
-class ModelCheckpointConfig:
-    """
-    ModelCheckpointConfig holds the model save parameters for both the
-    generator and discriminator networks.s
-    --------
-    Example: Rename the model and decrease save frequency from every epoch (1)
-    to every fourth epoch (4)
-
-    model_cfg = dcgan.ModelCheckpointConfig(
-        model_name=msls_dcgan_habana_001,
-        save_frequency=4
-    )
-    """
-
-    model_name: str = "msls_dcgan_001"  # Name of the Model
-    # Directory to save the model checkpoints to; Requires `/efs/trained_model`
-    # has permissions s.t. ${USER} can write.
-    model_dir: str = "/efs/trained_model"
-    save_frequency: int = 1  # Save a model checkpoint every N epochs
-    log_frequency: int = 50  # Print logs to STDOUT every N batches
-    gen_progress_frequency: int = 1000  # Save progress images every N batches
-
-
-def weights_init(m):
-    """
-    Custom weights initialization called on net_G and net_D, uses the
-    hardcoded values from the DCGAN paper (mean, std) => (0, 0.02)
-    """
-
-    classname = m.__class__.__name__
-
-    if classname.find("Conv") != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-
-    elif classname.find("BatchNorm") != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-
-
-# Generator Code
-class Generator(nn.Module):
-    """
-    Generator Net. The generator is designed to map the latent space vector (z)
-    to believable data. Since our data are images, this means transforming (by
-    default) a [1 x 100] latent vector to a 3 x 64 x 64 RGB image.
-
-    Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH
-    layer to transform the output data to (-1, 1) for each channel (color)...
-    """
-
-    def __init__(self, cfg):
-        super(Generator, self).__init__()
-        self.ngpu = cfg.ngpu
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(cfg.nz, cfg.ngf * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(cfg.ngf * 8),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(cfg.ngf * 8, cfg.ngf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ngf * 4),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(cfg.ngf * 4, cfg.ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ngf * 2),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(cfg.ngf * 2, cfg.ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ngf),
-            nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(cfg.ngf, cfg.nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-            # state size. (nc) x 64 x 64
-        )
-
-    def forward(self, input):
-        return self.main(input)
-
-
-class Discriminator(nn.Module):
-    """
-    Discriminator Net. Discriminator is a classifier network that (by default)
-    takes a 3 x 64 x 64 image as input and outputs a probability that the image
-    is from the set of real images
-
-    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu)
-    layers, and then a sigmoid layer to transform the output data to (0, 1).
-    No different from Logit ;)
-    """
-
-    def __init__(self, cfg):
-        super(Discriminator, self).__init__()
-        self.ngpu = cfg.ngpu
-        self.main = nn.Sequential(
-            # input is (nc) x 64 x 64
-            nn.Conv2d(cfg.nc, cfg.ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            nn.Conv2d(cfg.ndf, cfg.ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(cfg.ndf * 2, cfg.ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(cfg.ndf * 4, cfg.ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(cfg.ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(cfg.ndf * 8, 1, 4, 1, 0, bias=False),
-            # nn.sigmoid(),
-        )
-
-    def forward(self, input):
-        return self.main(input)
-
-
-def instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path, cpu_bailout=False):
-    """
-    Utility function to restart training from a given checkpoint file
-    --------
-    Args:
-        net_D, net_G - nn.Module - The Generator and Discriminator networks
-
-        optim_D, optim_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW)
-        Optimizer function for Discriminator and Generator Nets
-
-        path - str Path to file to open...
-    --------
-    Example:
-    cur_epoch, losses, fixed_noise, img_list = instantiate_from_checkpoint(
-            net_D, net_G, optim_D, optim_G, path
-    )
-
-    TODO: Probably not the most efficient use of memory here, could so
-    something clever w. (de)serialization, but IMO, this is OK for now...
-    """
-    if cpu_bailout:
-        checkpoint = torch.load(path, map_location=torch.device('cpu'))
-    else:
-        checkpoint = torch.load(path)
-
-    # Seed Discriminator
-    net_D.load_state_dict(checkpoint["D_state_dict"])
-    optim_D.load_state_dict(checkpoint["D_optim"])
-
-    # Seed Generator
-    net_G.load_state_dict(checkpoint["G_state_dict"])
-    optim_G.load_state_dict(checkpoint["G_optim"])
-
-    return (
-        checkpoint["epoch"],
-        checkpoint["losses"],
-        checkpoint["noise"],
-        checkpoint["img_list"],
-    )
-
-
-def generate_fake_samples(n_samples, train_cfg, model_cfg, as_of_epoch=16, cpu_bailout=False):
-    """
-    Generates samples from a model checkpoint saved to disk, writes a few
-    sample grids to disk and also returns last to the user
-    --------
-    Args:
-        - n_samples - int - Number of samples to generate
-        - train_cfg - TrainingConfig - Used to initialize the Generator model
-        - model_cfg - ModelCheckPointConfig - Defines how to fetch the model
-            checkpoint from disk
-        - as_of_epoch - int - Epoch to generate samples as of - will fail
-            if no model checkpoint is available
-    --------
-    Example: Plot 16 sample images from the 16th epoch of training
-
-    plt.figure(figsize=(15, 15))
-
-    imgs = dcgan.generate_fake_samples(
-        n_samples=16,
-        train_cfg=train_cfg,
-        model_cfg=model_cfg,
-        as_of_epoch=16
-    )
-
-    plt.imshow(
-        np.transpose(
-            vutils.make_grid(imgs.to(train_cfg.dev), padding=2, normalize=True).cpu(),
-            (1, 2, 0),
-        )
-    )
-    """
-
-    # Generate Noise - Latent Vector for the Model...
-    Z = torch.randn(n_samples, train_cfg.nz, 1, 1, device=train_cfg.dev)
-
-    # Initialize empty models && initialize from `as_of_epoch`
-    net_D, optim_D = train_cfg.get_net_D(gpu_id=0)
-    net_G, optim_G = train_cfg.get_net_G(gpu_id=0)
-
-    path = f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{as_of_epoch}.pt"
-
-    _, _, _, _ = instantiate_from_checkpoint(net_D, net_G, optim_D, optim_G, path, cpu_bailout)
-
-    # Use the Generator to create "believable" fake images - You can call a
-    # plotting function on this output to visualize the images vs real ones
-
-    # Ideally a Generator Net can use a CPU to (slowly) generate samples,
-    # this confirms it, we can run the net through via CPU for "inference"
-    generated_imgs = net_G(Z).detach().cpu()
-    return generated_imgs
-
-
-def get_msls_dataloader(rank, train_cfg):
-    """ """
-
-    default_loader_params = {
-        "batch_size": train_cfg.batch_size,
-        "shuffle": False,
-        "num_workers": 8,
-        "pin_memory": True,
-        "timeout": 0,
-        "prefetch_factor": 2,
-        "persistent_workers": False,
-    }
+def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
 
     # We can use an image folder dataset; depending on the size of the training
     # directory this can take a little to instantiate; about 3 min for 40GB
@@ -423,59 +45,32 @@ def get_msls_dataloader(rank, train_cfg):
     # Unclear why these specific parameters are needed for acceleration,
     # unclear if the `transforms.RandomAffine` ruins it.
     # See: https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html
-    dataset = dset.ImageFolder(
+
+    # transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)), ## NOT SUPPORTED w, AEON
+    # GaussianNoise(0.0, 0.1),
+
+    dataset = torchvision.datasets.ImageFolder(
         root=train_cfg.data_root,
         transform=transforms.Compose(
             [
-                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                GaussianNoise(0.0, 0.1)
+                transforms.Normalize(
+                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+                ),
             ]
         ),
     )
 
-    default_loader_params["dataset"] = dataset
-
-    # Get Sampler for "Distributed" Training
-    if train_cfg.dev == torch.device("cuda"):
-        msls_sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=torch.cuda.device_count(), rank=rank, shuffle=False
-        )
-        default_loader_params["sampler"] = msls_sampler
-
-    # If using Habana -> Try to Use the Habana DataLoader w. the params
-    if HABANA_ENABLED:
-        dataloader = habana_dataloader.HabanaDataLoader(**default_loader_params)
-
-    else:
-        dataloader = torch.utils.data.DataLoader(**default_loader_params)
-
-    return dataloader
-
-
-def get_msls_profiler(
-    model_cfg, schedule={"wait": 2, "warmup": 2, "active": 6, "repeat": 4}
-):
-
-    prof = torch.profiler.profile(
-        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-        schedule=torch.profiler.schedule(**schedule),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler(
-            f"{model_cfg.model_dir}/{model_cfg.model_name}/events"
-        ),
-        record_shapes=True,
-        with_stack=False,
-        profile_memory=True,
+    msls_sampler = torch.utils.data.distributed.DistributedSampler(
+        dataset, num_replicas=8, rank=rank, shuffle=False
     )
 
-    return prof
+    params["dataset"] = dataset
+    params["sampler"] = msls_sampler
 
-
-def get_msls_writer(model_cfg):
-    return SummaryWriter(f"{model_cfg.model_dir}/{model_cfg.model_name}/events")
+    return HabanaDataLoader(**params)
 
 
 def start_or_resume_training_run(
@@ -506,27 +101,22 @@ def start_or_resume_training_run(
         train_cfg, model_cfg, num_epochs=NUM_EPOCHS, start_epoch=START_EPOCH
     )
     """
-    if train_cfg.dev == torch.device("cuda"):
-        train_cfg.dev = torch.device(f"cuda:{rank}")
-        dist.init_process_group(
-            backend="nccl",
-            init_method="env://",
-            world_size=torch.cuda.device_count(),
-            rank=rank,
-        )
+
+    train_cfg.dev = torch.device(f"cuda:{rank}")
+    dist.init_process_group(
+        backend="nccl",
+        init_method="env://",
+        world_size=torch.cuda.device_count(),
+        rank=rank,
+    )
 
     # Initialize Net and Optimizers
-    net_D, optim_D = train_cfg.get_net_D(gpu_id=rank)
-    net_G, optim_G = train_cfg.get_net_G(gpu_id=rank)
-
-    # Be Explicit Here; should be done in `get_net_D`, `get_net_G`
-    torch.cuda.set_device(rank)
-    net_D.cuda(rank)
-    net_G.cuda(rank)
+    net_D, optim_D = train_cfg.get_neywork(gan.Discriminator, device_rank=rank)
+    net_G, optim_G = train_cfg.get_net_G(gan.Generator, device_rank=rank)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        cur_epoch, losses, fixed_noise, img_list = instantiate_from_checkpoint(
+        cur_epoch, losses, fixed_noise, img_list = utils.restore_model(
             net_D,
             net_G,
             optim_D,
@@ -534,11 +124,11 @@ def start_or_resume_training_run(
             f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt",
         )
 
-    # If no start epoch specified; then apply weights from DCGAN paper and
-    # proceed w. model training...
+    # If no start epoch specified; then start from 0 with the weights specified in the
+    # DCGAN paper
     else:
-        net_G.apply(weights_init)
-        net_D.apply(weights_init)
+        net_G.apply(utils.weights_init)
+        net_D.apply(utils.weights_init)
         cur_epoch = 0
         img_list = []
         losses = {"_G": [], "_D": []}
@@ -553,10 +143,10 @@ def start_or_resume_training_run(
     dl = get_msls_dataloader(rank, train_cfg)
 
     if enable_prof:
-        prof = get_msls_profiler(model_cfg)
+        prof = utils.get_msls_profiler(model_cfg)
 
     if enable_logging:
-        writer = get_msls_writer(model_cfg)
+        writer = utils.get_msls_writer(model_cfg)
 
     # Start new training epochs...
     for epoch in range(cur_epoch, n_epochs):
@@ -564,11 +154,13 @@ def start_or_resume_training_run(
         if enable_prof:
             prof.start()
 
-        if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
+        if type(dl.sampler) == (
+            torch.utils.data.distributed.DistributedSampler
+        ):
             dl.sampler.set_epoch(epoch)
 
         for epoch_step, dbatch in enumerate(dl, 0):
-            
+
             # (1.1) Update D network: All-real batch;
             # log(D(x)) + log(1 - D(G(z)))
             ###################################################################
@@ -585,7 +177,7 @@ def start_or_resume_training_run(
             with torch.cuda.amp.autocast():
                 output = net_D(real_imgs.detach()).view(-1)
                 err_D_real = criterion(output, label)
-            
+
             # Calculate gradients for D in backward pass
             scaler_D.scale(err_D_real).backward()
             D_X = torch.sigmoid(output).mean().item()
@@ -601,7 +193,7 @@ def start_or_resume_training_run(
             with torch.cuda.amp.autocast():
                 output = net_D(fake.detach()).view(-1)
                 err_D_fake = criterion(output, label)
-            
+
             D_G_z1 = torch.sigmoid(output).mean().item()
             scaler_D.scale(err_D_fake).backward()
             err_D = err_D_real + err_D_fake
@@ -627,7 +219,7 @@ def start_or_resume_training_run(
             with torch.cuda.amp.autocast():
                 output = net_D(fake).view(-1)
                 err_G = criterion(output, label)
-            
+
             D_G_z2 = torch.sigmoid(output).mean().item()
             scaler_G.scale(err_G).backward()
 
@@ -656,35 +248,40 @@ def start_or_resume_training_run(
                         writer.add_scalar(
                             metric,
                             val,
-                            (epoch * len(dl.dataset)) + (epoch_step * train_cfg.batch_size),
+                            (epoch * len(dl.dataset))
+                            + (epoch_step * train_cfg.batch_size),
                         )
                         writer.flush()
 
                     # Save Losses (and a few other function values) for plotting...
                     losses["_G"].append(err_G.item())
                     losses["_D"].append(err_D.item())
-            
+
         # Save Model && Progress Images Every N Epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
 
             # Ensure the Save Directory Exists
-            if not os.path.exists(f"{model_cfg.model_dir}/{model_cfg.model_name}"):
+            if not os.path.exists(
+                f"{model_cfg.model_dir}/{model_cfg.model_name}"
+            ):
                 os.makedirs(f"{model_cfg.model_dir}/{model_cfg.model_name}")
 
             # Add Epoch End Imgs...
             with torch.no_grad():
                 fake = net_G(fixed_noise).detach().cpu()
-                img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+                img_list.append(
+                    vutils.make_grid(fake, padding=2, normalize=True)
+                )
 
             # Save Checkpoint
-            if (train_cfg.dev == torch.device(f"cuda:{rank}")):
+            if train_cfg.dev == torch.device(f"cuda:{rank}"):
                 dist.barrier()
 
             if hasattr(net_D, "module"):
                 state_D = net_D.module.state_dict()
                 state_G = net_G.module.state_dict()
 
-            else: 
+            else:
                 state_D = net_D.state_dict()
                 state_G = net_G.state_dict()
 
@@ -704,7 +301,7 @@ def start_or_resume_training_run(
 
             # Exit Writer and Profiler
 
-        if (enable_prof) and (torch.__version__ == "1.10.0"):
+        if (enable_prof) and ("1.10.0" in torch.__version__):
             prof.stop()
 
         if enable_logging:

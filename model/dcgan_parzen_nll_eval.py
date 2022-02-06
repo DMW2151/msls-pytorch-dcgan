@@ -1,11 +1,5 @@
-# Derived from the DCGAN paper's Parzen Estimation LL calculations:
-#
-# Fundamentally, no changes to the method; some updates for Python2 -> Python3.7+, adding
-# verbose comments on LL methods, cutting CLI wrapper, and handling for sending Pytorch.datasets
-# data to Theano
-#
+# Derived from the DCGAN paper's Parzen Estimation LL calculations.
 # See: https://github.com/goodfeli/adversarial/blob/master/parzen_ll.py
-#
 # NLL Functions from DCGAN Paper: Credit: Yann N. Dauphin
 
 import datetime
@@ -15,20 +9,10 @@ import numpy as np
 
 import theano
 import theano.tensor as T
-import torch
-import torchvision.datasets as dset
-import torchvision.transforms as transforms
 
 
 def get_nll(x, parzen, batch_size=10):
-    """
-    Calculate the Negative Log-Liklihood over X using parzen function
-    -------
-    Args:
-        X -
-        parzen - theano.function, see `theano_parzen`
-        batch_size - int - # of images to use for each NLL sample
-    """
+    """Calculate the Negative Log-Liklihood over X using parzen function"""
 
     inds = range(x.shape[0])
     n_batches = int(np.ceil(float(len(inds)) / batch_size))

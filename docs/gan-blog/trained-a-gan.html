@@ -123,7 +123,7 @@
             table {
               margin: 1em 0;
               border-collapse: collapse;
-              width: 60%;
+              width: 100%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -251,7 +251,7 @@
     </figure>
     </center>
     <p>For a few months now, I’ve wanted to create something like <a href="https://thispersondoesnotexist.com/">ThisPersonDoesNotExist</a> for street scenes. Luckily, the <a href="https://amazon-ec2-dl1.devpost.com">AWS Deep Learning Challenge</a> gave me an excuse to do so. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on over 1.1 million street-level images.</p>
-    <p>It’s not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. Critically, the challenge encouraged participants to use AWS’ <code>DL1</code> instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, and then performed a comparative analysis of performance across training environments.</p>
+    <p>It’s not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS’ <code>DL1</code> instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, and then performed a comparative analysis of performance across training environments.</p>
     <ul>
     <li><a href="#Theory-and-Background">Theory and Background</a></li>
     <li><a href="#Mapillary-Street-Level-Imagery-Data">Mapillary Street Level Imagery Data</a></li>
@@ -260,8 +260,9 @@
     <li><a href="#Evaluating-a-First-Training-run-on-GPU-Instances">Evaluating a First Training run on GPU Instances</a></li>
     <li><a href="#Modifications-for-Training-on-Gaudi-Accelerated-Instances">Modifications for Training on Gaudi Accelerated Instances</a></li>
     <li><a href="#Comparative-Performance">Comparative Performance</a></li>
-    <li><a href="#Appendix-1---Comparable-Instance-Selection">Appendix 1 - Comparable Instance Selection</a></li>
-    <li><a href="#Appendix-2---PIL-Benchmarks">Appendix 2 - PIL Benchmarks</a></li>
+    <li><a href="#Appendix-1---Modeling-Choices">Appendix 1 - Modeling Choices</a></li>
+    <li><a href="#Appendix-2---Comparable-Instance-Selection">Appendix 2 - Comparable Instance Selection</a></li>
+    <li><a href="#Appendix-3---PIL-Benchmarks">Appendix 3 - PIL Benchmarks</a></li>
     <li><a href="#Citations">Citations</a></li>
     </ul>
     <hr />
@@ -314,8 +315,7 @@
     </i>
     <figure>
     </center>
-    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a> (<strong>Note</strong>: <a href="https://github.com/mapillary/mapillary_sls/issues/23">GH Issue</a>). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc.</p>
-    <p>The model presented here was trained on a sample of ~940,000 images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.</p>
+    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a> (<strong>Note</strong>: <a href="https://github.com/mapillary/mapillary_sls/issues/23">GH Issue</a>). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The model presented here was trained on a sample of ~1.2M images. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. The figure below shows an estimated count of images included in model training.</p>
     <table>
     <caption>Training Sample By Metro Area</caption>
     <thead>
@@ -444,8 +444,7 @@
     </tbody>
     </table>
     <p>Because the authors who developed MSLS for their <a href="https://research.mapillary.com/publication/cvpr20c">research</a><sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.</p>
-    <p>Originally, I was hoping to train a suite of metro-area models, but the effect of individual sequences was too pronounced and the model often reproduced images from the training set. I did some custom filtering to reduce the contribution of individual sequences, but found the most effective strategy was simply adding more metropolitan areas and converging on a single model.</p>
-    <p>The effect of multi-image sequences was further reduced by applying random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the original DCGAN paper expects <code>(3 x 64 x 64)</code> images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the model. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
+    <p>The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the model expects <code>(3 x 64 x 64)</code> images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
     <center>
     <figure>
     <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="./images/translation/nyc_img_transformed_samples.png"> <i>
@@ -457,43 +456,6 @@
     </center>
     <hr />
     <h3 id="dcgan-results">DCGAN Results</h3>
-    <ul>
-    <li>Model</li>
-    </ul>
-    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">Discriminator</span><span class="er">(</span></span>
-    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">(</span><span class="ex">main</span><span class="kw">)</span><span class="bu">:</span> Sequential<span class="er">(</span></span>
-    <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">0</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">3,</span> 64, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">1</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">2</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">64,</span> 128, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">3</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">128,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">4</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">5</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">128,</span> 256, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">6</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">256,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">7</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">8</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">256,</span> 512, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">9</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">512,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">10</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">11</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">512,</span> 1, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">)</span></span>
-    <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">)</span></span></code></pre></div>
-    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">Generator</span><span class="er">(</span></span>
-    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">(</span><span class="ex">main</span><span class="kw">)</span><span class="bu">:</span> Sequential<span class="er">(</span></span>
-    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">0</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">100,</span> 512, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">1</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">512,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">2</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">3</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">512,</span> 256, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">4</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">256,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">5</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">6</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">256,</span> 128, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">7</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">128,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">8</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">9</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">128,</span> 64, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">10</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">64,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
-    <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">11</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
-    <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">12</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">64,</span> 3, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
-    <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">13</span><span class="kw">)</span><span class="bu">:</span> Tanh<span class="er">(</span><span class="kw">)</span></span>
-    <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">)</span></span>
-    <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">)</span></span></code></pre></div>
     <ul>
     <li>Results</li>
     <li>Training Progress</li>
@@ -579,11 +541,105 @@
     </ul>
     <hr />
     <h3 id="comparative-performance">Comparative Performance</h3>
-    <ul>
-    <li>Hardware and Cost-To-Train</li>
-    </ul>
+    <table>
+    <colgroup>
+    <col style="width: 21%" />
+    <col style="width: 8%" />
+    <col style="width: 20%" />
+    <col style="width: 7%" />
+    <col style="width: 16%" />
+    <col style="width: 8%" />
+    <col style="width: 16%" />
+    </colgroup>
+    <thead>
+    <tr class="header">
+    <th style="text-align: left;">Model Run</th>
+    <th style="text-align: center;">Instance</th>
+    <th style="text-align: right;">Average Throughput (Imgs/Hr)</th>
+    <th style="text-align: right;">Rate ($)</th>
+    <th style="text-align: right;">Throughput / $ (Est.)</th>
+    <th style="text-align: right;">Spot Rate ($)</th>
+    <th style="text-align: right;">Spot Throughput / $ (Est.)</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: left;">Naive-Params-Multi-GPU</td>
+    <td style="text-align: center;">p2.8xlarge</td>
+    <td style="text-align: right;">7,780,000</td>
+    <td style="text-align: right;">$7.20</td>
+    <td style="text-align: right;">1,080,556</td>
+    <td style="text-align: right;">$2.16</td>
+    <td style="text-align: right;">3,601,852</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Naive-Params-Single-GPU</td>
+    <td style="text-align: center;">p3.2xlarge</td>
+    <td style="text-align: right;">5,830,000</td>
+    <td style="text-align: right;">$3.06</td>
+    <td style="text-align: right;">1,905,229</td>
+    <td style="text-align: right;">$0.92</td>
+    <td style="text-align: right;">6,336,957</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Safe-Params-w-Noise-Batch-512</td>
+    <td style="text-align: center;">p3.2xlarge</td>
+    <td style="text-align: right;">5,020,000</td>
+    <td style="text-align: right;">$3.06</td>
+    <td style="text-align: right;">1,640,523</td>
+    <td style="text-align: right;">$0.92</td>
+    <td style="text-align: right;">5,456,522</td>
+    </tr>
+    </tbody>
+    </table>
     <hr />
-    <h3 id="appendix-1---comparable-instance-selection">Appendix 1 - Comparable Instance Selection</h3>
+    <h3 id="appendix-1---modeling-choices">Appendix 1 - Modeling Choices</h3>
+    <p>DCGAN is unstable in comparison to modern generative models. After a few test runs, It became clear that the default values suggested in the paper may not be ideal for my use-case or hardware. The most common failure mode I observed involved was <code>D</code> learning the difference between test and real images too quickly; some property of fake images that made them easy to identify, and that left <code>G</code> to make trivial progress in generating better images over time. I didn’t have the time or resources to do a full hyper-parameter tuning, so I used a few <del>tricks</del> heuristics suggested <a href="https://github.com/pytorch/examples/issues/70">here</a> and <a href="https://github.com/soumith/dcgan.torch/issues/2#issuecomment-164862299">here</a> to temper this tendency towards model collapse. I ran ~10 short test runs and treated that as a pseudo grid search. Of the variations I tried the following set of values gave me (anecdotally) the best results on a <code>P3.2xlarge</code> (1 x <code>V100</code>).</p>
+    <ul>
+    <li><strong>Learning Rate</strong> — 0.0002</li>
+    <li><strong>Latent Vector Size</strong> — 256</li>
+    <li><strong>Additional Noise Layer in Transformations</strong>: (0, 0.2)</li>
+    <li><strong>Batch Size</strong> — 512</li>
+    <li><strong>Adam Optimizer w. Weight Decay:</strong> 0.05</li>
+    </ul>
+    <p>The most transformative of these changes was the addition of an extra noise layer in the dataloader, setting this value high does produce grainy results, but it was an effective remedy against the generator collapsing. There is support for this method in <a href="https://www.inference.vc/instance-noise-a-trick-for-stabilising-gan-training/">literature</a><sup>5</sup> dating back to at least 2016.</p>
+    <p>All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability. Using a more modern model architecture, I may have been able to get away with default parameters. Both networks’ architecture (as presented in the DCGAN paper) is show below. I would advise leaving this unchanged (except for maybe the size of the latent vector, <code>Z</code> passed to the generator).</p>
+    <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">Discriminator</span><span class="er">(</span></span>
+    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">(</span><span class="ex">main</span><span class="kw">)</span><span class="bu">:</span> Sequential<span class="er">(</span></span>
+    <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">0</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">3,</span> 64, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">1</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">2</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">64,</span> 128, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">3</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">128,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">4</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">5</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">128,</span> 256, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">6</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">256,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">7</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">8</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">256,</span> 512, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">9</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">512,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">10</span><span class="kw">)</span><span class="bu">:</span> LeakyReLU<span class="er">(</span><span class="va">negative_slope</span><span class="op">=</span>0.2, <span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">11</span><span class="kw">)</span><span class="bu">:</span> Conv2d<span class="er">(</span><span class="ex">512,</span> 1, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">12</span><span class="kw">)</span><span class="bu">:</span> <span class="co"># Sigmoid() ## </span><span class="al">NOTE</span><span class="co">: We Removed The Sigmoid Here Because of Our Change from BCELoss to BCEwithLogitLoss</span></span>
+    <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">)</span></span>
+    <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">)</span></span></code></pre></div>
+    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">Generator</span><span class="er">(</span></span>
+    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">(</span><span class="ex">main</span><span class="kw">)</span><span class="bu">:</span> Sequential<span class="er">(</span></span>
+    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">0</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">100,</span> 512, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">1</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">512,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">2</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">3</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">512,</span> 256, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">4</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">256,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">5</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">6</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">256,</span> 128, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">7</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">128,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">8</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">9</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">128,</span> 64, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">10</span><span class="kw">)</span><span class="bu">:</span> BatchNorm2d<span class="er">(</span><span class="ex">64,</span> eps=1e-05, momentum=0.1, affine=True, track_running_stats=True<span class="kw">)</span></span>
+    <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">11</span><span class="kw">)</span><span class="bu">:</span> ReLU<span class="er">(</span><span class="va">inplace</span><span class="op">=</span>True<span class="kw">)</span></span>
+    <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">12</span><span class="kw">)</span><span class="bu">:</span> ConvTranspose2d<span class="er">(</span><span class="ex">64,</span> 3, kernel_size=<span class="er">(</span><span class="ex">4,</span> 4<span class="kw">)</span><span class="ex">,</span> stride=<span class="er">(</span><span class="ex">2,</span> 2<span class="kw">)</span><span class="ex">,</span> padding=<span class="er">(</span><span class="ex">1,</span> 1<span class="kw">)</span><span class="ex">,</span> bias=False<span class="kw">)</span></span>
+    <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">13</span><span class="kw">)</span><span class="bu">:</span> Tanh<span class="er">(</span><span class="kw">)</span></span>
+    <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">)</span></span>
+    <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">)</span></span></code></pre></div>
+    <h3 id="appendix-2---comparable-instance-selection">Appendix 2 - Comparable Instance Selection</h3>
     <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla <code>M60</code>s) to top-of-the line training instances (e.g. <code>P4</code> instances with <code>A100</code>s). I relied exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">resnext-101 benchmarks</a> as a proxy for my model’s performance. On price, <code>p3.8xlarge</code> instances are the most similar to the <code>DL1</code> and offer 4 <code>V100</code>. Although <code>g4dn.12xlarge</code>(<code>T4</code>) and <code>p2.8xlarge</code> (<code>K80</code>) instances are priced well relative to their performance, I elected to only run a full test on the <code>p3.8xlarge</code>.</p>
     <table>
     <caption>Table A.1.1 - Possible Comparable GPU Instances</caption>
@@ -709,10 +765,10 @@
     </tr>
     </tbody>
     </table>
-    <h3 id="appendix-2---pil-benchmarks">Appendix 2 - PIL Benchmarks</h3>
-    <p>I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>, if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.</p>
+    <h3 id="appendix-3---pil-benchmarks">Appendix 3 - PIL Benchmarks</h3>
+    <p>I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>), if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.</p>
     <ul>
-    <li><strong>Let’s just use a worse GPU!</strong> — I spun up a <code>p2.8xlarge</code> with 8 <code>K80</code>s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won’t see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity’s sake, but the charts below confirm my hypothesis. This was an excellent discovery!</li>
+    <li><strong>Let’s just use a worse GPU!</strong> — I spun up a <code>p2.8xlarge</code> with <code>K80</code>s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won’t see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity’s sake, but the charts below confirm my hypothesis. This was an excellent discovery!</li>
     </ul>
     <table>
     <tbody>
@@ -725,12 +781,12 @@
     </tbody>
     </table>
     <ul>
-    <li><strong>Why not profile the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In figure <em>A2.2.1 - XXXX</em>, you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
+    <li><strong>Why not profile the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In <em>Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile</em> , you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
     </ul>
     <table>
     <tbody>
     <tr class="odd">
-    <td style="text-align: center;"><em>Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile - P3.8xLarge</em></td>
+    <td style="text-align: center;"><em>Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile</em></td>
     </tr>
     <tr class="even">
     <td style="text-align: center;"><img src="./images/training/disk_saturated.png" alt="OK" /></td>
@@ -744,6 +800,7 @@
     <p><strong><sup>2</sup></strong> <em>Radford, Alec, Luke Metz, and Soumith Chintala. “Unsupervised representation learning with deep convolutional generative adversarial networks.” arXiv preprint arXiv:1511.06434 (2015).</em></p>
     <p><strong><sup>3</sup></strong> <em>F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020</em></p>
     <p><strong><sup>4</sup></strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
+    <p><strong><sup>5</sup></strong> <em>Sønderby, Casper Kaae, et al. “Amortised map inference for image super-resolution.” arXiv preprint arXiv:1610.04490 (2016).</em></p>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
     </footer>
