@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
-import torchvision.utils as vutils
 from gan import Discriminator, Generator
 
 if version.parse(torch.__version__).release >= (1, 10, 0):
@@ -259,12 +258,8 @@ def start_or_resume_training_run(
 
             with torch.no_grad():
                 generated_images = G(Z_fixed).detach().cpu()
-                img_list.append(
-                    vutils.make_grid(
-                        generated_images, padding=2, normalize=True
-                    )
-                )
-
+                img_list.append(generated_images)
+                    
             # Save Checkpoint - block if running DDP
             if train_cfg.dev == torch.device(f"cuda:{rank}"):
                 dist.barrier()
