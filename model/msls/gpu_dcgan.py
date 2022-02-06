@@ -280,7 +280,7 @@ def start_or_resume_training_run(
                     "G_optim": opt_G.state_dict(),
                     "losses": losses,
                     "img_list": img_list,
-                    "noise": Z,
+                    "noise": Z_fixed,
                 },
                 model_cfg.checkpoint_path(epoch),
             )
