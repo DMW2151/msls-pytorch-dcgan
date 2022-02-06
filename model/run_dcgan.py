@@ -7,6 +7,9 @@ import socket
 import torch
 import torch.multiprocessing as mp
 
+
+from dcgan_utils import ModelCheckpointConfig, TrainingConfig
+
 if torch.cuda.is_available():
     import gpu_dcgan as dcgan
 
@@ -115,7 +118,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Init Model Config && Create directory for this run...
-    model_cfg = dcgan.ModelCheckpointConfig(
+    model_cfg = ModelCheckpointConfig(
         model_name=args.name,
         model_dir=args.model_dir or "/efs/trained_model/",
         log_frequency=args.logging_freq,
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     model_cfg.make_all_paths()
 
     # Create Training Config && Announce Model Training Situation...
-    train_cfg = dcgan.TrainingConfig(
+    train_cfg = TrainingConfig(
         batch_size=args.batch,
         dev=torch.device(DEVICE),
         data_root=args.dataroot,
