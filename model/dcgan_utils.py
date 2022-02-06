@@ -155,7 +155,7 @@ class ModelCheckpointConfig:
         expected_path = (
             f"{self.model_dir}/{self.model_name}/checkpoint_{checkpoint}.pt"
         )
-        self.make_all_paths(os.path.dirname(expected_path))
+        self.make_all_paths()
         return expected_path
 
 
