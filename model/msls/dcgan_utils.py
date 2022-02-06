@@ -15,7 +15,7 @@ DEFAULT_LOADER_PARAMS = {
     "timeout": 0,
     "prefetch_factor": 2,
     "persistent_workers": False,
-    "batch_size": 256
+    "batch_size": 256,
 }
 
 # NOTE: in `start_or_resume_training_run` we're assuming there are at least
@@ -93,7 +93,7 @@ class TrainingConfig:
         if (torch.cuda.is_available()) and (DEVICE_COUNT):
             N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
 
-        if self.dev == torch.device("hpu"):
+        if self.dev.type == "hpu":
             # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
             # vs. regular AdamW, SGD, etc...
             from habana_frameworks.torch.hpex.optimizers import FusedAdamW
@@ -127,8 +127,8 @@ class ModelCheckpointConfig:
     # Save progress images every N batches
     """
 
-    model_name: str = "msls_dcgan_001"
-    model_dir: str = "/efs/trained_model"
+    name: str = "msls_dcgan_001"
+    root: str = "/efs/trained_model"
     save_frequency: int = 1
     log_frequency: int = 50
     gen_progress_frequency: int = 1000
@@ -139,7 +139,7 @@ class ModelCheckpointConfig:
         return torch.profiler.profile(
             schedule=torch.profiler.schedule(**schedule),
             on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                f"{self.model_dir}/{self.model_name}/events"
+                f"{self.root}/{self.name}/events"
             ),
             record_shapes=True,
             with_stack=False,
@@ -147,17 +147,21 @@ class ModelCheckpointConfig:
         )
 
     def get_msls_writer(self):
-        return SummaryWriter(f"{self.model_dir}/{self.model_name}/events")
+        return SummaryWriter(f"{self.root}/{self.name}/events")
 
     def make_all_paths(self):
-        trace_path = f"{self.model_dir}/{self.model_name}/events"
-        if not os.path.exists(trace_path):
-            os.makedirs(trace_path)
+        paths = [
+            f"{self.root}/{self.name}/events",
+            f"{self.root}/{self.name}/figures",
+            f"{self.root}/{self.name}/videos",
+        ]
+
+        for path in paths:
+            if not os.path.exists(path):
+                os.makedirs(path)
 
     def checkpoint_path(self, checkpoint: int) -> str:
-        expected_path = (
-            f"{self.model_dir}/{self.model_name}/checkpoint_{checkpoint}.pt"
-        )
+        expected_path = f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt"
         self.make_all_paths()
         return expected_path
 
@@ -212,27 +216,31 @@ def generate_fake_samples(
     D, opt_D = train_cfg.get_network(Discriminator, device_rank=0)
     G, opt_G = train_cfg.get_network(Generator, device_rank=0)
 
-    _, _, _, _ = restore_model(
-        G,
-        D,
-        opt_G,
-        opt_D,
-        cpu,
-        path=f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
+    checkpoint = get_checkpoint(
+        path=f"{model_cfg.root}/{model_cfg.name}/checkpoint_{EPOCH}.pt",
+        cpu=True,
     )
+
+    # To generate new samples; we do not need the loss figures
+    # just the state dicts...
+    restore_model(checkpoint, G, D, opt_G, opt_D)
 
     generated_imgs = G(Z).detach().cpu()
     return generated_imgs
 
 
+def get_checkpoint(path: str, cpu: bool) -> dict:
+    dev = "cuda" if (torch.cuda.is_available()) else "cpu"
+    return torch.load(path, map_location=torch.device(dev))
+
+
 def restore_model(
+    checkpoint: dict,
     G: nn.Module,
     D: nn.Module,
     opt_G: torch.optim.AdamW,
     opt_D: torch.optim.AdamW,
-    cpu: bool,
-    path: str,
-) -> Tuple[int, Dict[str, float], torch.Tensor, torch.Tensor]:
+):
     """
     Utility function to restart training from a given checkpoint file
     --------
@@ -252,18 +260,9 @@ def restore_model(
     TODO: Probably not the most efficient use of memory here, could so
     something clever w. (de)serialization, but IMO, this is OK for now...
     """
-    dev = "cuda" if (torch.cuda.is_available()) else "cpu"
-    checkpoint = torch.load(path, map_location=torch.device(dev))
 
     # Seed Discriminator, Generator, and Optimizers...
     D.load_state_dict(checkpoint["D_state_dict"])
     G.load_state_dict(checkpoint["G_state_dict"])
     opt_D.load_state_dict(checkpoint["D_optim"])
     opt_G.load_state_dict(checkpoint["G_optim"])
-
-    return (
-        checkpoint["epoch"],
-        checkpoint["losses"],
-        checkpoint["noise"],
-        checkpoint["img_list"],
-    )

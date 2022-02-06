@@ -123,7 +123,7 @@ def start_or_resume_training_run(
             net_D,
             optim_G,
             optim_D,
-            f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{st_epoch}.pt",
+            f"{model_cfg.root}/{model_cfg.name}/checkpoint_{st_epoch}.pt",
         )
 
     # If no start epoch specified; then start from 0 with the weights specified in the
@@ -250,7 +250,8 @@ def start_or_resume_training_run(
                         writer.add_scalar(
                             metric,
                             val,
-                            (epoch * len(dl.dataset)) + (epoch_step * train_cfg.batch_size),
+                            (epoch * len(dl.dataset))
+                            + (epoch_step * train_cfg.batch_size),
                         )
                         writer.flush()
 
@@ -291,7 +292,7 @@ def start_or_resume_training_run(
                     "img_list": img_list,
                     "noise": fixed_noise,
                 },
-                f"{model_cfg.model_dir}/{model_cfg.model_name}/checkpoint_{epoch}.pt",
+                f"{model_cfg.root}/{model_cfg.name}/checkpoint_{epoch}.pt",
             )
 
             # Exit Writer and Profiler

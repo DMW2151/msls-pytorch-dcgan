@@ -111,9 +111,16 @@ def start_or_resume_training_run(
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        cur_epoch, losses, Z, img_list = utils.restore_model(
-            G, D, opt_G, opt_D, model_cfg.checkpoint_path(st_epoch)
+        checkpt = utils.get_checkpoint(
+            path=model_cfg.checkpoint_path(st_epoch), cpu=True
         )
+
+        utils.restore_model(checkpt, G, D, opt_G, opt_D)
+
+        cur_epoch = checkpt["epoch"]
+        losses = checkpt["losses"]
+        Z = checkpt["noise"]
+        img_list = checkpt["img_list"]
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
     # latent vector, training params dict, etc. && proceed w. model training...
@@ -223,9 +230,8 @@ def start_or_resume_training_run(
 
                 # Write Metrics to TensorBoard: (GPU) -> (CPU)
                 if enable_logging:
-                    imgs_processed_ct = (
-                        (epoch * len(dl.dataset))
-                        + (epoch_step * train_cfg.batch_size)
+                    imgs_processed_ct = (epoch * len(dl.dataset)) + (
+                        epoch_step * train_cfg.batch_size
                     )
 
                     for metric, val in zip(
