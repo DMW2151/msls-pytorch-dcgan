@@ -15,6 +15,7 @@ DEFAULT_LOADER_PARAMS = {
     "timeout": 0,
     "prefetch_factor": 2,
     "persistent_workers": False,
+    "batch_size": 256
 }
 
 DEFAULT_TORCH_PROFILER_SCHEDULE = {
