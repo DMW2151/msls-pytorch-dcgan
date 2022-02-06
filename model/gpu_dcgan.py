@@ -218,8 +218,9 @@ def start_or_resume_training_run(
                 if enable_logging:
                     imgs_processed_ct = (
                         (epoch * len(dl.dataset))
-                        + (epoch_step * train_cfg.batch_size),
+                        + (epoch_step * train_cfg.batch_size)
                     )
+
                     for metric, val in zip(
                         ["G_loss", "D_loss", "D_X", "D_G_z1", "D_G_z2"],
                         [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2],
