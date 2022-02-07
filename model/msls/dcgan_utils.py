@@ -51,10 +51,10 @@ class TrainingConfig:
 
     dev: torch.device
     batch_size: int = 256
-    img_size: int = 64
+    img_size: int = 128
     nc: int = 3
     nz: int = 256
-    ngf: int = 64
+    ngf: int = 256
     ndf: int = 64
     lr: float = 0.0002
     beta1: float = 0.5
@@ -135,7 +135,6 @@ class ModelCheckpointConfig:
     root: str = "/efs/trained_model"
     save_frequency: int = 1
     log_frequency: int = 50
-    gen_progress_frequency: int = 1000
 
     def get_msls_profiler(
         self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE

@@ -3,6 +3,7 @@
 import argparse
 import os
 import socket
+import json
 
 import torch
 import torch.multiprocessing as mp
@@ -23,13 +24,6 @@ else:
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
 parser.add_argument(
-    "-n",
-    "--name",
-    type=str,
-    help="Name to save model with; see /${model_dir}/${name} for model artifacts and traces",
-)
-
-parser.add_argument(
     "-d",
     "--dataroot",
     type=str,
@@ -46,22 +40,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-p",
-    "--profile",
-    type=bool,
-    help="Run the Torch profiler/save traces during training",
-    default=False,
-)
-
-parser.add_argument(
-    "-l",
-    "--logging",
-    type=bool,
-    help="Enable logging to tensorboard",
-    default=True,
-)
-
-parser.add_argument(
     "-ne",
     "--n_epoch",
     type=int,
@@ -70,43 +48,54 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-md",
-    "--model_dir",
+    "-c",
+    "--checkpoint_params",
     type=str,
-    help="Root folder to save model artifacts and traces",
-    default="/efs/trained_model/",
+    help="checkpoint_params",
+    default=json.dumps(
+        {
+            "name": "msls-dcgan-128",
+            "root": "/efs/trained_model/",
+            "log_frequency": 50,
+            "save_frequency": 1,
+        }
+    ),
 )
 
 parser.add_argument(
-    "-pf",
-    "--progress_freq",
-    type=int,
-    help="Save progress images every N batches",
-    default=50,
+    "-t",
+    "--train_params",
+    type=str,
+    help="training_params",
+    default=json.dumps(
+        {
+            "nc": 3,
+            "nz": 256,
+            "ngf": 256,
+            "lr": 0.0002,
+            "beta1": 0.5,
+            "beta2": 0.999,
+            "batch_size": 128,
+            "img_size": 128,
+            "weight_decay": 0.05,
+        }
+    ),
 )
 
 parser.add_argument(
-    "-lf",
-    "--logging_freq",
-    type=int,
-    help="Print loss metrics to STDOUT every N batches",
-    default=50,
+    "-prof",
+    "--profile",
+    type=bool,
+    help="Run the Torch profiler/save traces during training",
+    default=False,
 )
 
 parser.add_argument(
-    "-cf",
-    "--checkpoint_freq",
-    type=int,
-    help="Save a model checkpoint to disk every N epochs",
-    default=1,
-)
-
-parser.add_argument(
-    "-b",
-    "--batch",
-    type=int,
-    help="Batch size...",
-    default=1024,
+    "-log",
+    "--logging",
+    type=bool,
+    help="Enable logging to tensorboard",
+    default=True,
 )
 
 # Assumes Single Node w. DDP...
@@ -118,13 +107,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Init Model Config && Create directory for this run...
-    model_cfg = ModelCheckpointConfig(
-        name=args.name,
-        root=args.model_dir,
-        log_frequency=args.logging_freq,
-        save_frequency=args.checkpoint_freq,
-        gen_progress_frequency=args.progress_freq,
-    )
+    model_cfg = ModelCheckpointConfig(**json.loads(args.checkpoint_params))
 
     # Create Location For Model Outputs
     model_cfg.make_all_paths()
@@ -132,8 +115,9 @@ if __name__ == "__main__":
     # Create Training Config && Announce Model Training Situation...
     train_cfg = TrainingConfig(
         batch_size=args.batch,
-        dev=torch.device(DEVICE),
         data_root=args.dataroot,
+        dev=torch.device(DEVICE),
+        **json.loads(args.train_params)
     )
 
     train_cfg._announce()

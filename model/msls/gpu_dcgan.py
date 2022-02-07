@@ -24,7 +24,7 @@ from .dcgan_utils import (
     weights_init,
 )
 
-from .gan import Discriminator, Generator
+from .gan import Discriminator128, Generator128
 
 WORLD_SIZE = torch.cuda.device_count()
 
@@ -32,7 +32,7 @@ WORLD_SIZE = torch.cuda.device_count()
 class GaussianNoise(object):
     """Add Noise to a tensor; reduce tendency for model collapse"""
 
-    def __init__(self, mean: float = 0.0, std: float = 0.05):
+    def __init__(self, mean: float = 0.0, std: float = 0.1):
         self.std = std
         self.mean = mean
 
@@ -53,11 +53,11 @@ def get_msls_dataloader(
         root=train_cfg.data_root,
         transform=transforms.Compose(
             [
-                transforms.RandomAffine(degrees=0, translate=(0.3, 0.0)),
+                transforms.RandomAffine(degrees=0, translate=(0.2, 0.0)),
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                GaussianNoise(0.0, 0.05),
+                GaussianNoise(0.0, 0.1),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         ),
@@ -119,8 +119,8 @@ def start_or_resume_training_run(
     # Initialize Both Networks and Optimizers
     # TODO:/ NOTE: Be Explicit Here; setting model to device should be done
     # in `get_network`; but double-check
-    D, opt_D = train_cfg.get_network(Discriminator, device_rank=rank)
-    G, opt_G = train_cfg.get_network(Generator, device_rank=rank)
+    D, opt_D = train_cfg.get_network(Discriminator128, device_rank=rank)
+    G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
@@ -178,6 +178,7 @@ def start_or_resume_training_run(
             real_imgs = batch[0].to(train_cfg.dev)  # Img Batch (CPU) -> (GPU)
             b_size = real_imgs.size(0)
 
+            # TODO: Try Soft Noise on Labels...
             Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
             label = torch.full((b_size,), 1.0, device=train_cfg.dev)
 
