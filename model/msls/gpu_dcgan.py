@@ -124,9 +124,7 @@ def start_or_resume_training_run(
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        checkpt = get_checkpoint(
-            path=model_cfg.checkpoint_path(st_epoch), cpu=True
-        )
+        checkpt = get_checkpoint(path=model_cfg.checkpoint_path(st_epoch), cpu=True)
 
         restore_model(checkpt, G, D, opt_G, opt_D)
 
@@ -165,9 +163,7 @@ def start_or_resume_training_run(
     for epoch in range(cur_epoch, n_epochs):
 
         # If running with DDP; set the epoch to prevent deterministic order
-        if type(dl.sampler) == (
-            torch.utils.data.distributed.DistributedSampler
-        ):
+        if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
             dl.sampler.set_epoch(epoch)
 
         # For Each Batch...

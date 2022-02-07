@@ -137,7 +137,7 @@ The effect of multi-image sequences was reduced by applying random transformatio
 - Results
 - Training Progress
 - Loss
-- Model Performance and Evaluation
+- Measuring performance of generative models...
 
 
 --------
@@ -332,5 +332,6 @@ Thinking about it in retrospect, this all makes sense. We're opening images that
 
 **<sup>4</sup>** *File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&oldid=457344851* 
 
-
 **<sup>5</sup>** *Sønderby, Casper Kaae, et al. "Amortised map inference for image super-resolution." arXiv preprint arXiv:1610.04490 (2016).*
+
+**<sup>6</sup>** *Salimans, Tim, et al. "Improved techniques for training gans." Advances in neural information processing systems 29 (2016).*

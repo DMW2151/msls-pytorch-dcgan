@@ -1,3 +1,8 @@
+"""
+Implements Theano Window Estimation as described in the original DCGAN paper,
+See: https://github.com/goodfeli/adversarial/blob/master/parzen_ll.py
+"""
+
 import datetime
 import gc
 
@@ -25,13 +30,15 @@ def log_mean_exp(a):
     return max_ + T.log(T.exp(a - max_.dimshuffle(0, "x")).mean(1))
 
 
-def theano_parzen(mu, sigma):
+def theano_parzen(mu: np.array, sigma: float) -> thano.function:
     """
     Create Parzen function from sample of Mu (i.e. Samples from G)
-    -------
+
     Args:
-        - mu - np.Array - Samples from G cast to NDArray and reshaped
-        - sigma - float32 - proposed sigma value for Parzen Kernel
+    --------
+        - mu: np.Array: Samples from G cast to NDArray and reshaped
+
+        - sigma: float32: proposed sigma value for Parzen Kernel
     """
 
     x = T.matrix()
@@ -44,14 +51,19 @@ def theano_parzen(mu, sigma):
     return theano.function([x], E - Z)
 
 
-def cross_validate_sigma(g_samples, data, sigmas, batch_size):
+def cross_validate_sigma(
+    g_samples: np.array, data: np.array, sigmas: np.array, batch_size: int
+) -> float:
     """
     Select optimal kernel size for Parzen
-    -------
+
     Args:
-        g_samples - numpy.ndarray - Sample images from G
-        data - numpy.ndarray - Sample images from MSLS
-        sigmas - numpy.ndarray - array of sigmas to test
+    --------
+        - g_samples: np.ndarray: Sample images from G
+
+        - data: np.ndarray: Sample images from MSLS
+
+        - sigmas: np.ndarray: array of sigmas to test
     """
 
     lls = []

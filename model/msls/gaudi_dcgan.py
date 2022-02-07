@@ -1,9 +1,3 @@
-# Core script for running DCGAN -> Implements the DCGAN architecture from
-# the original GAN/DCGAN papers in PyTorch with slight adjustments to the
-# optimizer. Other changes discussed in post
-#
-# See: https://arxiv.org/abs/1406.2661
-
 # General
 import datetime
 import os
@@ -57,9 +51,7 @@ def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-                ),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         ),
     )

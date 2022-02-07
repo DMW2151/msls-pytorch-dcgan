@@ -1,3 +1,7 @@
+"""
+Common utilities to allow for training on both HPU and GPU instances
+"""
+
 from dataclasses import dataclass
 import collections
 
@@ -5,7 +9,14 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from typing import Union
 from torch.utils.tensorboard import SummaryWriter
+from .gan import (
+    Discriminator128,
+    Generator128,
+    Discriminator64,
+    Generator64,
+)
 
 DEFAULT_LOADER_PARAMS = {
     "shuffle": False,
@@ -18,8 +29,8 @@ DEFAULT_LOADER_PARAMS = {
 }
 
 # NOTE: in `start_or_resume_training_run` we're assuming there are at least
-# as many batches as (wait + (warmup + active)) * repeat
-# See torch docs:
+# as many batches as (wait + (warmup + active)) * repeat; else may fail to
+# profile.
 DEFAULT_TORCH_PROFILER_SCHEDULE = {
     "wait": 2,
     "warmup": 2,
@@ -32,21 +43,43 @@ DEFAULT_TORCH_PROFILER_SCHEDULE = {
 class TrainingConfig:
     """
     TrainingConfig holds the training parameters for both the generator
-    and discriminator networks.
+    and discriminator networks. This is configurable during training, the
+    original values from the DCGAN paper are listed below in parens.
 
-    args:
-        dev: torch.device
-        batch_size: int = 256  # Batch size during training -> DCGAN: 128
-        img_size: int = 64  # Spatial size of training images -> DCGAN: 64
-        nc: int = 3  # Number of channels in the training image -> DCGAN: 3
-        nz: int = 256  # NOTE: TODO: LARGER LATENT INPUT SPACE....
-        ngf: int = 64  # Size of feature maps in generator -> DCGAN: 64
-        ndf: int = 64  # Size of feature maps in discriminator -> DCGAN: 64
-        lr: float = 0.0002  # Learning rate for optimizers
-        beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
-        beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
-        ngpu: int = int(torch.cuda.device_count())..
-        data_root: str = "/data/images/train_val"
+    Args:
+    -------
+        dev: torch.device: The device to initialize the model on (N/A)
+
+        batch_size: int: Batch size during training (128)
+
+        img_size: int: Width and Height of training images (64)
+
+        nc: int: Number of channels in the training images; e.g. use
+            3 for colored images, 1 for grayscale (3)
+
+        nz: int: The size (1, ${NZ}) of the latent noize vector the model
+            accepts as input (100)
+
+        ngf: int: Size of feature maps in Generator (64)
+
+        ndf: int: Size of feature maps in Discriminator (64)
+
+        lr: float: Learning rate for both Generator and Discriminator
+            optimizers (0.0002)
+
+        beta1: float: Beta1 for Adam Optimizer, common to both the Generator
+            and Discriminator network (0.5)
+
+        beta2: float: Beta2 for Adam Optimizer, common to both the Generator
+            and Discriminator network (0.999)
+
+        weight_decay: float: Weight decay on Adam Optimizer, common to both the
+            Generator and Discriminator networks. (0.0)
+
+        ngpu: int: Number of GPUs available (N/A)
+
+        data_root: str: Root of the training images, torch.dataloader created
+            from this config will recursively crawl this root for images (N/A)
     """
 
     dev: torch.device
@@ -64,7 +97,7 @@ class TrainingConfig:
     data_root: str = "/data/images/train_val"
 
     def _announce(self) -> None:
-        """Show PyTorch, HPU, and CUDA attributes before Training"""
+        """Display PyTorch, HPU, and CUDA attributes before Training"""
 
         print("====================")
         print(self.dev.__repr__())
@@ -75,31 +108,56 @@ class TrainingConfig:
             print(f"CUDA Available: {torch.cuda.is_available()}")
             for i in range(torch.cuda.device_count()):
                 print("device %s:" % i, torch.cuda.get_device_properties(i))
+
+        if True:
+            print("Habana Statistics ...")
+
         print("====================")
 
     def get_network(
-        self, network: nn.Module, world_size: int = 1, device_rank: int = 0
-    ) -> (nn.Module, optim.AdamW):
+        self,
+        network: Union[Discriminator64, Discriminator128, Generator64, Generator128],
+        world_size: int = 1,
+        device_rank: int = 0,
+    ) -> (
+        Union[Discriminator64, Discriminator128, Generator64, Generator128],
+        optim.AdamW,
+    ):
         """
-        Instantiate a Network:
-        TODO: Class hints aren't correct here...
+        Instantiate an instance of a DCGAN network with it's associated optimizer.
+
+        Args:
+        --------
+            network: nn.module: Specifically, one of the four network classes defined
+                in this module
+
+            world_size: int: We use DDP by default, even on single nodes, specifies a
+                training world size
+
+            device_rank: int: See note above, int to uniquely identify this GPU/HPU given
+                a world size of `world_size`
+
+        NOTE:/TODO:
+        --------
+            - Return type hints aren't technically correct: — A check for the
+            union type, `Union[optim.AdamW, FusedAdamW]` would fail on instances that do not have the
+            correct Habana drivers, leave it out...
         """
 
         # Put model on device(s)
         N = network(self).to(self.dev)
 
-        # If we have multiple devices - Enable DDP
-        # TODO: Would be nice to check Num. HPUs here....
+        # If we have multiple devices - Enable DDP; Assumes the world_size is known
+        # if we're training on HPU, else use cuda.device_count() and treat it as a
+        # multi-gpu,
         DEVICE_COUNT = max(torch.cuda.device_count(), world_size) > 0
 
         if (torch.cuda.is_available()) and (DEVICE_COUNT):
-            N = nn.parallel.DistributedDataParallel(
-                N, device_ids=[device_rank]
-            )
+            N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
 
+        # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
+        # launching on HPU units vs. regular Torch AdamW, SGD, etc...
         if self.dev.type == "hpu":
-            # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
-            # vs. regular AdamW, SGD, etc...
             from habana_frameworks.torch.hpex.optimizers import FusedAdamW
 
             optimizer = FusedAdamW(
@@ -110,6 +168,7 @@ class TrainingConfig:
             )
             return N, optimizer
 
+        # If on GPU, fallback to AdamW
         optimizer = optim.AdamW(
             N.parameters(),
             lr=self.lr,
@@ -123,12 +182,22 @@ class TrainingConfig:
 @dataclass
 class ModelCheckpointConfig:
     """
-    ModelCheckpointConfig holds the model parameters for writing the model
-    artifact + checkpoint data to disk...
+    ModelCheckpointConfig is a dataclass which holds the model parameters for writing
+    the model artifact + checkpoint data to disk
 
-    # Save a model checkpoint every N epochs
-    # Print logs to STDOUT every N batches
-    # Save progress images every N batches
+    Args:
+    --------
+        - name: str: Name which uniquely identifies a model-run, can be re-used, but
+            will overwrite existing data
+
+        - root: str: Directory to save model artifacts, training results, images,
+            videos, etc.
+
+        - save_frequency: int: During training, save the model w. progress estimations
+            every `save_frequency` epochs
+
+        - log_frequency: int: During training, log the results to STDOUT every
+            `log_frequency` batches
     """
 
     name: str = "msls-dcgan-128"
@@ -152,9 +221,12 @@ class ModelCheckpointConfig:
         )
 
     def get_msls_writer(self):
+        """Returns a PyTorch SummaryWriter -> Write Traces to TensorBoard"""
         return SummaryWriter(f"{self.root}/{self.name}/events")
 
     def make_all_paths(self) -> None:
+        """Create all subdirectories for model artifacts + Results"""
+
         paths = [
             f"{self.root}/{self.name}/events",
             f"{self.root}/{self.name}/figures",
@@ -171,24 +243,45 @@ class ModelCheckpointConfig:
         return expected_path
 
     def create_slim_checkpoint(self, checkpoint: int):
+        """
+        Create a `slim` checkpoint. The regular checkpoints contain information about
+        training progress, both networks, and their optimizers.
+
+        A slim checkpoint ONLY is concerned with the status of the **Generator** s.t.
+        it can be saved/opened/transferred more quickly while still retaining it's use
+
+        Args:
+        --------
+            - checkpoint: int: n-th checkpoint from a given self.model_name to load
+                and save as slim...
+        """
+
+        # Load the full checkpoint
         checkpoint = torch.load(
             self.checkpoint_path(checkpoint), map_location=torch.device("cpu")
         )
 
+        # Remove all keys except the most critical...
         for key, _ in checkpoint.items():
             if key not in ("epoch", "G_state_dict"):
                 del checkpoint[key]
 
+        # Save the model back to disk, expect a size reduction of ~90%
         torch.save(
             checkpoint,
             f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt",
         )
 
     def slim_checkpoint_to_cloud_storage(self, bucket: str, checkpoint: int):
+        """Uploads a slim checkpoint to S3"""
+
+        # Open S3 connedtion
         s3_client = boto3.client("s3")
 
+        # Saves over the slim checkpoint if exists, else creates...
         self.create_slim_checkpoint(checkpoint)
 
+        # Send the slim checkpoint up to S3!
         response = s3_client.upload_file(
             f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt",
             bucket,
@@ -198,8 +291,8 @@ class ModelCheckpointConfig:
 
 class LimitDataset(torch.utils.data.Dataset):
     """
-    Simple wrapper around torch.utils.data.Dataset to limit # of data-points
-    passed to a DataLoader; used to
+    Wrapper around torch.utils.data.Dataset to limit the of data-points passed to a
+    DataLoader; not particularly efficient, but does it's job...
     """
 
     def __init__(self, dataset, n):
@@ -216,8 +309,12 @@ class LimitDataset(torch.utils.data.Dataset):
 
 def weights_init(m: nn.Module):
     """
-    Custom weights initialization called on net_G and net_D, uses the
-    hardcoded values from the DCGAN paper (mean, std) => (0, 0.02)
+    Custom weights initialization function called on Generator and Discriminator
+    networks, uses the hardcoded values from the DCGAN paper (mean, std) => (0, 0.02)
+
+    Args:
+    --------
+        m: nn.Module: a layer of a network...
     """
 
     classname = m.__class__.__name__
@@ -260,20 +357,11 @@ def restore_model(
     Utility function to restart training from a given checkpoint file
     --------
     Args:
-        net_D, net_G - nn.Module - The Generator and Discriminator networks
+        G, D: nn.Module: The Generator and Discriminator networks to restore,
+            (normally) without weight initialized...
 
-        optim_D, optim_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW)
+        opt_D, opt_G - Union(torch.optim, torch.hpex.optimizers.FusedAdamW)
         Optimizer function for Discriminator and Generator Nets
-
-        path - str Path to file to open...
-    --------
-    Example:
-    cur_epoch, losses, fixed_noise, img_list = restore_model(
-            net_D, net_G, optim_D, optim_G, path
-    )
-
-    TODO: Probably not the most efficient use of memory here, could so
-    something clever w. (de)serialization, but IMO, this is OK for now...
     """
 
     # Seed Discriminator, Generator, and Optimizers...

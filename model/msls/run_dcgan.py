@@ -15,6 +15,7 @@ if torch.cuda.is_available():
     import gpu_dcgan as dcgan
 
     DEVICE = "cuda"
+
 else:
     import gaudi_dcgan as dcgan
 
@@ -80,6 +81,7 @@ parser.add_argument(
             "nc": 3,
             "nz": 256,
             "ngf": 256,
+            "ndf": 64,
             "lr": 0.0002,
             "beta1": 0.5,
             "beta2": 0.999,
@@ -148,6 +150,4 @@ if __name__ == "__main__":
 
     # On finish training -> send to s3
     if args.s3_bucket:
-        model_cfg.slim_checkpoint_to_cloud_storage(
-            args.s3_bucket, args.n_epoch
-        )
+        model_cfg.slim_checkpoint_to_cloud_storage(args.s3_bucket, args.n_epoch)
