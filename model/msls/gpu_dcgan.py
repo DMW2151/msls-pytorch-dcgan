@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import torch.profiler
 import torch.cuda.amp as amp
 
-from .dcgan_utils import (
+from dcgan_utils import (
     TrainingConfig,
     ModelCheckpointConfig,
     DEFAULT_LOADER_PARAMS,
