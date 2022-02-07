@@ -235,7 +235,7 @@
         <div style="background-color:#202025; color: #e6e6e6" class="header">
             <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
             <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Infrastructure & Model Guide</a>
-            <a href="./beat-the-gan.html" style="padding: 10px; font-size: 12px;">Beat The GAN</a>
+            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
         </div>
     </header>
     <h1> Model Training Notes </h1>
@@ -249,11 +249,13 @@
     </ul>
     <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"></code></pre></div>
     <h2 id="data-preparation">Data Preparation</h2>
-    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Please Note: https://github.com/mapillary/mapillary_sls/issues/23</span></span>
-    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-k</span> <span class="at">-XGET</span> <span class="va">${A_SIGNED_DOWNLOAD_URL}</span> <span class="at">--output</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
-    <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> unzip <span class="at">-qq</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="at">-d</span> /data/imgs</span></code></pre></div>
-    <h2 id="model-training---habana-instance">Model Training - Habana Instance</h2>
+    <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Please Note: https://github.com/mapillary/mapillary_sls/issues/23</span></span>
+    <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-k</span> <span class="at">-XGET</span> <span class="va">${A_SIGNED_DOWNLOAD_URL}</span> <span class="at">--output</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
+    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> unzip <span class="at">-qq</span> /data/msls_<span class="va">${BATCH_NUM}</span>.zip <span class="at">-d</span> /data/imgs</span></code></pre></div>
+    <h2 id="model-training">Model Training</h2>
+    <p>I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I activated <code>pytorch_p38</code>, installed a few additional dependencies, and let my model train for a few hours.</p>
+    <h3 id="training-on-a-dl1---deep-learning-base-habana-deep-learning-ami">Training on a DL1 - Deep Learning Base / Habana Deep Learning AMI</h3>
+    <p>These instances have the habana drivers pre-installed, the only additional level of complication is running the correct docker container on top of the machine.</p>
     <div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">## Copy to good drive - 10 min?</span></span>
     <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> <span class="at">-r</span> /ebs /data</span>
     <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -268,11 +270,11 @@
     <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--ipc</span><span class="op">=</span>host <span class="dt">\</span></span>
     <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585</span>
     <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co">## Once Attached to Container Instance</span></span>
     <span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="ex">pip3</span> install <span class="dt">\</span></span>
     <span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    tensorboard <span class="dt">\</span></span>
     <span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    torch_tb_profiler</span>
-    <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    </span>
+    <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
     <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a> <span class="ex">python3</span> /root/msls-pytorch-dcgan/model/run_gaudi_dcgan.py <span class="dt">\</span></span>
     <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> dl24-w-noise <span class="dt">\</span></span>
     <span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">--data</span> /data/ebs/imgs/train_val/phoenix <span class="dt">\</span></span>
@@ -280,21 +282,16 @@
     <span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">--profile</span> True <span class="dt">\</span></span>
     <span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">--logging</span> True</span></code></pre></div>
     <h2 id="model-training---gpu-instance">Model Training - GPU Instance</h2>
-    <p>I designed model training to be as simple as possible. Once on an instance running a Deep-Learning AMI, the following command kicks off the full model training cycle on a directory of images. I activated <code>pytorch_p38</code>, installed a few additional dependencies, and let my model train for a few hours.</p>
-    <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    <span class="bu">source</span> activate pytorch_p38</span>
-    <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Extra installs to drive tensorboard &lt;-&gt; Pytorch traces</span></span>
-    <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="ex">pip3</span> install <span class="dt">\</span></span>
-    <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    tensorboard <span class="dt">\</span></span>
-    <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    torch_tb_profiler</span>
-    <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-    <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)</span></span>
-    <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a> <span class="ex">python3</span> ~/msls-pytorch-dcgan/model/run_gaudi_dcgan.py <span class="dt">\</span></span>
-    <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> p3-w-noise <span class="dt">\</span></span>
-    <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">--data</span> /data/imgs/ <span class="dt">\</span></span>
-    <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--batch</span> 512 <span class="dt">\</span></span>
-    <span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">--profile</span> True <span class="dt">\</span></span>
-    <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">--logging</span> True</span></code></pre></div>
+    <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-m</span> pip install <span class="at">--upgrade</span> pip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
+    <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> <span class="at">-H</span> pip3 install ~/msls-pytorch-dcgan/model</span>
+    <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)</span></span>
+    <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> ~/msls-pytorch-dcgan/model/msls/run_dcgan.py <span class="dt">\</span></span>
+    <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--name</span> sample-run-001 <span class="dt">\</span></span>
+    <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--data</span> /data/imgs/test/miami <span class="dt">\</span></span>
+    <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">--batch</span> 512 <span class="dt">\</span></span>
+    <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">--profile</span> True <span class="dt">\</span></span>
+    <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">--logging</span> True</span></code></pre></div>
     <p>In general, If you’re just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model <a href="https://github.com/DMW2151/msls-pytorch-dcgan">repo</a> onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, <code>DL1</code>, <code>P</code>, and <code>G</code> type instances have access to AWS’ Deep Learning AMI.</p>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>

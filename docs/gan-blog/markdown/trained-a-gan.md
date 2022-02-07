@@ -22,6 +22,8 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 - [Theory and Background](#Theory-and-Background)
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
 - [DCGAN Results](#DCGAN-Results)
+  - [Results](#Results)
+  - [Modeling Considerations](#Modeling-Considerations)
 - [AWS System Architecture](#AWS-System-Architecture)
 - [Evaluating a First Training run on GPU Instances](#Evaluating-a-First-Training-run-on-GPU-Instances)
 - [Modifications for Training on Gaudi Accelerated Instances](#Modifications-for-Training-on-Gaudi-Accelerated-Instances)
@@ -29,6 +31,7 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 - [Appendix 1 - Modeling Choices](#Appendix-1---Modeling-Choices)
 - [Appendix 2 - Comparable Instance Selection](#Appendix-2---Comparable-Instance-Selection)
 - [Appendix 3 - PIL Benchmarks](#Appendix-3---PIL-Benchmarks)
+- [Appendix 4 - Assessing GAN performance](#Appendix-4---Assessing-GAN-performance)
 - [Citations](#Citations)
 
 --------
@@ -67,16 +70,6 @@ In the DCGAN paper, the method by which this function is maximized is by putting
         <i><figcaption style="font-size: 12px;">DBGAN Generator Architecture -  As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
     <figure>
 </center>
-
-At a low-level, it's difficult to describe all of the internal consequences of using `PyTorch` rather than the specific packages the authors used. At a high level, I made the following notable changes:
-
-- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
-
-- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function.
-
-- In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see [results](#DCGAN-Results) for a deeper discussion of model validation:
-  
-    > We estimate probability of the test set data under *Pg* by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
 
 --------
 
@@ -134,11 +127,17 @@ The effect of multi-image sequences was reduced by applying random transformatio
 
 ### DCGAN Results
 
-- Results
-- Training Progress
-- Loss
-- Measuring performance of generative models...
+#### Results
 
+#### Modeling Considerations
+
+I do want to stress that this isn't a strict replication of the original DCGAN paper. Throughout different points in the training process I implemented some of the advice from [GanHacks](https://github.com/soumith/ganhacks) to improve the stability of the model. At a low-level, it's difficult to describe all of the internal consequences of using `PyTorch` rather than the specific packages the authors used. At a high level, I made the following notable changes:
+
+- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
+
+- I add an additional block of `Conv2d`, `BatchNorm2d`, and `Relu` layers to start the model. This allows me to handle for images at `(3 x 128 x 128)`. It turned out there were significant challenges with using `(3 x 64 x 64)` images on modern hardware. Although getting stable training on these larger images took a bit of tuning it was an interesting challenge to reason through all of this
+
+- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function.
 
 --------
 
@@ -319,6 +318,16 @@ I narrowed down the source of the drops in GPU utilization to the dataloader bei
 | ![OK](./images/training/disk_saturated.png) |
 
 Thinking about it in retrospect, this all makes sense. We're opening images that are `(3 x 360 x 480)` and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just `(3 x 64 x 64)`.
+
+
+### Appendix 4 - Assessing GAN performance
+
+In *Goodfellow, et al.*, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs.
+
+> We estimate probability of the test set data under *Pg* by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.
+
+This method of estimation has some significant flaws...
+
 
 --------
 

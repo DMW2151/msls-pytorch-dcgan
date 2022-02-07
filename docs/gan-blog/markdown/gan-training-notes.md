@@ -50,16 +50,10 @@ docker run -ti --runtime=habana \
     vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585
 
 ## Once Attached to Container Instance
-pip3 install \
-    tensorboard \
-    torch_tb_profiler
+python3 -m pip install --upgrade pip &&\
+    sudo -H pip3 install ~/msls-pytorch-dcgan/model
 
- python3 /root/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
-    --name dl24-w-noise \
-    --data /data/ebs/imgs/train_val/phoenix \
-    --batch 512 \
-    --profile True \
-    --logging True
+python3 -m msls.run_dcgan --logging True --profile True --s_epoch 0 --n_epoch 16 --dataroot /data/imgs/train_val/helsinki
 ```
 
 
@@ -69,14 +63,6 @@ pip3 install \
 ```bash
 python3 -m pip install --upgrade pip &&\
     sudo -H pip3 install ~/msls-pytorch-dcgan/model
-
-# Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
-python3 ~/msls-pytorch-dcgan/model/msls/run_dcgan.py \
-    --name sample-run-001 \
-    --data /data/imgs/test/miami \
-    --batch 512 \
-    --profile True \
-    --logging True
 ```
 
 In general, If you're just interested in generating a GAN (and not the intermediate training or hardware metrics), cloning the model [repo](https://github.com/DMW2151/msls-pytorch-dcgan) onto a deep-learning AMI instance is the fastest way to get started training. To my knowledge, `DL1`, `P`, and `G` type instances have access to AWS' Deep Learning AMI.

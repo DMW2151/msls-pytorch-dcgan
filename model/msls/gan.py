@@ -4,10 +4,10 @@ import torch.nn as nn
 class Discriminator128(nn.Module):
     def __init__(self, cfg):
         super(Discriminator128, self).__init__()
-        self.ngpu = ngpu
+        self.ngpu = cfg.ngpu
         self.main = nn.Sequential(
             # input is (nc) x 128 x 128
-            nn.Conv2d(cfg, nc, cfg.ndf, 4, 2, 1, bias=False),
+            nn.Conv2d(cfg.nc, cfg.ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, True),
             # state size. (ndf) x 64 x 64
             nn.Conv2d(cfg.ndf, cfg.ndf * 2, 4, 2, 1, bias=False),
@@ -75,7 +75,7 @@ class Discriminator64(nn.Module):
 class Generator128(nn.Module):
     def __init__(self, cfg):
         super(Generator128, self).__init__()
-        self.ngpu = ngpu
+        self.ngpu = cfg.ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
             nn.ConvTranspose2d(cfg.nz, cfg.ngf * 16, 4, 1, 0, bias=False),

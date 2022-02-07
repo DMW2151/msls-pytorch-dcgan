@@ -1,5 +1,5 @@
 ---
-title: Beat The GAN
+title: Gallery
 author: Dustin Wilson
 date: January 29, 2022
 ---

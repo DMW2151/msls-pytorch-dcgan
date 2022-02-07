@@ -235,7 +235,7 @@
         <div style="background-color:#202025; color: #e6e6e6" class="header">
             <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
             <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Infrastructure & Model Guide</a>
-            <a href="./beat-the-gan.html" style="padding: 10px; font-size: 12px;">Beat The GAN</a>
+            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
         </div>
     </header>
     <h1> Generative Street-Level Imagery on DL1 Instances </h1>
@@ -255,7 +255,11 @@
     <ul>
     <li><a href="#Theory-and-Background">Theory and Background</a></li>
     <li><a href="#Mapillary-Street-Level-Imagery-Data">Mapillary Street Level Imagery Data</a></li>
-    <li><a href="#DCGAN-Results">DCGAN Results</a></li>
+    <li><a href="#DCGAN-Results">DCGAN Results</a>
+    <ul>
+    <li><a href="#Results">Results</a></li>
+    <li><a href="#Modeling-Considerations">Modeling Considerations</a></li>
+    </ul></li>
     <li><a href="#AWS-System-Architecture">AWS System Architecture</a></li>
     <li><a href="#Evaluating-a-First-Training-run-on-GPU-Instances">Evaluating a First Training run on GPU Instances</a></li>
     <li><a href="#Modifications-for-Training-on-Gaudi-Accelerated-Instances">Modifications for Training on Gaudi Accelerated Instances</a></li>
@@ -263,6 +267,7 @@
     <li><a href="#Appendix-1---Modeling-Choices">Appendix 1 - Modeling Choices</a></li>
     <li><a href="#Appendix-2---Comparable-Instance-Selection">Appendix 2 - Comparable Instance Selection</a></li>
     <li><a href="#Appendix-3---PIL-Benchmarks">Appendix 3 - PIL Benchmarks</a></li>
+    <li><a href="#Appendix-4---Assessing-GAN-performance">Appendix 4 - Assessing GAN performance</a></li>
     <li><a href="#Citations">Citations</a></li>
     </ul>
     <hr />
@@ -295,15 +300,6 @@
     </i>
     <figure>
     </center>
-    <p>At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
-    <ul>
-    <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
-    <li><p>I remove the final <code>Sigmoid</code> layer from <code>D</code>. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a loss function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the network to part of the loss function.</p></li>
-    <li><p>In <em>Goodfellow, et al.</em>, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs, see <a href="#DCGAN-Results">results</a> for a deeper discussion of model validation:</p>
-    <blockquote>
-    <p>We estimate probability of the test set data under <em>Pg</em> by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.</p>
-    </blockquote></li>
-    </ul>
     <hr />
     <h3 id="mapillary-street-level-imagery-data">Mapillary Street Level Imagery Data</h3>
     <center>
@@ -456,11 +452,13 @@
     </center>
     <hr />
     <h3 id="dcgan-results">DCGAN Results</h3>
+    <h4 id="results">Results</h4>
+    <h4 id="modeling-considerations">Modeling Considerations</h4>
+    <p>I do want to stress that this isn’t a strict replication of the original DCGAN paper. Throughout different points in the training process I implemented some of the advice from <a href="https://github.com/soumith/ganhacks">GanHacks</a> to improve the stability of the model. At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
     <ul>
-    <li>Results</li>
-    <li>Training Progress</li>
-    <li>Loss</li>
-    <li>Model Performance and Evaluation</li>
+    <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
+    <li><p>I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>. It turned out there were significant challenges with using <code>(3 x 64 x 64)</code> images on modern hardware. Although getting stable training on these larger images took a bit of tuning it was an interesting challenge to reason through all of this</p></li>
+    <li><p>I remove the final <code>Sigmoid</code> layer from <code>D</code>. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a loss function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the network to part of the loss function.</p></li>
     </ul>
     <hr />
     <h3 id="aws-system-architecture">AWS System Architecture</h3>
@@ -785,6 +783,12 @@
     </tbody>
     </table>
     <p>Thinking about it in retrospect, this all makes sense. We’re opening images that are <code>(3 x 360 x 480)</code> and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just <code>(3 x 64 x 64)</code>.</p>
+    <h3 id="appendix-4---assessing-gan-performance">Appendix 4 - Assessing GAN performance</h3>
+    <p>In <em>Goodfellow, et al.</em>, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs.</p>
+    <blockquote>
+    <p>We estimate probability of the test set data under <em>Pg</em> by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.</p>
+    </blockquote>
+    <p>This method of estimation has some significant flaws…</p>
     <hr />
     <h3 id="citations">Citations</h3>
     <p><strong><sup>1</sup></strong> <em>“Generative Adversarial Networks.” Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.</em></p>
@@ -792,6 +796,7 @@
     <p><strong><sup>3</sup></strong> <em>F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020</em></p>
     <p><strong><sup>4</sup></strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
     <p><strong><sup>5</sup></strong> <em>Sønderby, Casper Kaae, et al. “Amortised map inference for image super-resolution.” arXiv preprint arXiv:1610.04490 (2016).</em></p>
+    <p><strong><sup>6</sup></strong> <em>Salimans, Tim, et al. “Improved techniques for training gans.” Advances in neural information processing systems 29 (2016).</em></p>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
     </footer>

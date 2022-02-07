@@ -24,12 +24,14 @@ from habana_frameworks.torch.hpex.optimizers import FusedAdamW
 from torch.utils.tensorboard import SummaryWriter
 
 # Import Torch Habana && Init Values
-HABANA_ENABLED = 1
-HABANA_LAZY = 1
-HPU_WORLD_SIZE = 8
+def init_default_params(args):
+    os.environ["MAX_WAIT_ATTEMPTS"] = "50"
+    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
+    os.environ["PL_TORCH_DISTRIBUTED_BACKEND"] = "hccl"
+    os.environ["PT_HPU_LAZY_MODE"] = "1"
+    os.environ["GRAPH_VISUALIZATION"] = "True"
 
-os.environ["PT_HPU_LAZY_MODE"] = "1"
-os.environ["GRAPH_VISUALIZATION"] = "True"
+HPU_WORLD_SIZE = 8
 
 
 def get_msls_dataloader(rank, train_cfg, params=utils.DEFAULT_LOADER_PARAMS):

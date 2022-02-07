@@ -34,8 +34,8 @@ jobs:
         run: |
           pandoc --standalone \
             --template ./docs/gan-blog/templates/template.html \
-            ./docs/gan-blog/markdown/beat-the-gan.md \
-            -o ./docs/gan-blog/beat-the-gan.html
+            ./docs/gan-blog/markdown/gallery.md \
+            -o ./docs/gan-blog/gallery.html
          
       - name: Deploy Blog Section
         run: |

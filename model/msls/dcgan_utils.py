@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 from typing import Union
 from torch.utils.tensorboard import SummaryWriter
-from .gan import (
+from gan import (
     Discriminator128,
     Generator128,
     Discriminator64,

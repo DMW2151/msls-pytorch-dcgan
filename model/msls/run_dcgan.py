@@ -51,7 +51,7 @@ parser.add_argument(
 parser.add_argument(
     "-s3",
     "--s3_bucket",
-    type=int,
+    type=str,
     help="Bucket",
     default="dmw2151-ml-training",
 )
@@ -124,7 +124,6 @@ if __name__ == "__main__":
 
     # Create Training Config && Announce Model Training Situation...
     train_cfg = TrainingConfig(
-        batch_size=args.batch,
         data_root=args.dataroot,
         dev=torch.device(DEVICE),
         **json.loads(args.train_params)
