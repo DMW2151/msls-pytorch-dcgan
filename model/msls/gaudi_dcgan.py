@@ -297,7 +297,7 @@ def start_or_resume_training_run(
 
             # Exit Writer and Profiler
 
-        if (enable_prof) and ("1.10.0" in torch.__version__):
+        if enable_prof:
             prof.stop()
 
         if enable_logging:

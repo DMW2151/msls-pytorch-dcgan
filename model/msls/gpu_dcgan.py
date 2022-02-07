@@ -6,19 +6,25 @@ import datetime
 
 from packaging import version
 
-import dcgan_utils as utils
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
-from gan import Discriminator, Generator
+import torch.profiler
+import torch.cuda.amp as amp
 
-if version.parse(torch.__version__).release >= (1, 10, 0):
-    import torch.profiler
-    import torch.cuda.amp as amp
+from .dcgan_utils import (
+    TrainingConfig,
+    ModelCheckpointConfig,
+    DEFAULT_LOADER_PARAMS,
+    get_checkpoint,
+    restore_model,
+    weights_init,
+)
 
+from .gan import Discriminator, Generator
 
 WORLD_SIZE = torch.cuda.device_count()
 
@@ -36,8 +42,8 @@ class GaussianNoise(object):
 
 def get_msls_dataloader(
     rank: int,
-    train_cfg: utils.TrainingConfig,
-    params: dict = utils.DEFAULT_LOADER_PARAMS,
+    train_cfg: TrainingConfig,
+    params: dict = DEFAULT_LOADER_PARAMS,
     use_ddp: bool = False,
 ) -> torch.utils.data.DataLoader:
     """Returns a PyTorch DataLoader w. special handling for MSLS dataset"""
@@ -86,8 +92,8 @@ def get_msls_dataloader(
 
 def start_or_resume_training_run(
     rank: int,
-    train_cfg: utils.TrainingConfig,
-    model_cfg: utils.ModelCheckpointConfig,
+    train_cfg: TrainingConfig,
+    model_cfg: ModelCheckpointConfig,
     n_epochs: int,
     st_epoch: int,
     enable_prof: bool = True,
@@ -118,11 +124,11 @@ def start_or_resume_training_run(
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        checkpt = utils.get_checkpoint(
+        checkpt = get_checkpoint(
             path=model_cfg.checkpoint_path(st_epoch), cpu=True
         )
 
-        utils.restore_model(checkpt, G, D, opt_G, opt_D)
+        restore_model(checkpt, G, D, opt_G, opt_D)
 
         cur_epoch = checkpt["epoch"]
         losses = checkpt["losses"]
@@ -132,8 +138,8 @@ def start_or_resume_training_run(
     # If no start epoch specified; then apply weights from DCGAN paper, init
     # latent vector, training params dict, etc. && proceed w. model training...
     else:
-        G.apply(utils.weights_init)
-        D.apply(utils.weights_init)
+        G.apply(weights_init)
+        D.apply(weights_init)
         cur_epoch = 0
         img_list = []
         losses = {"_G": [], "_D": []}
