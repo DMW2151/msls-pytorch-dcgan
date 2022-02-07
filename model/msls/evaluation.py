@@ -59,7 +59,9 @@ def cross_validate_sigma(g_samples, data, sigmas, batch_size):
         parzen = theano_parzen(g_samples, sigma)
         nll = get_nll(data, parzen, batch_size=batch_size).mean()
         lls.append(nll)
-        print(f"[{datetime.datetime.utcnow().__str__()}]\t[σ = {sigma:.4f}]\t[nll: {nll:.4f}]")
+        print(
+            f"[{datetime.datetime.utcnow().__str__()}]\t[σ = {sigma:.4f}]\t[nll: {nll:.4f}]"
+        )
 
         del parzen
         gc.collect()

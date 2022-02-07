@@ -3,9 +3,8 @@ import torch.nn as nn
 
 class Generator(nn.Module):
     """
-    Generator Net. The generator is designed to map the latent space vector (z)
-    to believable data. Since our data are images, this means transforming (by
-    default) a [1 x 100] latent vector to a 3 x 64 x 64 RGB image.
+    Generator Network — The generator maps the latent space vector (z)
+    to believable images.
 
     Applies 4 x (Strided 2DConv, BatchNorm, ReLu) layers, and then a TanH
     layer to transform the output data to (-1, 1) for each channel (color)...
@@ -43,13 +42,15 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     """
-    Discriminator Net. Discriminator is a classifier network that (by default)
-    takes a 3 x 64 x 64 image as input and outputs a probability that the image
-    is from the set of real images
+    Discriminator — Discriminator is a classifier network that takes an image
+    as input and produces the probability that the image is from the set of
+    real images
 
-    Applies 1 x (Strided 2DConv, ReLu) + 3 x (Strided 2DConv, BatchNorm, ReLu)
-    layers, and then a sigmoid layer to transform the output data to (0, 1).
-    No different from Logit ;)
+    Applies:
+        - 1 x (Strided 2DConv, ReLu)
+        - 3 x (Strided 2DConv, BatchNorm, ReLu)
+
+    And then (normally) a sigmoid layer to transform the output data to (0, 1).
     """
 
     def __init__(self, cfg):

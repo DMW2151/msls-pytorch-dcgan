@@ -45,7 +45,7 @@ class TrainingConfig:
         lr: float = 0.0002  # Learning rate for optimizers
         beta1: float = 0.5  # Beta1 hyperparam for Adam optimizers
         beta2: float = 0.999  # Beta2 hyperparam for Adam optimizers
-        ngpu: int = int(torch.cuda.device_count())  # No Support for Multi GPU!!
+        ngpu: int = int(torch.cuda.device_count())..
         data_root: str = "/data/images/train_val"
     """
 
@@ -63,7 +63,7 @@ class TrainingConfig:
     ngpu: int = int(torch.cuda.device_count())
     data_root: str = "/data/images/train_val"
 
-    def _announce(self):
+    def _announce(self) -> None:
         """Show PyTorch, HPU, and CUDA attributes before Training"""
 
         print("====================")
@@ -79,8 +79,11 @@ class TrainingConfig:
 
     def get_network(
         self, network: nn.Module, world_size: int = 1, device_rank: int = 0
-    ):
-        """Instantiate a Disctiminator Network:"""
+    ) -> (nn.Module, optim.AdamW):
+        """
+        Instantiate a Network:
+        TODO: Class hints aren't correct here...
+        """
 
         # Put model on device(s)
         N = network(self).to(self.dev)
@@ -90,7 +93,9 @@ class TrainingConfig:
         DEVICE_COUNT = max(torch.cuda.device_count(), world_size) > 0
 
         if (torch.cuda.is_available()) and (DEVICE_COUNT):
-            N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
+            N = nn.parallel.DistributedDataParallel(
+                N, device_ids=[device_rank]
+            )
 
         if self.dev.type == "hpu":
             # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
@@ -132,7 +137,9 @@ class ModelCheckpointConfig:
     log_frequency: int = 50
     gen_progress_frequency: int = 1000
 
-    def get_msls_profiler(self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE):
+    def get_msls_profiler(
+        self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE
+    ) -> torch.profiler.profile:
         """Returns a standard PyTorch.profiler"""
 
         return torch.profiler.profile(
@@ -148,7 +155,7 @@ class ModelCheckpointConfig:
     def get_msls_writer(self):
         return SummaryWriter(f"{self.root}/{self.name}/events")
 
-    def make_all_paths(self):
+    def make_all_paths(self) -> None:
         paths = [
             f"{self.root}/{self.name}/events",
             f"{self.root}/{self.name}/figures",
@@ -163,6 +170,33 @@ class ModelCheckpointConfig:
         expected_path = f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt"
         self.make_all_paths()
         return expected_path
+
+    def create_slim_checkpoint(self, checkpoint: int):
+        checkpoint = torch.load(
+            self.checkpoint_path(checkpoint), 
+            map_location=torch.device("cpu")
+        )
+ 
+        for key, _ in checkpoint.items()
+            if key not in ("epoch", "G_state_dict"):
+                del checkpoint[key]
+        
+        torch.save(
+            checkpoint,
+            f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt"
+        )
+        
+        
+    def slim_checkpoint_to_cloud_storage(self, bucket: str, checkpoint: int):
+        s3_client = boto3.client("s3")
+
+        self.create_slim_checkpoint(checkpoint)
+
+        response = s3_client.upload_file(
+            f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt", 
+            bucket, 
+            f"{self.name}/slim_checkpoint_{}.pt"
+        )
 
 
 class LimitDataset(torch.utils.data.Dataset):
