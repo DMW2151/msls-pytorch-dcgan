@@ -147,4 +147,7 @@ if __name__ == "__main__":
     )
 
     # On finish training -> send to s3
-    model_cfg.slim_checkpoint_to_cloud_storage(args.s3_bucket, args.n_epoch)
+    if args.s3_bucket:
+        model_cfg.slim_checkpoint_to_cloud_storage(
+            args.s3_bucket, args.n_epoch
+        )
