@@ -1,9 +1,5 @@
 import setuptools
 
-
-with open("README.md") as readme_file:
-    readme = readme_file.read()
-
 requirements = [
     "torch~=1.10.0",
     "torch-tb-profiler~=0.3.1",
@@ -43,8 +39,6 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(),
     install_requires=requirements,
-    long_description=readme,
-    long_description_content_type="text/markdown",
     include_package_data=True,
     python_requires=">=3.6, <4",
     extras_require=extra_requirements,
