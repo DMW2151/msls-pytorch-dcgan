@@ -131,7 +131,7 @@ class ModelCheckpointConfig:
     # Save progress images every N batches
     """
 
-    name: str = "msls_dcgan_001"
+    name: str = "msls-dcgan-128"
     root: str = "/efs/trained_model"
     save_frequency: int = 1
     log_frequency: int = 50
