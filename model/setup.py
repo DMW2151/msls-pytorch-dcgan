@@ -4,7 +4,14 @@ import setuptools
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
-requirements = []
+requirements = [
+    "torch~=1.10.0",
+    "torch-tb-profiler~=0.3.1",
+    "torchvision~=0.11.1",
+    "theano~=1.0.5"
+]
+
+# NOTE: Suggest Just Using the Habana / Gaudi Docker Container... 
 habana_requirements = []
 setup_requirements = []
 
@@ -34,12 +41,11 @@ setuptools.setup(
         "License :: OSI Approved :: Apache License",
         "Operating System :: OS Independent",
     ],
-    package_dir={"": "msls"},
-    packages=setuptools.find_packages(where="msls"),
+    packages=setuptools.find_packages(),
     install_requires=requirements,
     long_description=readme,
     long_description_content_type="text/markdown",
     include_package_data=True,
-    python_requires=">=3.7, <4",
+    python_requires=">=3.6, <4",
     extras_require=extra_requirements,
 )

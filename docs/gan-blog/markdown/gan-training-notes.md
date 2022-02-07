@@ -53,7 +53,7 @@ docker run -ti --runtime=habana \
 pip3 install \
     tensorboard \
     torch_tb_profiler
-    
+
  python3 /root/msls-pytorch-dcgan/model/run_gaudi_dcgan.py \
     --name dl24-w-noise \
     --data /data/ebs/imgs/train_val/phoenix \
@@ -67,17 +67,13 @@ pip3 install \
 
 
 ```bash
-    source activate pytorch_p38
-
-# Extra installs to drive tensorboard <-> Pytorch traces
-pip3 install \
-    tensorboard \
-    torch_tb_profiler
+python3 -m pip install --upgrade pip &&\
+    sudo -H pip3 install ~/msls-pytorch-dcgan/model
 
 # Train model using all images in `/msls/data/images/**` (or start with a smaller sample...)
- python3 ~/msls-pytorch-dcgan/model/run_dcgan.py \
-    --name p3-w-noise \
-    --data /data/imgs/ \
+python3 ~/msls-pytorch-dcgan/model/msls/run_dcgan.py \
+    --name sample-run-001 \
+    --data /data/imgs/test/miami \
     --batch 512 \
     --profile True \
     --logging True

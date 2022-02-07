@@ -10,7 +10,7 @@ import os
 
 # DCGAN
 from gan import Discriminator, Generator
-import dcgan.utils as utils
+import dcgan_utils as utils
 import torch
 import torch.distributed as dist
 import torch.nn as nn
