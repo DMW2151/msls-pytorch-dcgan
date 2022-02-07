@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # Init Model Config && Create directory for this run...
     model_cfg = ModelCheckpointConfig(
         name=args.name,
-        root=args.model_dir or "/efs/trained_model/",
+        root=args.model_dir,
         log_frequency=args.logging_freq,
         save_frequency=args.checkpoint_freq,
         gen_progress_frequency=args.progress_freq,

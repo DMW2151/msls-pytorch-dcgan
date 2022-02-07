@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from gan import Generator, Discriminator
 
 DEFAULT_LOADER_PARAMS = {
     "shuffle": False,
@@ -164,6 +163,24 @@ class ModelCheckpointConfig:
         expected_path = f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt"
         self.make_all_paths()
         return expected_path
+
+
+class LimitDataset(torch.utils.data.Dataset):
+    """
+    Simple wrapper around torch.utils.data.Dataset to limit # of data-points
+    passed to a DataLoader; used to
+    """
+
+    def __init__(self, dataset, n):
+        self.dataset = dataset
+        self.n = n
+
+    def __len__(self):
+        """Clobber the old Length"""
+        return self.n
+
+    def __getitem__(self, i):
+        return self.dataset[i]
 
 
 def weights_init(m: nn.Module):

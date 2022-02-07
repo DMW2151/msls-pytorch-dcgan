@@ -1,6 +1,6 @@
 import datetime
 import gc
-import torch
+
 import numpy as np
 
 import theano
@@ -72,21 +72,3 @@ def cross_validate_sigma(g_samples, data, sigmas, batch_size):
     ind = np.argmax(lls)
     print(f"[{datetime.datetime.utcnow().__str__()}]\t[Using: σ = {sigma}]")
     return sigmas[ind]
-
-
-class LimitDataset(torch.utils.data.Dataset):
-    """
-    Simple wrapper around torch.utils.data.Dataset to limit # of data-points
-    passed to a DataLoader; used to
-    """
-
-    def __init__(self, dataset, n):
-        self.dataset = dataset
-        self.n = n
-
-    def __len__(self):
-        """Clobber the old Length"""
-        return self.n
-
-    def __getitem__(self, i):
-        return self.dataset[i]
