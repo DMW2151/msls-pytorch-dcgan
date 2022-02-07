@@ -24,7 +24,7 @@ from dcgan_utils import (
     weights_init,
 )
 
-from .gan import Discriminator128, Generator128
+from gan import Discriminator128, Generator128
 
 WORLD_SIZE = torch.cuda.device_count()
 
