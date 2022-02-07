@@ -16,10 +16,6 @@ def get_nll(x, parzen, batch_size=10):
     for i in range(n_batches):
         nll = parzen(x[inds[i::n_batches]])
         nlls.extend(nll)
-        if i % 10 == 0:
-            print(
-                f"[{datetime.datetime.utcnow().__str__()}]\t[{i}/{n_batches}]\tMean NLL: {np.mean(nlls)}"
-            )
 
     return np.array(nlls)
 
@@ -60,15 +56,14 @@ def cross_validate_sigma(g_samples, data, sigmas, batch_size):
 
     lls = []
     for sigma in sigmas:
-        print(f"[{datetime.datetime.utcnow().__str__()}]\t[σ = {sigma}]")
-
         parzen = theano_parzen(g_samples, sigma)
-        tmp = get_nll(data, parzen, batch_size=batch_size)
+        nll = get_nll(data, parzen, batch_size=batch_size).mean()
+        lls.append(nll)
+        print(f"[{datetime.datetime.utcnow().__str__()}]\t[σ = {sigma:.4f}]\t[nll: {nll:.4f}]")
 
-        lls.append(np.asarray(tmp).mean())
         del parzen
         gc.collect()
 
     ind = np.argmax(lls)
-    print(f"[{datetime.datetime.utcnow().__str__()}]\t[Using: σ = {sigma}]")
+    print(f"[{datetime.datetime.utcnow().__str__()}]\t[σ = {sigmas[ind]:.4f}]")
     return sigmas[ind]
