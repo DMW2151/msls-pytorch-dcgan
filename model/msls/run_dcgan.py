@@ -48,6 +48,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-s3",
+    "--s3_bucket",
+    type=int,
+    help="Bucket",
+    default="dmw2151-ml-training",
+)
+
+parser.add_argument(
     "-c",
     "--checkpoint_params",
     type=str,
