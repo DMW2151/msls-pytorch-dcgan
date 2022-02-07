@@ -173,29 +173,27 @@ class ModelCheckpointConfig:
 
     def create_slim_checkpoint(self, checkpoint: int):
         checkpoint = torch.load(
-            self.checkpoint_path(checkpoint), 
-            map_location=torch.device("cpu")
+            self.checkpoint_path(checkpoint), map_location=torch.device("cpu")
         )
- 
-        for key, _ in checkpoint.items()
+
+        for key, _ in checkpoint.items():
             if key not in ("epoch", "G_state_dict"):
                 del checkpoint[key]
-        
+
         torch.save(
             checkpoint,
-            f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt"
+            f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt",
         )
-        
-        
+
     def slim_checkpoint_to_cloud_storage(self, bucket: str, checkpoint: int):
         s3_client = boto3.client("s3")
 
         self.create_slim_checkpoint(checkpoint)
 
         response = s3_client.upload_file(
-            f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt", 
-            bucket, 
-            f"{self.name}/slim_checkpoint_{}.pt"
+            f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt",
+            bucket,
+            f"{self.name}/slim_checkpoint_{checkpoint}.pt",
         )
 
 

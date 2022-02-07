@@ -1,4 +1,4 @@
-# silly-little-game that implements an API that pulls files from disk; 
+# silly-little-game that implements an API that pulls files from disk;
 # modifies their EXIF data and serves them, that's all...
 
 import glob
@@ -12,10 +12,8 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-real = glob.glob(
-    os.environ.get("REAL_IMGS_DIR"),
-    recursive=True
-)
+real = glob.glob(os.environ.get("REAL_IMGS_DIR"), recursive=True)
+
 
 @app.after_request
 def add_header(r):
@@ -26,15 +24,15 @@ def add_header(r):
     r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     r.headers["Pragma"] = "no-cache"
     r.headers["Expires"] = "0"
-    r.headers['Cache-Control'] = 'public, max-age=0'
+    r.headers["Cache-Control"] = "public, max-age=0"
     return r
 
 
 @app.route("/imgs/<id>")
 def send_img(id):
     if random.random() > (0.00):  # Prob of draw from generated imgs...
-        with open(real[random.randint(0, len(real) - 1)], 'rb') as fi:
-            return Response(fi.read(), mimetype='image/jpg')
+        with open(real[random.randint(0, len(real) - 1)], "rb") as fi:
+            return Response(fi.read(), mimetype="image/jpg")
     else:
         # Serve Generated Data
         Z = torch.randn(1, train_cfg.nz, 1, 1, device=train_cfg.dev)
