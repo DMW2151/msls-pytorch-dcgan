@@ -12,12 +12,12 @@ import torch.multiprocessing as mp
 from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 if torch.cuda.is_available():
-    import gpu_dcgan as dcgan
+    import msls.gpu_dcgan as dcgan
 
     DEVICE = "cuda"
 
 else:
-    import gaudi_dcgan as dcgan
+    import msls.gaudi_dcgan as dcgan
 
     DEVICE = "hpu"
 
