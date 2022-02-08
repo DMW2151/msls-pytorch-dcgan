@@ -30,7 +30,7 @@ def log_mean_exp(a):
     return max_ + T.log(T.exp(a - max_.dimshuffle(0, "x")).mean(1))
 
 
-def theano_parzen(mu: np.array, sigma: float) -> thano.function:
+def theano_parzen(mu: np.array, sigma: float) -> theano.function:
     """
     Create Parzen function from sample of Mu (i.e. Samples from G)
 
