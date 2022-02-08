@@ -9,7 +9,7 @@ import torch
 import torch.multiprocessing as mp
 
 
-from dcgan_utils import ModelCheckpointConfig, TrainingConfig
+from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 if torch.cuda.is_available():
     import gpu_dcgan as dcgan

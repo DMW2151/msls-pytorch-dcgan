@@ -3,8 +3,7 @@ import datetime
 import os
 
 # DCGAN
-from gan import Discriminator, Generator
-import dcgan_utils as utils
+
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -14,6 +13,9 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+
+import msls.dcgan_utils as utils
+from msls.gan import Discriminator, Generator
 
 from habana_frameworks.torch.utils.library_loader import load_habana_module
 

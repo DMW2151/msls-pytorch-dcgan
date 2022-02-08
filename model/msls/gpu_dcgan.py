@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import torch.profiler
 import torch.cuda.amp as amp
 
-from dcgan_utils import (
+from msls.dcgan_utils import (
     TrainingConfig,
     ModelCheckpointConfig,
     DEFAULT_LOADER_PARAMS,
@@ -24,7 +24,7 @@ from dcgan_utils import (
     weights_init,
 )
 
-from gan import Discriminator64, Generator64
+from msls.gan import Discriminator64, Generator64
 
 WORLD_SIZE = torch.cuda.device_count()
 

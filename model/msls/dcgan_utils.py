@@ -11,7 +11,8 @@ import torch.nn as nn
 import torch.optim as optim
 from typing import Union
 from torch.utils.tensorboard import SummaryWriter
-from gan import (
+
+from msls.gan import (
     Discriminator64,
     Generator64,
     Discriminator64,
@@ -84,7 +85,7 @@ class TrainingConfig:
 
     dev: torch.device
     batch_size: int = 256
-    img_size: int = 128
+    img_size: int = 64
     nc: int = 3
     nz: int = 256
     ngf: int = 256
