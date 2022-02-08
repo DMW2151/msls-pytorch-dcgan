@@ -12,8 +12,8 @@ import torch.optim as optim
 from typing import Union
 from torch.utils.tensorboard import SummaryWriter
 from gan import (
-    Discriminator128,
-    Generator128,
+    Discriminator64,
+    Generator64,
     Discriminator64,
     Generator64,
 )
@@ -116,11 +116,11 @@ class TrainingConfig:
 
     def get_network(
         self,
-        network: Union[Discriminator64, Discriminator128, Generator64, Generator128],
+        network: Union[Discriminator64, Discriminator64, Generator64, Generator64],
         world_size: int = 1,
         device_rank: int = 0,
     ) -> (
-        Union[Discriminator64, Discriminator128, Generator64, Generator128],
+        Union[Discriminator64, Discriminator64, Generator64, Generator64],
         optim.AdamW,
     ):
         """

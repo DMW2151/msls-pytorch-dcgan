@@ -24,7 +24,7 @@ from dcgan_utils import (
     weights_init,
 )
 
-from gan import Discriminator128, Generator128
+from gan import Discriminator64, Generator64
 
 WORLD_SIZE = torch.cuda.device_count()
 
@@ -119,8 +119,8 @@ def start_or_resume_training_run(
     # Initialize Both Networks and Optimizers
     # TODO:/ NOTE: Be Explicit Here; setting model to device should be done
     # in `get_network`; but double-check
-    D, opt_D = train_cfg.get_network(Discriminator128, device_rank=rank)
-    G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
+    D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
+    G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
