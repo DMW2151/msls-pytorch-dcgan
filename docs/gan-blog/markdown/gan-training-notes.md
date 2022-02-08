@@ -53,7 +53,14 @@ docker run -ti --runtime=habana \
 python3 -m pip install --upgrade pip &&\
     sudo -H pip3 install ~/msls-pytorch-dcgan/model
 
-python3 -m msls.run_dcgan --logging True --profile True --s_epoch 0 --n_epoch 16 --dataroot /data/imgs/train_val/helsinki
+python3 run_dcgan.py \
+    --logging True \
+    --profile True \
+    --s_epoch 0 \
+    --n_epoch 16 \
+    --dataroot /data/imgs/train_val/helsinki \
+    -t '{"nc": 3, "nz": 256, "ngf": 256, "ndf": 64, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 128, "weight_decay": 0.05}'
+
 ```
 
 

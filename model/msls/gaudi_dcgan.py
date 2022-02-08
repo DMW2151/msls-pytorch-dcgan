@@ -26,10 +26,11 @@ from torch.utils.tensorboard import SummaryWriter
 # Import Torch Habana && Init Values
 def init_default_params(args):
     os.environ["MAX_WAIT_ATTEMPTS"] = "50"
-    os.environ['PT_HPU_ENABLE_SYNC_OUTPUT_HOST'] = 'false'
+    os.environ["PT_HPU_ENABLE_SYNC_OUTPUT_HOST"] = "false"
     os.environ["PL_TORCH_DISTRIBUTED_BACKEND"] = "hccl"
     os.environ["PT_HPU_LAZY_MODE"] = "1"
     os.environ["GRAPH_VISUALIZATION"] = "True"
+
 
 HPU_WORLD_SIZE = 8
 
