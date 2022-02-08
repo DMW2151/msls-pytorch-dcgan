@@ -14,9 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from msls.gan import (
     Discriminator64,
-    Generator64,
-    Discriminator64,
-    Generator64,
+    Generator64
 )
 
 DEFAULT_LOADER_PARAMS = {

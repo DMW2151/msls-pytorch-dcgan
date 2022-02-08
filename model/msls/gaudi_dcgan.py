@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 
 import msls.dcgan_utils as utils
-from msls.gan import Discriminator, Generator
+from msls.gan import Discriminator64, Generator64
 
 from habana_frameworks.torch.utils.library_loader import load_habana_module
 
