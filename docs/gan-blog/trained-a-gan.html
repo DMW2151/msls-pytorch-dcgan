@@ -267,7 +267,6 @@
     <li><a href="#Appendix-1---Modeling-Choices">Appendix 1 - Modeling Choices</a></li>
     <li><a href="#Appendix-2---Comparable-Instance-Selection">Appendix 2 - Comparable Instance Selection</a></li>
     <li><a href="#Appendix-3---PIL-Benchmarks">Appendix 3 - PIL Benchmarks</a></li>
-    <li><a href="#Appendix-4---Assessing-GAN-performance">Appendix 4 - Assessing GAN performance</a></li>
     <li><a href="#Citations">Citations</a></li>
     </ul>
     <hr />
@@ -457,8 +456,8 @@
     <p>I do want to stress that this isn’t a strict replication of the original DCGAN paper. Throughout different points in the training process I implemented some of the advice from <a href="https://github.com/soumith/ganhacks">GanHacks</a> to improve the stability of the model. At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
     <ul>
     <li><p>Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
-    <li><p>I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>. It turned out there were significant challenges with using <code>(3 x 64 x 64)</code> images on modern hardware. Although getting stable training on these larger images took a bit of tuning it was an interesting challenge to reason through all of this</p></li>
     <li><p>I remove the final <code>Sigmoid</code> layer from <code>D</code>. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a loss function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the network to part of the loss function.</p></li>
+    <li><p><strong>[WIP]</strong> I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>. It turned out there were significant challenges with using <code>(3 x 64 x 64)</code> images on modern hardware. Although getting stable training on these larger images took a bit of tuning it was an interesting challenge to reason through all of this.</p></li>
     </ul>
     <hr />
     <h3 id="aws-system-architecture">AWS System Architecture</h3>
@@ -471,7 +470,7 @@
     </i>
     <figure>
     </center>
-    <p>All infrastructure for this project is hosted on AWS. If you’d like a user-guide for deploying the architecture yourself, I’d direct you to my infrastructure <a href="https://github.com/DMW2151/msls-infra">repo</a>. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
+    <p>All infrastructure for this project is hosted on AWS. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
     <ul>
     <li><p><strong>training-prod</strong> — An EC2 instance for running deep learning models, either <code>DL1</code> or a cost-comparable GPU instance (<code>P</code>-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.</p></li>
     <li><p><strong>training-nb</strong> — A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
@@ -482,7 +481,7 @@
     </ul></li>
     </ul>
     <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). Regrettably, an EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.</p>
-    <p>To alleviate this issue, I downloaded the MSLS data to a <code>gp3</code> volume that I provisioned with high (8000) IOPS and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a <em>2000%</em> speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.</p>
+    <p>To alleviate this issue, I downloaded the MSLS data to a <code>gp3</code> volume that I provisioned with high IOPS (8000) and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a <em>2000%</em> speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time. When on the <code>DL1</code>, the HPU would easily outpace the <code>gp3</code> volume, so I made use of the instance’s <code>NvME</code> local-storage for training.</p>
     <hr />
     <h3 id="evaluating-a-first-training-run-on-gpu-instances">Evaluating a First Training run on GPU Instances</h3>
     <p>I started with a PyTorch model running on a GPU (<code>V100</code>) before instrumenting it to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I was optimizing (within reason) for either platform. To validate that the model was sufficiently tuned for the GPU, I referred to the metrics generated by running my model in profiler mode, instance metrics sent to Grafana, and those produced by <code>nvidia-smi</code> (see: <a href="https://developer.nvidia.com/nvidia-system-management-interface">nvidia-smi</a>). With these metrics available, I was able to make choices to improve the model’s training performance.</p>
@@ -513,7 +512,7 @@
     </tr>
     </tbody>
     </table>
-    <p>At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a <a href="https://github.com/uploadcare/pillow-simd">SIMD fork of PIL</a> to increase image processing performance. Unfortunately, none of it made a meaningful difference on the <code>V100</code>. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks (see <a href="#Appendix-2---PIL-Benchmarks">Appendix 2</a>) to make sense of things.</p>
+    <p>At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a <a href="https://github.com/uploadcare/pillow-simd">SIMD fork of PIL</a> to increase image processing performance. Unfortunately, none of it made a meaningful difference on the <code>V100</code>. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks (see <a href="#Appendix-3---PIL-Benchmarks">Appendix 3</a>) to make sense of things.</p>
     <p>I did some research into <a href="https://pytorch.org/blog/pytorch-profiler-1.9-released/">GPU profiling</a> and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective.</p>
     <blockquote>
     <p>Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. … As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.</p>
@@ -628,6 +627,11 @@
     <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">(</span><span class="ex">13</span><span class="kw">)</span><span class="bu">:</span> Tanh<span class="er">(</span><span class="kw">)</span></span>
     <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">)</span></span>
     <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">)</span></span></code></pre></div>
+    <p>Evaluating GANs is difficult because there’s no objective loss function for the results of the Generator. In <em>Goodfellow, et al.</em>, the authors use a procedure, Parzen Log-Liklihood estimation, to evaluate their architecture against other generative methods. In the years since, this method has been revealed to suffer from quite a few problems.</p>
+    <blockquote>
+    <p>Parzen windows estimation of likelihood favors trivial models and is irrelevant to visual fidelity of samples. Further, it fails to approximate the true likelihood in high dimensional spaces or to rank models<sup>7</sup></p>
+    </blockquote>
+    <p>Other authors<sup>6</sup> suggest alternative methods, though the most common ones rely on the existence of a pre-trained classifier model.</p>
     <h3 id="appendix-2---comparable-instance-selection">Appendix 2 - Comparable Instance Selection</h3>
     <p>Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a> and <code>aws describe-instances</code>, I aggregated data for all EC2 instances available in <code>us-east-1</code> with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. <code>G3</code> instances with Tesla <code>M60</code>s) to top-of-the line training instances (e.g. <code>P4</code> instances with <code>A100</code>s). I relied exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">resnext-101 benchmarks</a> as a proxy for my model’s performance. On price, <code>p3.8xlarge</code> instances are the most similar to the <code>DL1</code> and offer 4 <code>V100</code>. Although <code>g4dn.12xlarge</code>(<code>T4</code>) and <code>p2.8xlarge</code> (<code>K80</code>) instances are priced well relative to their performance, I elected to only run a full test on the <code>p3.8xlarge</code>.</p>
     <table>
@@ -755,14 +759,14 @@
     </tbody>
     </table>
     <h3 id="appendix-3---pil-benchmarks">Appendix 3 - PIL Benchmarks</h3>
-    <p>I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>), if these calls are causing the slowdown, we should be able to see a huge amount of stress on the disk during the loader step.</p>
+    <p>I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>). If these calls are causing the slowdown, we should be able to construct an experiment to test it. I tried the following.</p>
     <ul>
     <li><strong>Let’s just use a worse GPU!</strong> — I spun up a <code>p2.8xlarge</code> with <code>K80</code>s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won’t see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity’s sake, but the charts below confirm my hypothesis. This was an excellent discovery!</li>
     </ul>
     <table>
     <tbody>
     <tr class="odd">
-    <td style="text-align: center;"><em>Figure A2.1.1 - GPU Training - GPU Usage - P2.8xLarge</em></td>
+    <td style="text-align: center;"><em>Figure A3.1.1 - GPU Training - GPU Usage - P2.8xLarge</em></td>
     </tr>
     <tr class="even">
     <td style="text-align: center;"><img src="./images/training/vanity_gpu.png" alt="OK" /></td>
@@ -770,12 +774,12 @@
     </tbody>
     </table>
     <ul>
-    <li><strong>Why not profile the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In <em>Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile</em> , you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
+    <li><strong>Why not profile the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In <em>Figure A3.1 - GPU Training - Atop + Nvidia SMI Profile</em> , you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
     </ul>
     <table>
     <tbody>
     <tr class="odd">
-    <td style="text-align: center;"><em>Figure A2.1 - GPU Training - Atop + Nvidia SMI Profile</em></td>
+    <td style="text-align: center;"><em>Figure A3.1 - GPU Training - Atop + Nvidia SMI Profile</em></td>
     </tr>
     <tr class="even">
     <td style="text-align: center;"><img src="./images/training/disk_saturated.png" alt="OK" /></td>
@@ -783,12 +787,6 @@
     </tbody>
     </table>
     <p>Thinking about it in retrospect, this all makes sense. We’re opening images that are <code>(3 x 360 x 480)</code> and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just <code>(3 x 64 x 64)</code>.</p>
-    <h3 id="appendix-4---assessing-gan-performance">Appendix 4 - Assessing GAN performance</h3>
-    <p>In <em>Goodfellow, et al.</em>, the authors use the procedure described below to estimate the relative performance of multiple generative methods. Rather than using this procedure to evaluate other models, I implemented it for comparing intra-model progress across epochs.</p>
-    <blockquote>
-    <p>We estimate probability of the test set data under <em>Pg</em> by fitting a Gaussian Parzen window to the samples generated with G and reporting the log-likelihood under this distribution. The σ parameter of the Gaussians was obtained by cross validation on the validation set. This procedure was introduced in Breuleux et al. [7] and used for various generative models for which the exact likelihood is not tractable.</p>
-    </blockquote>
-    <p>This method of estimation has some significant flaws…</p>
     <hr />
     <h3 id="citations">Citations</h3>
     <p><strong><sup>1</sup></strong> <em>“Generative Adversarial Networks.” Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.</em></p>
@@ -797,6 +795,7 @@
     <p><strong><sup>4</sup></strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
     <p><strong><sup>5</sup></strong> <em>Sønderby, Casper Kaae, et al. “Amortised map inference for image super-resolution.” arXiv preprint arXiv:1610.04490 (2016).</em></p>
     <p><strong><sup>6</sup></strong> <em>Salimans, Tim, et al. “Improved techniques for training gans.” Advances in neural information processing systems 29 (2016).</em></p>
+    <p><strong><sup>7</sup></strong> <em>Borji, Ali. “Pros and cons of gan evaluation measures.” Computer Vision and Image Understanding 179 (2019): 41-65.</em></p>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
     </footer>
