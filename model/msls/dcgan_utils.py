@@ -4,6 +4,7 @@ Common utilities to allow for training on both HPU and GPU instances
 
 from dataclasses import dataclass
 import collections
+import boto3
 
 import os
 import torch
@@ -256,14 +257,14 @@ class ModelCheckpointConfig:
         """
 
         # Load the full checkpoint
-        checkpoint = torch.load(
+        c = torch.load(
             self.checkpoint_path(checkpoint), map_location=torch.device("cpu")
         )
 
         # Remove all keys except the most critical...
-        for key, _ in checkpoint.items():
+        for key, _ in c.items():
             if key not in ("epoch", "G_state_dict"):
-                del checkpoint[key]
+                c[key] = None
 
         # Save the model back to disk, expect a size reduction of ~90%
         torch.save(
@@ -282,7 +283,7 @@ class ModelCheckpointConfig:
 
         # Send the slim checkpoint up to S3!
         response = s3_client.upload_file(
-            f"{self.root}/{self.name}/checkpoint_{checkpoint}.pt",
+            f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt",
             bucket,
             f"{self.name}/slim_checkpoint_{checkpoint}.pt",
         )

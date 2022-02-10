@@ -138,7 +138,7 @@ def start_or_resume_training_run(
     else:
         G.apply(weights_init)
         D.apply(weights_init)
-        cur_epoch = 0
+        cur_epoch = 1
         img_list = []
         losses = {"_G": [], "_D": []}
         Z_fixed = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
@@ -160,7 +160,7 @@ def start_or_resume_training_run(
     dl = get_msls_dataloader(rank, train_cfg, use_ddp=True)
 
     # Begin the Training Cycle...
-    for epoch in range(cur_epoch, n_epochs):
+    for epoch in range(cur_epoch, n_epochs + 1):
 
         # If running with DDP; set the epoch to prevent deterministic order
         if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
@@ -256,7 +256,7 @@ def start_or_resume_training_run(
                     losses["_D"].append(err_D.item())
 
         # Save model && progress images every N epochs
-        if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs - 1):
+        if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
 
             with torch.no_grad():
                 generated_images = G(Z_fixed).detach().cpu()

@@ -1,41 +1,31 @@
 ---
 title: Generative Street-Level Imagery on DL1 Instances
 author: Dustin Wilson
-date: January 29, 2022
+date: February 8, 2022
 ---
-
---------
 
 <center>
     <figure class="image">
-        <img src="./images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
-        <img src="./images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
-        <img src="./images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
+        <img src="../images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
+        <img src="../images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
+        <img src="../images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
         <i><figcaption style="font-size: 12px;">Nowhere, USA - Experimental Output - Scenes created by interpolating between sequences of generated frames</figcaption></i>
     </figure>
 </center>
 
-For a few months now, I've wanted to create something like [ThisPersonDoesNotExist](https://thispersondoesnotexist.com/) for street scenes. Luckily, the [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com) gave me an excuse to do so. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on over 1.1 million street-level images.
+For a few months now, I've wanted to create something like [ThisPersonDoesNotExist](https://thispersondoesnotexist.com/) for street scenes. Luckily, the [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com) gave me an excuse to do so at a small scale. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on 1.2 million street-level images.
 
-It's not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS' `DL1` instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, and then performed a comparative analysis of performance across training environments.
+It's not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS' `DL1` instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, tried out several training strategies, and then did a comparative analysis of performance across training environments.
 
 - [Theory and Background](#Theory-and-Background)
 - [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
-- [DCGAN Results](#DCGAN-Results)
-  - [Results](#Results)
-  - [Modeling Considerations](#Modeling-Considerations)
 - [AWS System Architecture](#AWS-System-Architecture)
-- [Evaluating a First Training run on GPU Instances](#Evaluating-a-First-Training-run-on-GPU-Instances)
-- [Modifications for Training on Gaudi Accelerated Instances](#Modifications-for-Training-on-Gaudi-Accelerated-Instances)
-- [Comparative Performance](#Comparative-Performance)
-- [Appendix 1 - Modeling Choices](#Appendix-1---Modeling-Choices)
-- [Appendix 2 - Comparable Instance Selection](#Appendix-2---Comparable-Instance-Selection)
-- [Appendix 3 - PIL Benchmarks](#Appendix-3---PIL-Benchmarks)
-- [Citations](#Citations)
+- [DCGAN Results](#DCGAN-Results)
+- [References](#References)
 
 --------
 
-### Theory and Background
+## Theory and Background
 
 In this project I re-implement elements of Ian Goodfellow's [Generative Adversarial Networks (2014)](https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf)<sup>1</sup> and Alec Radford's [Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)](https://arxiv.org/pdf/1511.06434.pdf)<sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs, Generative Adversarial Networks.
 
@@ -61,28 +51,29 @@ The critical steps in each training iteration involve measuring the values of th
 
 - `E`<sub>`z∼pz​(z)​`</sub>`[log(1−D(G(z)))]` &mdash; The expected value of `D`'s prediction when given samples produced from `G(Z)`, Because all images in this batch are fake, a better discriminator would predict a lower `D(G(Z))`, also returning values near *0*.
 
-In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both are convolutional neural networks with a specific layer structure.
+In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both functions are convolutional neural networks with a specific layer structure.
 
 <center>
     <figure>
-        <img style="padding-top: 20px;" align="center" width="600" src="./images/translation/gan.png">
-        <i><figcaption style="font-size: 12px;">DBGAN Generator Architecture -  As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
+        <img style="padding-top: 20px;" align="center" width="600" src="../images/translation/gan.png">
+        <i><figcaption style="font-size: 12px;">Figure 1. DBGAN Generator Architecture -  As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
     <figure>
 </center>
+
+In my implementation, I kept the same form and layer structure of *Radford's* original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see [modeling choices](./ml.html) for more detail on the specific implementation details of the model.
 
 --------
 
-### Mapillary Street Level Imagery Data
+## Mapillary Street Level Imagery Data
 
 <center>
     <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/translation/train_samples_eu.png">
-    <i><figcaption style="font-size: 12px;" >Training Samples From MSLS - Cropped and Transformed</figcaption></i>
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/translation/train_samples_eu.png">
+    <i><figcaption style="font-size: 12px;" >Figure 2. Training Samples From MSLS - Cropped and Transformed</figcaption></i>
     <figure>
 </center>
 
-
-Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2M images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc.
+Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of most less-expensive training instances.
 
 | Metro Area    | % of Sample | Approx. Count |
 |:--------------|:-----------:|----------:|
@@ -109,225 +100,49 @@ Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). 
 | Trondheim     |       1.07% |    12,888 |
 | Zurich        |       0.51% |     6,081 |
 | **Total**     |             | **1,199,556** |
-Table: Training Sample By Metro Area
+Table: Table 1 &mdash; Count of Mapillary Training Images By Metro Area
 
-Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition, the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image.
-
-The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to `(3 x 640 x 480)`. Because the model expects `(3 x 64 x 64)` images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.
+Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition,the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image. The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to `(3 x 640 x 480)`. Because the model expects `(3 x 64 x 64)` images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.
 
 <center>
     <figure>
-    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="./images/translation/nyc_img_transformed_samples.png">
-    <i><figcaption style="font-size: 12px;" >Sample Transformations - All images are shifted, center-cropped, and then scaled to `3 x 64 x 64`<sup>4</sup> </figcaption></i>
+    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="../images/translation/nyc_img_transformed_samples.png">
+    <i><figcaption style="font-size: 12px;"> Figure 3. Sample DataLoader Image Transformations<sup>4</sup> </figcaption></i>
     <figure>
 </center>
 
 --------
 
-### DCGAN Results
-
-#### Results
-
-#### Modeling Considerations
-
-I do want to stress that this isn't a strict replication of the original DCGAN paper. Throughout different points in the training process I implemented some of the advice from [GanHacks](https://github.com/soumith/ganhacks) to improve the stability of the model. At a low-level, it's difficult to describe all of the internal consequences of using `PyTorch` rather than the specific packages the authors used. At a high level, I made the following notable changes:
-
-- Choose `AdamW`/`FusedAdamW` as an optimizer function over `SGD`. *Goodfellow, et al.* use a custom `SGD` [implementation](https://github.com/goodfeli/adversarial/blob/master/sgd.py) that is a patched version of pylearn2's `SGD`. Instead, I elected for a built-in PyTorch optimizer, `AdamW`. As an added benefit, Habana offers their own `FusedAdamW` implementation that should perform quite well on the Gaudi instances.
-
-- I remove the final `Sigmoid` layer from `D`. Typically a binary classification problem like the one `D` solves would use [Binary Cross Entropy Loss](https://en.wikipedia.org/wiki/Cross_entropy) (`BCELoss`). The way that PyTorch optimizes for mixed-precision operations required I switch to `BCEWithLogitLoss`, a loss function that expects logits (`L∈(−∞,∞)`) rather than probabilities (`p∈[0,1]`). In effect, this change moves the `Sigmoid` from the network to part of the loss function.
-
-- **[WIP]** I add an additional block of `Conv2d`, `BatchNorm2d`, and `Relu` layers to start the model. This allows me to handle for images at `(3 x 128 x 128)`. It turned out there were significant challenges with using `(3 x 64 x 64)` images on modern hardware. Although getting stable training on these larger images took a bit of tuning it was an interesting challenge to reason through all of this. 
-
---------
-
-### AWS System Architecture
+## AWS System Architecture
 
 <center>
     <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="./images/infra/arch.png">
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/infra/arch.png">
     <i><figcaption style="font-size: 12px;" >Simplified Model Training Architecture</figcaption></i>
     <figure>
 </center>
 
-All infrastructure for this project is hosted on AWS. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
+All infrastructure for this project is hosted on AWS. Please see [infrastructure and hardware choices](./infra.html) for more detail on the specific details of that element of the project.
+
+All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
 
 - **training-prod** &mdash; An EC2 instance for running deep learning models, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
   
-- **training-nb** &mdash; A small Sagemaker instance used for interactive model development, model evaluation, and generating plots.
+- **training-nb** &mdash; A small SageMaker instance used for interactive model development, model evaluation, and generating plots.
   
-- **metrics** &mdash; A small EC2 instance used to host metrics containers. This machine ran:
+- **metrics** &mdash; A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:
   - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
   - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
 
-Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). Regrettably, an EFS file system can only drive up to 150 KiB/s per GiB of read throughput. With my filesystem using under 100GB, this left me with a paltry ~8MB/s data transfer.
-
-To alleviate this issue, I downloaded the MSLS data to a `gp3` volume that I provisioned with high IOPS (8000) and throughput (1000 MiB/s). I can easily attach and detach it from separate training instances as as needed. Anecdotally, this choice led to a *2000%* speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time. When on the `DL1`, the HPU would easily outpace the `gp3` volume, so I made use of the instance's `NvME` local-storage for training.
+Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a `gp3` volume attached to my training instances and then passed to the GPU/HPU during training.
 
 --------
 
-### Evaluating a First Training run on GPU Instances
-
-I started with a PyTorch model running on a GPU (`V100`) before instrumenting it to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I was optimizing (within reason) for either platform. To validate that the model was sufficiently tuned for the GPU, I referred to the metrics generated by running my model in profiler mode, instance metrics sent to Grafana, and those produced by `nvidia-smi` (see: [nvidia-smi](https://developer.nvidia.com/nvidia-system-management-interface)). With these metrics available, I was able to make choices to improve the model's training performance.
-
-- **Batch Size** &mdash; This was low-hanging fruit. Independent of the other changes, the right choice of batch size sped up overall execution time by ~80%.
-
-- **Minimize CUDA Copies** &mdash; Training statistics, outputs, labels, etc. were being haphazardly moved to and from the GPU! I can collect and display them at the end of the epoch rather than on each batch.
-
-- **Using AMP** &mdash; Automatic Mixed Precision (AMP) allows for model training to run with FP16 values where possible and F32 where needed. This allows for lower memory consumption and faster training time. It also opens the door for me to use Habana's mixed precision [modules](https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi) when I move over to the `DL1` instance.
-
-- **Distributed Data Processing** &mdash; In isolation, distributed data processing doesn't improve the model's training performance, but it does lend towards a more robust training environment. Although this is a problem that uses a moderate amount of small images, I still wanted to instrument my code to run across multiple GPUs (and nodes).
-
-Looking at the first chart below, *PyTorch Profiler - GPU Execution Summary*, it would seem I was quite close to "perfect" GPU utilization. Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn't include the dataloader steps!
-
-|                           |
-|:-------------------------:|
-| *Figure 1.1 - PyTorch Profiler - GPU Execution Summary* |
-| ![OK](./images/training/big_batch_good.png) |
-
-|                           |
-|:-------------------------:|
-| *Figure 1.2 - Grafana - GPU Utilization Rates* |
-| ![Bad GPU](./images/training/gpu_poor.png) |
-
-At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a [SIMD fork of PIL](https://github.com/uploadcare/pillow-simd) to increase image processing performance. Unfortunately, none of it made a meaningful difference on the `V100`. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks (see [Appendix 3](#Appendix-3---PIL-Benchmarks)) to make sense of things.
-
-I did some research into [GPU profiling](https://pytorch.org/blog/pytorch-profiler-1.9-released/) and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective.
-
-> Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. ... As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.
-
-This low GPU utilization was still a bit unsettling, but my Est. Achieved Occupancy was good and the standard `pytorch.DataLoader` would stay in the code. Finally, I did a few GPU test runs to collect metrics (`p2.8xlarge` w. 8 x `K80` and `p3.2xlarge` w. 1 x `V100`) and I moved along to training on the Gaudi-accelerated instances.
+## DCGAN Results
 
 --------
 
-### Modifications for Training on Gaudi Accelerated Instances
-
-Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration [guide](https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model). In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:
-
-- Swap out a standard `pytorch.DataLoader` for `habana_dataloader.HabanaDataLoader`. Under the right [circumstances](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader), `HabanaDataLoader` can yield better performance that the native `DataLoader`. Even without acceleration, I can still use the `HabanaDataLoader` with a high `num_workers` parameter to quickly shuttle data onto the device.
-
-- In the previous section and [Appendix 2](#Appendix-2---PIL-Benchmarks) I note that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on `DL1`, I'll be training off [local storage volumes](https://aws.amazon.com/ec2/instance-types/dl1/).
-
-- Use `Lazy Mode`. [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
-  
-- Use `FusedAdamW` over `AdamW`. `FusedAdamW` can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This is a custom optimizer for Habana devices and should yield some performance improvements over `AdamW`.
-
---------
-
-### Comparative Performance
-
-|           Model Run           |  Instance  | Average Throughput (Imgs/Hr) |  Rate ($) | Throughput / $ (Est.) |   Spot Rate ($)  | Spot Throughput / $  (Est.) |
-|:------------------------------|:----------:|-----------------------------:|----------:|-----------------------:|------------:|-----------------------:|
-| Naive-Params-Multi-GPU        | p2.8xlarge |                    7,780,000 |     $7.20 |              1,080,556 |       $2.16 |              3,601,852 |
-| Naive-Params-Single-GPU       | p3.2xlarge |                    5,830,000 |     $3.06 |              1,905,229 |       $0.92 |              6,336,957 |
-| Safe-Params-w-Noise-Batch-512 | p3.2xlarge |                    5,020,000 |     $3.06 |              1,640,523 |       $0.92 |              5,456,522 |
-
---------
-
-### Appendix 1 - Modeling Choices
-
-DCGAN is unstable in comparison to modern generative models. After a few test runs, It became clear that the default values suggested in the paper may not be ideal for my use-case or hardware. The most common failure mode I observed involved was `D` learning the difference between test and real images too quickly; some property of fake images that made them easy to identify, and that left `G` to make trivial progress in generating better images over time. I didn't have the time or resources to do a full hyper-parameter tuning, so I used a few ~~tricks~~ heuristics suggested [here](https://github.com/pytorch/examples/issues/70) and [here](https://github.com/soumith/dcgan.torch/issues/2#issuecomment-164862299) to temper this tendency towards model collapse. I ran ~10 short test runs and treated that as a pseudo grid search. Of the variations I tried the following set of values gave me (anecdotally) the best results on a `P3.2xlarge` (1 x `V100`).
-
-- **Learning Rate** &mdash; 0.0002
-- **Latent Vector Size** &mdash; 256
-- **Additional Noise Layer in Transformations**: (0, 0.2)
-- **Batch Size** &mdash; 512
-- **Adam Optimizer w. Weight Decay:** 0.05
-
-The most transformative of these changes was the addition of an extra noise layer in the dataloader, setting this value high does produce grainy results, but it was an effective remedy against the generator collapsing. There is support for this method in [literature](https://www.inference.vc/instance-noise-a-trick-for-stabilising-gan-training/)<sup>5</sup> dating back to at least 2016.
-
-All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability. Using a more modern model architecture, I may have been able to get away with default parameters. Both networks' architecture (as presented in the DCGAN paper) is show below. I would advise leaving this unchanged (except for maybe the size of the latent vector, `Z` passed to the generator).
-
-```bash
-Discriminator(
-  (main): Sequential(
-    (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (1): LeakyReLU(negative_slope=0.2, inplace=True)
-    (2): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (4): LeakyReLU(negative_slope=0.2, inplace=True)
-    (5): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (6): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (7): LeakyReLU(negative_slope=0.2, inplace=True)
-    (8): Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (9): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (10): LeakyReLU(negative_slope=0.2, inplace=True)
-    (11): Conv2d(512, 1, kernel_size=(4, 4), stride=(1, 1), bias=False)
-    (12): # Sigmoid() ## NOTE: We Removed The Sigmoid Here Because of Our Change from BCELoss to BCEwithLogitLoss
-  )
-)
-```
-
-```bash
-Generator(
-  (main): Sequential(
-    (0): ConvTranspose2d(100, 512, kernel_size=(4, 4), stride=(1, 1), bias=False)
-    (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (2): ReLU(inplace=True)
-    (3): ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (4): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (5): ReLU(inplace=True)
-    (6): ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (7): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (8): ReLU(inplace=True)
-    (9): ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (10): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (11): ReLU(inplace=True)
-    (12): ConvTranspose2d(64, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
-    (13): Tanh()
-  )
-)
-```
-
-Evaluating GANs is difficult because there's no objective loss function for the results of the Generator. In *Goodfellow, et al.*, the authors use a procedure, Parzen Log-Liklihood estimation, to evaluate their architecture against other generative methods. In the years since, this method has been revealed to suffer from quite a few problems.
-
-> Parzen windows estimation of likelihood favors trivial models and is irrelevant to visual fidelity of samples. Further, it fails to approximate the true likelihood in high dimensional spaces or to rank models<sup>7</sup>
-
-Other authors<sup>6</sup> suggest alternative methods, though the most common ones rely on the existence of a pre-trained classifier model.
-
-### Appendix 2 - Comparable Instance Selection
-
-Using [instances.vantage.sh](https://instances.vantage.sh/) and `aws describe-instances`, I aggregated data for all EC2 instances available in `us-east-1` with between 2 and 8 GPUs. These machines range from those with GPUs that are designed for graphics workloads (e.g. `G3` instances with Tesla `M60`s) to top-of-the line training instances (e.g. `P4` instances with `A100`s). I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100`. Although `g4dn.12xlarge`(`T4`) and `p2.8xlarge` (`K80`) instances are priced well relative to their performance, I elected to only run a full test on the `p3.8xlarge`.
-
-| API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) |   $/Hr |
-|---------------|--------------|-------|------|-----------------------|---------------|--------|
-| g3.8xlarge    |          244 |    32 |    2 | NVIDIA Tesla M60      |            16 |   2.28 |
-| g3.16xlarge   |          488 |    64 |    4 | NVIDIA Tesla M60      |            32 |   4.56 |
-| p2.8xlarge    |          488 |    32 |    8 | NVIDIA Tesla K80      |            96 |   7.20 |
-| g4dn.12xlarge |          192 |    48 |    4 | NVIDIA T4 Tensor Core |            64 |   3.91 |
-| g4dn.metal    |          384 |    96 |    8 | NVIDIA T4 Tensor Core |           128 |   7.82 |
-| g5.12xlarge   |          192 |    48 |    4 | NVIDIA A10G           |            96 |   5.67 |
-| g5.24xlarge   |          384 |    96 |    4 | NVIDIA A10G           |            96 |   8.14 |
-| g5.48xlarge   |          768 |   192 |    8 | NVIDIA A10G           |           192 |  16.29 |
-| p3.8xlarge    |          244 |    32 |    4 | NVIDIA Tesla V100     |            64 |  12.24 |
-| p3.16xlarge   |          488 |    64 |    8 | NVIDIA Tesla V100     |           128 |  24.48 |
-| p3dn.24xlarge |          768 |    96 |    8 | NVIDIA Tesla V100     |           256 |  31.21 |
-| p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 |  32.77 |
-Table: Table A.1.1 - Possible Comparable GPU Instances
-
-### Appendix 3 - PIL Benchmarks
-
-I narrowed down the source of the drops in GPU utilization to the dataloader being slow relative to the GPU. Every batch is doing thousands of `PIL.open()` calls ([source](https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249)). If these calls are causing the slowdown, we should be able to construct an experiment to test it. I tried the following.
-
-- **Let's just use a worse GPU!** &mdash; I spun up a `p2.8xlarge` with `K80`s to see if the weaker GPU would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won't see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity's sake, but the charts below confirm my hypothesis. This was an excellent discovery!
-
-|                           |
-|:-------------------------:|
-| *Figure A3.1.1 - GPU Training - GPU Usage - P2.8xLarge* |
-| ![OK](./images/training/vanity_gpu.png) |
-
-- **Why not profile the disk?** &mdash;  Back on the `p3.2xlarge`, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out `gp3` would have been adequate, but maybe I should have sprung for the `io1` or `io2`. In *Figure A3.1 - GPU Training - Atop + Nvidia SMI Profile* , you can see the results of `atop` and `nvidia-smi` during a training run. When the GPU is at low utilization. the disk where `MSLS` is mounted (`/dev/xvdh`) is **working!**.
-
-|                           |
-|:-------------------------:|
-| *Figure A3.1 - GPU Training - Atop + Nvidia SMI Profile* |
-| ![OK](./images/training/disk_saturated.png) |
-
-Thinking about it in retrospect, this all makes sense. We're opening images that are `(3 x 360 x 480)` and the GPU is doing some light calculations to resize and re-color them, but then running expensive convolutions on images that are just `(3 x 64 x 64)`.
-
-
---------
-
-### Citations
+## References
 
 **<sup>1</sup>** *"Generative Adversarial Networks." Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.*
 
@@ -336,11 +151,3 @@ Thinking about it in retrospect, this all makes sense. We're opening images that
 **<sup>3</sup>** *F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020*
 
 **<sup>4</sup>** *File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&oldid=457344851* 
-
-**<sup>5</sup>** *Sønderby, Casper Kaae, et al. "Amortised map inference for image super-resolution." arXiv preprint arXiv:1610.04490 (2016).*
-
-**<sup>6</sup>** *Salimans, Tim, et al. "Improved techniques for training gans." Advances in neural information processing systems 29 (2016).*
-
-**<sup>7</sup>** *Borji, Ali. "Pros and cons of gan evaluation measures." Computer Vision and Image Understanding 179 (2019): 41-65.*
-
-

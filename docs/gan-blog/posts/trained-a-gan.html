@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"> 
+    <meta charset="utf-8">
+    <meta name="author" content='Dustin Wilson'>
+    <meta name="date" content='2022-02-08'>
+    <title>Generative Street-Level Imagery on DL1 Instances</title>
+    <style>
+            html {
+              line-height: 1.5;
+              font-family: Georgia, serif;
+              font-size: 16px;
+              color: #1a1a1a;
+              background-color: #202025;
+            }
+            .header {
+              text-align: center;
+              background: gray;
+              color: white;
+            }
+            strong {
+              color: #5858d9;
+            }
+            body {
+              margin: 0 auto;
+              max-width: 52em;
+              padding-left: 50px;
+              padding-right: 50px;
+              padding-top: 50px;
+              padding-bottom: 50px;
+              hyphens: auto;
+              overflow-wrap: break-word;
+              text-rendering: optimizeLegibility;
+              font-kerning: normal;
+            }
+            @media (max-width: 600px) {
+              body {
+                font-size: 0.9em;
+                padding: 1em;
+              }
+            }
+            @media print {
+              body {
+                background-color: transparent;
+                color: black;
+                font-size: 12pt;
+              }
+              p, h2, h3 {
+                orphans: 3;
+                widows: 3;
+              }
+              h2, h3, h4 {
+                page-break-after: avoid;
+              }
+            }
+            p {
+              margin: 1em 0;
+            }
+            a {
+              color: #5858d9;
+            }
+            a:visited {
+              color: #9292f2;
+            }
+            img {
+              max-width: 100%;
+            }
+            h1, h2, h3, h4, h5, h6 {
+              margin-top: 1.4em;
+            }
+            h5, h6 {
+              font-size: 1em;
+              font-style: italic;
+            }
+            h6 {
+              font-weight: normal;
+            }
+            ol, ul {
+              padding-left: 1.7em;
+              margin-top: 1em;
+            }
+            li > ol, li > ul {
+              margin-top: 0;
+            }
+            blockquote {
+              margin: 1em 0 1em 1.7em;
+              padding-left: 1em;
+              border-left: 2px solid #e6e6e6;
+            }
+            mark {
+              background: lightgoldenrodyellow
+            }
+            code {
+              font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+              font-size: 85%;
+              margin: 0;
+              color: #FFFBC8;
+            }
+            pre {
+              margin: 1em 0;
+              overflow: auto;
+            }
+            pre code {
+              padding: 0;
+              overflow: visible;
+              overflow-wrap: normal;
+              color: #ebebe6;
+            }
+            .sourceCode {
+             background-color: #202025;
+             overflow: visible;
+            }
+            hr {
+              background-color: #ebebe6;
+              border: none;
+              height: 2px;
+              margin: 1em 0;
+            }
+            .gan-test-img {
+              transition: background-color .2s;
+            }
+            .gan-test-img:hover {
+              mix-blend-mode: hard-light;
+              width: min-content;
+            }
+            table {
+              margin: 1em 0;
+              border-collapse: collapse;
+              width: 100%;
+              overflow-x: auto;
+              font-variant-numeric: lining-nums tabular-nums;
+              color: #ebebe6;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            table caption {
+              margin-bottom: 0.75em;
+            }
+            tbody {
+              margin-top: 0.5em;
+              border-top: 1px solid #ebebe6;
+              border-bottom: 1px solid #ebebe6;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            th {
+              border-top: 1px solid #202025;
+              padding: 0.25em 0.5em 0.25em 0.5em;
+            }
+            td {
+              padding: 0.125em 0.5em 0.25em 0.5em;
+              color: #ebebe6;
+            }
+            header {
+              margin-bottom: 4em;
+              text-align: center;
+            }
+            #TOC li {
+              list-style: none;
+            }
+            #TOC a:not(:hover) {
+              text-decoration: none;
+            }
+            code{white-space: pre-wrap;}
+            span.smallcaps{font-variant: small-caps;}
+            span.underline{text-decoration: underline;}
+            div.column{display: inline-block; vertical-align: top; width: 50%;}
+            div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+            ul.task-list{list-style: none;}
+            pre > code.sourceCode { white-space: pre; position: relative; }
+            pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+            pre > code.sourceCode > span:empty { height: 1.2em; }
+            .sourceCode { overflow: visible; }
+            code.sourceCode > span { color: inherit; text-decoration: inherit; }
+            div.sourceCode { margin: 1em 0; }
+            pre.sourceCode { margin: 0; }
+            @media screen {
+            div.sourceCode { overflow: auto; }
+            }
+            @media print {
+            pre > code.sourceCode { white-space: pre-wrap; }
+            pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+            }
+            pre.numberSource code
+              { counter-reset: source-line 0; }
+            pre.numberSource code > span
+              { position: relative; left: -4em; counter-increment: source-line; }
+            pre.numberSource code > span > a:first-child::before
+              { content: counter(source-line);
+                position: relative; left: -1em; text-align: right; vertical-align: baseline;
+                border: none; display: inline-block;
+                -webkit-touch-callout: none; -webkit-user-select: none;
+                -khtml-user-select: none; -moz-user-select: none;
+                -ms-user-select: none; user-select: none;
+                padding: 0 4px; width: 4em;
+                color: #FFFBC8;
+              }
+            pre.numberSource { margin-left: 3em; border-left: 1px solid #FFFBC8;  padding-left: 4px; }
+            div.sourceCode
+              {   }
+            @media screen {
+            pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+            }
+            code span.al { color: #FFFBC8; font-weight: bold; } /* Alert */
+            code span.an { color: #FFFBC8; font-weight: bold; font-style: italic; } /* Annotation */
+            code span.at { color: #FFFBC8; } /* Attribute */
+            code span.bn { color: #FFFBC8; } /* BaseN */
+            code span.bu { } /* BuiltIn */
+            code span.cf { color: #FFFBC8; font-weight: bold; } /* ControlFlow */
+            code span.ch { color: #FFFBC8; } /* Char */
+            code span.cn { color: #FFFBC8; } /* Constant */
+            code span.co { color: #FFFBC8; font-style: italic; } /* Comment */
+            code span.cv { color: #FFFBC8; font-weight: bold; font-style: italic; } /* CommentVar */
+            code span.do { color: #FFFBC8; font-style: italic; } /* Documentation */
+            code span.dt { color: #FFFBC8; } /* DataType */
+            code span.dv { color: #FFFBC8; } /* DecVal */
+            code span.er { color: #FFFBC8; font-weight: bold; } /* Error */
+            code span.ex { } /* Extension */
+            code span.fl { color: #FFFBC8; } /* Float */
+            code span.fu { color: #FFFBC8; } /* Function */
+            code span.im { } /* Import */
+            code span.in { color: #FFFBC8; font-weight: bold; font-style: italic; } /* Information */
+            code span.kw { color: #FFFBC8; font-weight: bold; } /* Keyword */
+            code span.op { color: #FFFBC8; } /* Operator */
+            code span.ot { color: #FFFBC8; } /* Other */
+            code span.pp { color: #FFFBC8; } /* Preprocessor */
+            code span.sc { color: #FFFBC8; } /* SpecialChar */
+            code span.ss { color: #FFFBC8; } /* SpecialString */
+            code span.st { color: #FFFBC8; } /* String */
+            code span.va { color: #FFFBC8; } /* Variable */
+            code span.vs { color: #FFFBC8; } /* VerbatimString */
+            code span.wa { color: #FFFBC8; font-weight: bold; font-style: italic; } /* Warning */
+            .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+          </style>
+  </head>
+  <body style="background-color:#202025; color: #e6e6e6"></body>
+    <header>
+        <div style="background-color:#202025; color: #e6e6e6" class="header">
+            <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
+            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
+            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
+            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
+            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Interactive Gallery</a>
+        </div>
+    </header>
+    <h1> Generative Street-Level Imagery on DL1 Instances </h1>
+    <p>Dustin Wilson &#8212 February 8, 2022</p>
+    <hr>
+    <center>
+    <figure class="image">
+    <img src="../images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <img src="../images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <img src="../images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> <i>
+    <figcaption style="font-size: 12px;">
+    Nowhere, USA - Experimental Output - Scenes created by interpolating between sequences of generated frames
+    </figcaption>
+    </i>
+    </figure>
+    </center>
+    <p>For a few months now, I’ve wanted to create something like <a href="https://thispersondoesnotexist.com/">ThisPersonDoesNotExist</a> for street scenes. Luckily, the <a href="https://amazon-ec2-dl1.devpost.com">AWS Deep Learning Challenge</a> gave me an excuse to do so at a small scale. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on 1.2 million street-level images.</p>
+    <p>It’s not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS’ <code>DL1</code> instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, tried out several training strategies, and then did a comparative analysis of performance across training environments.</p>
+    <ul>
+    <li><a href="#Theory-and-Background">Theory and Background</a></li>
+    <li><a href="#Mapillary-Street-Level-Imagery-Data">Mapillary Street Level Imagery Data</a></li>
+    <li><a href="#AWS-System-Architecture">AWS System Architecture</a></li>
+    <li><a href="#DCGAN-Results">DCGAN Results</a></li>
+    <li><a href="#References">References</a></li>
+    </ul>
+    <hr />
+    <h2 id="theory-and-background">Theory and Background</h2>
+    <p>In this project I re-implement elements of Ian Goodfellow’s <a href="https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf">Generative Adversarial Networks (2014)</a><sup>1</sup> and Alec Radford’s <a href="https://arxiv.org/pdf/1511.06434.pdf">Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)</a><sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs, Generative Adversarial Networks.</p>
+    <p>Before discussing specific elements of the project, let’s discuss the <em>way</em> GANs work. Put simply, GANs consist of two competing functions. A generator (<code>G</code>) tries to create believable data and a discriminator (<code>D</code>) tries to maximize the probability it correctly classifies real and generated data.</p>
+    <p><strong>Assume the following variables:</strong></p>
+    <ul>
+    <li><p><code>X</code> — Input data, in our case, an image with size <code>(3 x 64 x 64)</code></p></li>
+    <li><p><code>D(X)</code> or <code>D</code> — Discriminator network which outputs the probability that an input, <code>X</code>, is real.</p></li>
+    <li><p><code>G(Z)</code> or <code>G</code> — Generator network that deterministically creates data in the shape of <code>X</code>. In practice, an image with size <code>(3 x 64 x 64)</code>.</p></li>
+    <li><p><code>Z</code> — Random noise to seed the generator. In practice, a <code>(1 x 100)</code> vector drawn from a standard normal distribution.</p></li>
+    <li><p><code>D(G(Z))</code> — Given an output of the generator, the probability that the discriminator believes the image to be real. A high <code>D(G(Z))</code> suggests the generator has “tricked” the discriminator.</p></li>
+    </ul>
+    <p>The critical steps in each training iteration involve measuring the values of the following terms. For the formula-inclined, the GAN is simply maximizing the following function:</p>
+    <center>
+    <code>min​</code><sub><code>G</code></sub><code>max​</code><sub><code>V</code></sub><code>(D,G) = E</code><sub><code>x∼pdata​(x)</code></sub>​<code>[logD(x)] + E</code><sub><code>z∼pz​(z)​</code></sub><code>[log(1−D(G(z)))]</code>
+    </center>
+    <ul>
+    <li><p><code>E</code><sub><code>x∼pdata​(x)</code></sub>​<code>[logD(x)]</code> — The expected value of <code>D</code>’s predictions when given samples from the real batch. Remember, <code>D(x)</code> produces a probability, thus a perfect discriminator would return values near <em>0</em>.</p></li>
+    <li><p><code>E</code><sub><code>z∼pz​(z)​</code></sub><code>[log(1−D(G(z)))]</code> — The expected value of <code>D</code>’s prediction when given samples produced from <code>G(Z)</code>, Because all images in this batch are fake, a better discriminator would predict a lower <code>D(G(Z))</code>, also returning values near <em>0</em>.</p></li>
+    </ul>
+    <p>In the DCGAN paper, the method by which this function is maximized is by putting batches of images through <code>D</code> and <code>G</code>, where both functions are convolutional neural networks with a specific layer structure.</p>
+    <center>
+    <figure>
+    <img style="padding-top: 20px;" align="center" width="600" src="../images/translation/gan.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Figure 1. DBGAN Generator Architecture - As diagramed by Radford, et. al <sup>4<sup>
+    </figcaption>
+    </i>
+    <figure>
+    </center>
+    <p>In my implementation, I kept the same form and layer structure of <em>Radford’s</em> original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see <a href="./ml.html">modeling choices</a> for more detail on the specific implementation details of the model.</p>
+    <hr />
+    <h2 id="mapillary-street-level-imagery-data">Mapillary Street Level Imagery Data</h2>
+    <center>
+    <figure>
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/translation/train_samples_eu.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Figure 2. Training Samples From MSLS - Cropped and Transformed
+    </figcaption>
+    </i>
+    <figure>
+    </center>
+    <p>Throughout this project, I used Mapillary’s Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for <a href="https://www.mapillary.com/dataset/places">download</a> (<strong>Note</strong>: <a href="https://github.com/mapillary/mapillary_sls/issues/23">GH Issue</a>). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of most less-expensive training instances.</p>
+    <table>
+    <caption>Table 1 — Count of Mapillary Training Images By Metro Area</caption>
+    <thead>
+    <tr class="header">
+    <th style="text-align: left;">Metro Area</th>
+    <th style="text-align: center;">% of Sample</th>
+    <th style="text-align: right;">Approx. Count</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: left;">Amman</td>
+    <td style="text-align: center;">0.14%</td>
+    <td style="text-align: right;">1,702</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Amsterdam</td>
+    <td style="text-align: center;">1.37%</td>
+    <td style="text-align: right;">16,487</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Austin</td>
+    <td style="text-align: center;">1.90%</td>
+    <td style="text-align: right;">22,847</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Bangkok</td>
+    <td style="text-align: center;">3.26%</td>
+    <td style="text-align: right;">39,055</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Boston</td>
+    <td style="text-align: center;">1.27%</td>
+    <td style="text-align: right;">15,204</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Budapest</td>
+    <td style="text-align: center;">17.67%</td>
+    <td style="text-align: right;">212,015</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Goa</td>
+    <td style="text-align: center;">1.11%</td>
+    <td style="text-align: right;">13,307</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Helsinki</td>
+    <td style="text-align: center;">1.75%</td>
+    <td style="text-align: right;">20,978</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">London</td>
+    <td style="text-align: center;">0.65%</td>
+    <td style="text-align: right;">7,755</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Manila</td>
+    <td style="text-align: center;">0.53%</td>
+    <td style="text-align: right;">6,416</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Melbourne</td>
+    <td style="text-align: center;">15.58%</td>
+    <td style="text-align: right;">186,908</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Moscow</td>
+    <td style="text-align: center;">18.14%</td>
+    <td style="text-align: right;">217,594</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Nairobi</td>
+    <td style="text-align: center;">0.06%</td>
+    <td style="text-align: right;">725</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Ottawa</td>
+    <td style="text-align: center;">12.09%</td>
+    <td style="text-align: right;">145,063</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Paris</td>
+    <td style="text-align: center;">1.62%</td>
+    <td style="text-align: right;">19,416</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Phoenix</td>
+    <td style="text-align: center;">12.56%</td>
+    <td style="text-align: right;">150,642</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Sao Paulo</td>
+    <td style="text-align: center;">4.65%</td>
+    <td style="text-align: right;">55,793</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">San Fransisco</td>
+    <td style="text-align: center;">0.43%</td>
+    <td style="text-align: right;">5,133</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Tokyo</td>
+    <td style="text-align: center;">3.49%</td>
+    <td style="text-align: right;">41,845</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Toronto</td>
+    <td style="text-align: center;">1.27%</td>
+    <td style="text-align: right;">15,176</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Trondheim</td>
+    <td style="text-align: center;">1.07%</td>
+    <td style="text-align: right;">12,888</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Zurich</td>
+    <td style="text-align: center;">0.51%</td>
+    <td style="text-align: right;">6,081</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;"><strong>Total</strong></td>
+    <td style="text-align: center;"></td>
+    <td style="text-align: right;"><strong>1,199,556</strong></td>
+    </tr>
+    </tbody>
+    </table>
+    <p>Because the authors who developed MSLS for their <a href="https://research.mapillary.com/publication/cvpr20c">research</a><sup>3</sup> were specifically interested in place-recognition,the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image. The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to <code>(3 x 640 x 480)</code>. Because the model expects <code>(3 x 64 x 64)</code> images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.</p>
+    <center>
+    <figure>
+    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="../images/translation/nyc_img_transformed_samples.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Figure 3. Sample DataLoader Image Transformations<sup>4</sup>
+    </figcaption>
+    </i>
+    <figure>
+    </center>
+    <hr />
+    <h2 id="aws-system-architecture">AWS System Architecture</h2>
+    <center>
+    <figure>
+    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/infra/arch.png"> <i>
+    <figcaption style="font-size: 12px;">
+    Simplified Model Training Architecture
+    </figcaption>
+    </i>
+    <figure>
+    </center>
+    <p>All infrastructure for this project is hosted on AWS. Please see <a href="./infra.html">infrastructure and hardware choices</a> for more detail on the specific details of that element of the project.</p>
+    <p>All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
+    <ul>
+    <li><p><strong>training-prod</strong> — An EC2 instance for running deep learning models, either <code>DL1</code> or a cost-comparable GPU instance (<code>P</code>-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.</p></li>
+    <li><p><strong>training-nb</strong> — A small SageMaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
+    <li><p><strong>metrics</strong> — A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:</p>
+    <ul>
+    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — A tool for visualizing <em>machine learning metrcs</em> during training.</li>
+    <li><a href="https://grafana.com/">Grafana</a> — An analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
+    </ul></li>
+    </ul>
+    <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a <code>gp3</code> volume attached to my training instances and then passed to the GPU/HPU during training.</p>
+    <hr />
+    <h2 id="dcgan-results">DCGAN Results</h2>
+    <hr />
+    <h2 id="references">References</h2>
+    <p><strong><sup>1</sup></strong> <em>“Generative Adversarial Networks.” Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.</em></p>
+    <p><strong><sup>2</sup></strong> <em>Radford, Alec, Luke Metz, and Soumith Chintala. “Unsupervised representation learning with deep convolutional generative adversarial networks.” arXiv preprint arXiv:1511.06434 (2015).</em></p>
+    <p><strong><sup>3</sup></strong> <em>F. Warburg, S. Hauberg, M. Lopez-Antequera, P. Gargallo, Y. Kuang, and J. Civera. Mapillary Street-Level Sequences: A Dataset for Lifelong Place Recognition. In Conference on Computer Vision and Pattern Recognition (CVPR), 2020</em></p>
+    <p><strong><sup>4</sup></strong> <em>File:NYC 14th Street looking west 12 2005.jpg. (2020, September 13). Wikimedia Commons, the free media repository. Retrieved 23:09, January 25, 2022 from https://commons.wikimedia.org/w/index.php?title=File:NYC_14th_Street_looking_west_12_2005.jpg&amp;oldid=457344851</em></p>
+    <footer class="site-footer">
+        <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
+    </footer>
+  </body>
+</html>
