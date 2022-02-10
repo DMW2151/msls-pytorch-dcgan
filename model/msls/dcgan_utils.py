@@ -15,7 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from msls.gan import (
     Discriminator64,
-    Generator64
+    Generator64,
+    Discriminator128,
+    Generator128
 )
 
 DEFAULT_LOADER_PARAMS = {
@@ -116,11 +118,11 @@ class TrainingConfig:
 
     def get_network(
         self,
-        network: Union[Discriminator64, Discriminator64, Generator64, Generator64],
+        network: Union[Discriminator64, Discriminator128, Generator64, Generator128],
         world_size: int = 1,
         device_rank: int = 0,
     ) -> (
-        Union[Discriminator64, Discriminator64, Generator64, Generator64],
+        Union[Discriminator64, Discriminator128, Generator64, Generator128],
         optim.AdamW,
     ):
         """

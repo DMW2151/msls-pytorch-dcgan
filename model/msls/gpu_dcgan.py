@@ -24,7 +24,10 @@ from msls.dcgan_utils import (
     weights_init,
 )
 
-from msls.gan import Discriminator64, Generator64
+from msls.gan import (
+    Discriminator64, Generator64,
+    Discriminator128, Generator128, 
+)
 
 WORLD_SIZE = torch.cuda.device_count()
 

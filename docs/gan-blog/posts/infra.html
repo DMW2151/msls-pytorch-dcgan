@@ -480,16 +480,17 @@
     </ul>
     <hr />
     <h2 id="comparative-performance">Comparative Performance</h2>
+    <p>I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn’t able to access a <code>P3</code>, so I tried prototyping the standard PyTorch on a <code>P2</code>. Towards the end of the project I realized I had benchmarks scattered across multiple instance types, I may as well go back and fill out the testing matrix. All runs minimum of 2 epochs (~2.5M images or 1 hr…)</p>
     <table>
     <caption>Table 2.1 Comparative Performance of GPU and HPU instances</caption>
     <colgroup>
-    <col style="width: 21%" />
+    <col style="width: 15%" />
     <col style="width: 8%" />
-    <col style="width: 20%" />
-    <col style="width: 7%" />
-    <col style="width: 16%" />
+    <col style="width: 22%" />
     <col style="width: 8%" />
-    <col style="width: 16%" />
+    <col style="width: 17%" />
+    <col style="width: 9%" />
+    <col style="width: 17%" />
     </colgroup>
     <thead>
     <tr class="header">
@@ -504,7 +505,16 @@
     </thead>
     <tbody>
     <tr class="odd">
-    <td style="text-align: left;">Naive-Params</td>
+    <td style="text-align: left;">Naive-Params-64</td>
+    <td style="text-align: center;">p2.xlarge</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$0.90</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$0.27</td>
+    <td style="text-align: right;"></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Naive-Params-64</td>
     <td style="text-align: center;">p2.8xlarge</td>
     <td style="text-align: right;">7,780,000</td>
     <td style="text-align: right;">$7.20</td>
@@ -512,8 +522,8 @@
     <td style="text-align: right;">$2.16</td>
     <td style="text-align: right;">3,601,852</td>
     </tr>
-    <tr class="even">
-    <td style="text-align: left;">Naive-Params</td>
+    <tr class="odd">
+    <td style="text-align: left;">Naive-Params-64</td>
     <td style="text-align: center;">p3.2xlarge</td>
     <td style="text-align: right;">5,830,000</td>
     <td style="text-align: right;">$3.06</td>
@@ -521,8 +531,8 @@
     <td style="text-align: right;">$0.92</td>
     <td style="text-align: right;">6,336,957</td>
     </tr>
-    <tr class="odd">
-    <td style="text-align: left;">Naive-Params</td>
+    <tr class="even">
+    <td style="text-align: left;">Naive-Params-64</td>
     <td style="text-align: center;">p3.8xlarge</td>
     <td style="text-align: right;"></td>
     <td style="text-align: right;">$12.24</td>
@@ -530,8 +540,8 @@
     <td style="text-align: right;">$3.67</td>
     <td style="text-align: right;"></td>
     </tr>
-    <tr class="even">
-    <td style="text-align: left;">Safe-Params-w-Noise</td>
+    <tr class="odd">
+    <td style="text-align: left;">Safe-Params-64</td>
     <td style="text-align: center;">p3.2xlarge</td>
     <td style="text-align: right;">1,225,000</td>
     <td style="text-align: right;">$3.06</td>
@@ -539,17 +549,82 @@
     <td style="text-align: right;">$0.92</td>
     <td style="text-align: right;">1,331,521</td>
     </tr>
-    <tr class="odd">
-    <td style="text-align: left;">Safe-Params-w-Noise</td>
+    <tr class="even">
+    <td style="text-align: left;">Safe-Params-64</td>
     <td style="text-align: center;">p3.8xlarge</td>
     <td style="text-align: right;">6,605,504</td>
     <td style="text-align: right;">$12.24</td>
     <td style="text-align: right;">539,665</td>
     <td style="text-align: right;">$3.67</td>
-    <td style="text-align: right;">1,799,864</td>
+    <td style="text-align: right;">1,799,84</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Safe-Params-128</td>
+    <td style="text-align: center;">p3.2xlarge</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$3.06</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$0.92</td>
+    <td style="text-align: right;"></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Safe-Params-128</td>
+    <td style="text-align: center;">p3.8xlarge</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$12.24</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$3.67</td>
+    <td style="text-align: right;"></td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Safe-Params-64</td>
+    <td style="text-align: center;">dl1.24xlarge</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$13.11</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$3.93</td>
+    <td style="text-align: right;"></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Safe-Params-128</td>
+    <td style="text-align: center;">dl1.24xlarge</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$13.11</td>
+    <td style="text-align: right;"></td>
+    <td style="text-align: right;">$3.93</td>
+    <td style="text-align: right;"></td>
     </tr>
     </tbody>
     </table>
+    <table>
+    <caption>Table 2.2 Comparative Model Sizes - Trainable Elements Across All Parameters</caption>
+    <thead>
+    <tr class="header">
+    <th style="text-align: left;"></th>
+    <th style="text-align: center;">Generator</th>
+    <th style="text-align: center;">Discriminator</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: left;">Naive-64</td>
+    <td style="text-align: center;">3,576,704</td>
+    <td style="text-align: center;">2,765,568</td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: left;">Safe-64</td>
+    <td style="text-align: center;">52,448,768</td>
+    <td style="text-align: center;">2,765,568</td>
+    </tr>
+    <tr class="odd">
+    <td style="text-align: left;">Safe-128</td>
+    <td style="text-align: center;">3,576,704</td>
+    <td style="text-align: center;">2,765,568</td>
+    </tr>
+    </tbody>
+    </table>
+    <div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> count_parameters(model):</span>
+    <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">sum</span>(p.numel() <span class="cf">for</span> p <span class="kw">in</span> model.parameters() <span class="cf">if</span> p.requires_grad)</span></code></pre></div>
     <hr />
     <p><sup>1</sup> Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. … As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.</p>
     <footer class="site-footer">

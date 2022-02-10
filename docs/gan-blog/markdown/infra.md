@@ -107,14 +107,34 @@ Migrating a model to run on HPUs require some changes, most of which are highlig
 
 ## Comparative Performance
 
-|           Model Run           |  Instance  | Average Throughput (Imgs/Hr) |  Rate ($) | Throughput / $ (Est.)  | Spot Rate ($)  | Spot Throughput / $  (Est.) |
-|:------------------------------|:----------:|-----------------------------:|----------:|-----------------------:|------------:|-----------------------:|
-| Naive-Params                  | p2.8xlarge |                    7,780,000 |     $7.20 |              1,080,556 |       $2.16 |              3,601,852 |
-| Naive-Params                  | p3.2xlarge |                    5,830,000 |     $3.06 |              1,905,229 |       $0.92 |              6,336,957 |
-| Naive-Params                  | p3.8xlarge |                              |    $12.24 |                        |       $3.67 |                        |
-| Safe-Params-w-Noise           | p3.2xlarge |                    1,225,000 |     $3.06 |                400,326 |       $0.92 |              1,331,521 |
-| Safe-Params-w-Noise           | p3.8xlarge |                    6,605,504 |    $12.24 |                539,665 |       $3.67 |              1,799,864 |
+I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn't able to access a `P3`, so I tried prototyping the standard PyTorch on a `P2`. Towards the end of the project I realized I had benchmarks scattered across multiple instance types, I may as well go back and fill out the testing matrix. All runs minimum of 2 epochs (~2.5M images or 1 hr...)
+
+|           Model Run |  Instance  | Average Throughput (Imgs/Hr) |  Rate ($) | Throughput / $ (Est.)  | Spot Rate ($) | Spot Throughput / $ (Est.) |
+|:--------------------|:----------:|-----------------------------:|----------:|-----------------------:|------------:|-----------------------:|
+| Naive-Params-64     | p2.xlarge  |                              |     $0.90 |                        |       $0.27 |                        |
+| Naive-Params-64     | p2.8xlarge |                    7,780,000 |     $7.20 |              1,080,556 |       $2.16 |              3,601,852 |
+| Naive-Params-64     | p3.2xlarge |                    5,830,000 |     $3.06 |              1,905,229 |       $0.92 |              6,336,957 |
+| Naive-Params-64     | p3.8xlarge |                              |    $12.24 |                        |       $3.67 |                        |
+| Safe-Params-64      | p3.2xlarge |                    1,225,000 |     $3.06 |                400,326 |       $0.92 |              1,331,521 |
+| Safe-Params-64      | p3.8xlarge |                    6,605,504 |    $12.24 |                539,665 |       $3.67 |              1,799,84  |
+| Safe-Params-128     | p3.2xlarge |                              |     $3.06 |                        |       $0.92 |                        |
+| Safe-Params-128     | p3.8xlarge |                              |    $12.24 |                        |       $3.67 |                        |
+| Safe-Params-64      | dl1.24xlarge |                            |    $13.11 |                        |       $3.93 |                        |
+| Safe-Params-128     | dl1.24xlarge |                            |    $13.11 |                        |       $3.93 |                        |
 Table: Table 2.1 Comparative Performance of GPU and HPU instances
+
+|         | Generator  | Discriminator|
+|:--------|:----------:|:------------:|
+| Naive-64|   3,576,704|     2,765,568|
+| Safe-64 |  52,448,768|     2,765,568|
+| Safe-128| 195,063,296|    44,611,072|
+Table: Table 2.2 Comparative Model Sizes - Trainable Elements Across All Parameters
+
+```python
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+```
+
 
 --------
 
