@@ -4,28 +4,23 @@ author: Dustin Wilson
 date: February 8, 2022
 ---
 
-<center>
-    <figure class="image">
-        <img src="../images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
-        <img src="../images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
-        <img src="../images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px">
-        <i><figcaption style="font-size: 12px;">Nowhere, USA - Experimental Output - Scenes created by interpolating between sequences of generated frames</figcaption></i>
-    </figure>
-</center>
+
+|                           |                           |                           |
+|:-------------------------:|:-------------------------:|:-------------------------:|
+| <img src="../images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> | <img src="../images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> | <img src="../images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> |
+|                           | *Experimental Output - Nowhere, USA*                           |                           |
 
 For a few months now, I've wanted to create something like [ThisPersonDoesNotExist](https://thispersondoesnotexist.com/) for street scenes. Luckily, the [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com) gave me an excuse to do so at a small scale. At a high level, my project involved re-implementing elements of two foundational papers in generative computer vision and then training that model on 1.2 million street-level images.
 
-It's not a novel idea, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS' `DL1` instances to scale deep learning model training on HPUs. With that in mind, I instrumented my code to train on both GPU and Gaudi accelerators, tried out several training strategies, and then did a comparative analysis of performance across training environments.
+It's not a novel idea, and I'm certainly no ML engineer, but enough work has been done in this field that I was able to read up on the literature, implement generative models, and reason about architectural and performance tradeoffs. The challenge encouraged participants to use AWS' `DL1` instances to scale deep learning model training on HPUs. So with that in mind, I wrote my code to train on both GPU and Gaudi accelerated instances, tried out several training strategies,and then did a comparative analysis of performance across training environments.
 
-- [Theory and Background](#Theory-and-Background)
-- [Mapillary Street Level Imagery Data](#Mapillary-Street-Level-Imagery-Data)
-- [AWS System Architecture](#AWS-System-Architecture)
-- [DCGAN Results](#DCGAN-Results)
-- [References](#References)
+Regardless of why you're here, I'd recommend reading this page and seeing the gallery. Then viewing specific pages from the rest of this site if you're interested in [infrastructure and Gaudi processors](./infra.html), [machine learning](./ml.html), or [training your own GANs](./gan-training-notes.html).
+
+Thanks for visiting! &mdash; DW
 
 --------
 
-## Theory and Background
+## Theory
 
 |                           |
 |:-------------------------:|
@@ -36,7 +31,10 @@ In this project I re-implement elements of Ian Goodfellow's [Generative Adversar
 
 Before discussing specific elements of the project, let's discuss the *way* GANs work. Put simply, GANs consist of two competing functions. A generator (`G`) tries to create believable data and a discriminator (`D`) tries to maximize the probability it correctly classifies real and generated data.
 
-**Assume the following variables:**
+<details>
+<summary><strong>Optional Math</strong></summary>
+
+Assume the following variables:
 
 - `X` &mdash; Input data, in our case, an image with size `(3 x 64 x 64)`
   
@@ -55,8 +53,9 @@ The critical steps in each training iteration involve measuring the values of th
 - `E`<sub>`x∼pdata​(x)`</sub>​`[logD(x)]` &mdash; The expected value of `D`'s predictions when given samples from the real batch. Remember, `D(x)` produces a probability, thus a perfect discriminator would return values near *0*.
 
 - `E`<sub>`z∼pz​(z)​`</sub>`[log(1−D(G(z)))]` &mdash; The expected value of `D`'s prediction when given samples produced from `G(Z)`, Because all images in this batch are fake, a better discriminator would predict a lower `D(G(Z))`, also returning values near *0*.
+</details>
 
-In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both functions are convolutional neural networks with a specific layer structure. In my implementation, I kept the same form and layer structure of *Radford's* original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see [modeling choices](./ml.html) for more detail on the specific implementation details of the model.
+In the DCGAN paper, both functions are convolutional neural networks with a specific layer structure. In my implementation, I kept the same form and layer structure of *Radford's* original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see [modeling choices](./ml.html) for more detail on the specific implementation details of the model.
 
 --------
 
@@ -69,6 +68,8 @@ In the DCGAN paper, the method by which this function is maximized is by putting
 
 Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of most less-expensive training instances.
 
+<details>
+<summary><strong>Table 1.1 — Count of Mapillary Training Images By Metro Area</strong></summary>
 | Metro Area    | % of Sample | Approx. Count |
 |:--------------|:-----------:|----------:|
 | Amman         |       0.14% |     1,702 |
@@ -95,36 +96,14 @@ Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). 
 | Zurich        |       0.51% |     6,081 |
 | **Total**     |             | **1,199,556** |
 Table: *Table 1 &mdash; Count of Mapillary Training Images By Metro Area*
+</details>
 
 Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup> 3 </sup> were specifically interested in place-recognition,the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image. The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to `(3 x 640 x 480)`. Because the model expects `(3 x 64 x 64)` images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.
 
 |                                                                          |
 |:------------------------------------------------------------------------:|
-| *Figure 3.1 Sample DataLoader Image Transformations - 64px*<sup> 4 </sup>  |
-| ![OK](../images/translation/nyc_img_transformed_samples.png)             |
-| *Figure 3.2 Sample DataLoader Image Transformations - 128px*             |
-| ![OK](../images/translation/nyc_img_transformed_samples_128.png)         |
-
---------
-
-## AWS System Architecture
-
-|                                                                  |
-|:----------------------------------------------------------------:|
-| *Figure 4.1 Simplified Model Training Architecture*              |
-| ![OK](../images/infra/arch.png)                                  |
-
-All infrastructure for this project is hosted on AWS. Please see [infrastructure and hardware choices](./infra.html) for more detail on the specific details of that element of the project. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
-
-- **training-prod** &mdash; An EC2 instance for running deep learning models, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
-  
-- **training-nb** &mdash; A small SageMaker instance used for interactive model development, model evaluation, and generating plots.
-  
-- **metrics** &mdash; A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:
-  - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
-  - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
-
-Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a `gp3` volume attached to my training instances and then passed to the GPU/HPU during training.
+| *Figure 3.1 Sample DataLoader Image Transformations - 128px*<sup> 4 </sup> |
+|![OK](../images/translation/nyc_img_transformed_samples_128.png)            |
 
 --------
 

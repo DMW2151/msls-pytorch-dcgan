@@ -4,7 +4,26 @@ author: Dustin Wilson
 date: February 8, 2022
 ---
 
-I haven't written a line of ML code since 2014 (and I could even argue that didn't count). I wanted to develop a sense of what model training on modern GPUs is like, and then, once I was ready with a model that worked on the GPU, migrate it to the HPU. If you're just interested in comparative results, you can skip to [performance results](#Comparative%20Performance).
+I haven't written a line of ML code since 2014 (and I could even argue that didn't count). I wanted to develop a sense of what model training on modern GPUs is like, then, once I was ready with a model that worked on the GPU, migrate it to the HPU. If you're just interested in comparative results, you can skip to [performance results](#Comparative%20Performance).
+
+## AWS System Architecture
+
+|                                                                  |
+|:----------------------------------------------------------------:|
+| *Figure 1.1 Simplified Model Training Architecture*              |
+| ![OK](../images/infra/arch.png)                                  |
+
+All infrastructure for this project is hosted on AWS. Please see [infrastructure and hardware choices](./infra.html) for more detail on the specific details of that element of the project. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
+
+- **training-prod** &mdash; An EC2 instance for running deep learning models, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
+  
+- **training-nb** &mdash; A small SageMaker instance used for interactive model development, model evaluation, and generating plots.
+  
+- **metrics** &mdash; A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:
+  - [Tensorboard](https://www.tensorflow.org/tensorboard) &mdash; A tool for visualizing *machine learning metrcs* during training.
+  - [Grafana](https://grafana.com/) &mdash; An analytics and monitoring tool. I configured Grafana to visualize *machine-level* metrics from our training instances.
+
+Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between *training-prod* and *training-nb*). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a `gp3` volume attached to my training instances and then passed to the GPU/HPU during training.
 
 ## Selecting a Comparable GPU Instance
 
@@ -107,27 +126,26 @@ Migrating a model to run on HPUs require some changes, most of which are highlig
 
 ## Comparative Performance
 
-I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn't able to access a `P3`, so I tried prototyping the standard PyTorch model on a `P2`. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided that I may as well go back and fill out the testing matrix. In a way, this helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc.
-
+I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn't able to access a `P3`, so I tried prototyping the standard PyTorch model on a `P2`. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided that I may as well go back and fill out the testing matrix. In a way, this helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc. Tests below all conducted with `batch_size` at 256, for certain models and machines this is *definitely* a bottleneck, but at a minimum it provides a consistent baseline.
 
 |  Model Parameter Set  |  Instance    |  Throughput (Imgs/Hr) |  Rate (\$) |   Imgs/$  | Spot Rate (\$) | Imgs/$ (Spot) |
 |:---------|:------------:|----------------------:|----------:|-----------------------:|------------:|-----------------------:|
 |**Default Parameters From DCGAN**                                                                                            |
-| Naive-64 | p2.xlarge    |    798,415 |     $0.90 |   887,125 |       $0.27 |  2,957,092 |
+| Naive-64 | p2.xlarge    |    798,400 |     $0.90 |   887,125 |       $0.27 |  2,957,092 |
 | Naive-64 | p2.8xlarge   |  7,780,000 |     $7.20 | 1,080,556 |       $2.16 |  3,601,852 |
 | Naive-64 | p3.2xlarge   |  5,830,000 |     $3.06 | 1,905,229 |       $0.92 |  6,336,957 |
-| Naive-64 | p3.8xlarge   |            |    $12.24 |           |       $3.67 |            |
+| Naive-64 | p3.8xlarge   |  9,863,000 |    $12.24 |   805,800 |       $3.67 |  2,686,002 |
 | **Prioritize  Model Stability**                                                         |
 | Clamp-64 | p3.2xlarge   |  1,225,000 |     $3.06 |   400,326 |       $0.92 |  1,331,521 |
-| Clamp-64 | p3.8xlarge   |  6,605,504 |    $12.24 |   539,665 |       $3.67 |   1,799,84 |
+| Clamp-64 | p3.8xlarge   |  6,260,800 |    $12.24 |   511,503 |       $3.67 |  1,705,010 |
 | Clamp-64 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
 | **Rebalance for `(3 x 128 x 128)` Images**                                              |
-| Safe-128 | p3.2xlarge   |  1,462,857 |     $3.06 |   478,057 |       $0.92 |  1,593,526 |
-| Safe-128 | p3.8xlarge   |            |    $12.24 |           |       $3.67 |            |
+| Safe-128 | p3.2xlarge   |  1,462,900 |     $3.06 |   478,057 |       $0.92 |  1,593,526 |
+| Safe-128 | p3.8xlarge   |  5,941,000 |    $12.24 |   485,375 |       $3.67 |  1,617,919 |
 | Safe-128 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
 Table: *Table 2.1 Comparative Performance of GPU and HPU instances*
 
-Model parameters tested were one of three configurations, `Naive-64`, `Clamps-64`, or `Safe-128`. `Naive-64` parameters were those taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
+Model parameters tested were one of three configurations, `Naive-64`, `Clamps-64`, or `Safe-128`.  `Naive-64` parameters were taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
 
 |         | `G` Params  | `D` Params |    Relevant Params   |
 |:--------|:----------:|:------------:|:-----------:|

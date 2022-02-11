@@ -5,6 +5,11 @@ Common utilities to allow for training on both HPU and GPU instances
 from dataclasses import dataclass
 import collections
 import boto3
+import uuid
+
+from PIL import Image
+import torchvision
+from torchvision import transforms
 
 import os
 import torch
@@ -13,12 +18,7 @@ import torch.optim as optim
 from typing import Union
 from torch.utils.tensorboard import SummaryWriter
 
-from msls.gan import (
-    Discriminator64,
-    Generator64,
-    Discriminator128,
-    Generator128
-)
+from msls.gan import Discriminator64, Generator64, Discriminator128, Generator128
 
 DEFAULT_LOADER_PARAMS = {
     "shuffle": False,
@@ -110,7 +110,7 @@ class TrainingConfig:
             print(f"CUDA Available: {torch.cuda.is_available()}")
             for i in range(torch.cuda.device_count()):
                 print("device %s:" % i, torch.cuda.get_device_properties(i))
-        
+
         # TODO: Check for Habana Driver Statistics - Should just be whatever runs
         # on v0.171, but just be safe...
         if True:
@@ -376,5 +376,67 @@ def restore_model(
 
 
 def count_parameters(model: nn.Module) -> int:
-    """ Return count of trainable parameters""" 
+    """Return count of trainable parameters"""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def slerp_noise_vect(val: float, Z_0: torch.Tensor, Z_1: torch.Tensor) -> torch.Tensor:
+    """
+    CPU SLERP in Torch; Implementation from LW-GAN
+    Source: https://github.com/lucidrains/lightweight-gan/blob/main/lightweight_gan/lightweight_gan.py#L99-L105
+
+    Args:
+    --------
+        val: int : [...]
+        Z_0, Z_1: torch.Tensor : [...]
+    """
+
+    # Calc Norms over Endpoint Vectors
+    Z_0_norm = Z_0 / torch.norm(Z_0, dim=1, keepdim=True).to("cpu")
+    Z_1_norm = Z_1 / torch.norm(Z_1, dim=1, keepdim=True).to("cpu")
+
+    # Calc Omega over normed Z vec
+    omega = torch.acos((Z_0_norm * Z_1_norm).sum(1))
+
+    # Do SLERP...
+    so = torch.sin(omega)
+
+    res = (torch.sin((1.0 - val) * omega) / so).unsqueeze(1) * Z_0 + (
+        torch.sin(val * omega) / so
+    ).unsqueeze(1) * Z_1
+
+    return res
+
+
+@torch.no_grad()
+def gen_img_sequence_array(
+    m_cfg: ModelCheckPointConfig,
+    G: Union[Generator64, Generator128],
+    n_frames: int = 100,
+    Z_size: int = 128,
+) -> None:
+    """Create Interpolated Image Set"""
+
+    seq_grid_images = []
+    Z_h, Z_l = torch.randn(num_rows ** 2, Z_size), torch.randn(num_rows ** 2, Z_size)
+
+    for ratio in torch.linspace(0.0, 8.0, n_frames):
+
+        ## Generate and Save Image Sequence...
+        Z_i = slerp_noise_vect(ratio, Z_l, Z_h)
+
+        generated_images = G(Z_i).detach().numpy()
+        images_grid = torchvision.utils.make_grid(generated_images, nrow=num_rows)
+        pil_image = transforms.ToPILImage()(images_grid.cpu())
+
+        seq_grid_images.append(pil_image)
+
+    # Save Dream Sequence...
+    seq_grid_images[0].save(
+        f"{self.root}/{self.name}/videos/{uuid.uuid4().__str__()}-sequence.gif",
+        save_all=True,
+        append_images=seq_grid_images[1:],
+        duration=80,
+        loop=0,
+        optimize=True,
+    )
