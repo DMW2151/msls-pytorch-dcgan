@@ -124,7 +124,7 @@ def start_or_resume_training_run(
     if train_cfg.img_size == 64:
         D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
         G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
-    else if:
+    else if train_cfg.img_size == 128:
         D, opt_D = train_cfg.get_network(Discriminator128, device_rank=rank)
         G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
     else:
