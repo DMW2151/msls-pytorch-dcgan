@@ -433,7 +433,7 @@ def gen_img_sequence_array(
 
     # Save Dream Sequence...
     seq_grid_images[0].save(
-        f"{self.root}/{self.name}/videos/{uuid.uuid4().__str__()}-sequence.gif",
+        f"{m_cfg.root}/{m_cfg.name}/videos/{uuid.uuid4().__str__()}-sequence.gif",
         save_all=True,
         append_images=seq_grid_images[1:],
         duration=80,
