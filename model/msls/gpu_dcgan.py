@@ -119,11 +119,16 @@ def start_or_resume_training_run(
         rank=rank,
     )
 
-    # Initialize Both Networks and Optimizers
-    # TODO:/ NOTE: Be Explicit Here; setting model to device should be done
-    # in `get_network`; but double-check
-    D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
-    G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
+    # Initialize Both Networks and Optimizers @ either very-small (64^2) or
+    # small (128^2) size...
+    if train_cfg.img_size == 64:
+        D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
+        G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
+    else if:
+        D, opt_D = train_cfg.get_network(Discriminator128, device_rank=rank)
+        G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
+    else:
+        raise NotImplemented
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:

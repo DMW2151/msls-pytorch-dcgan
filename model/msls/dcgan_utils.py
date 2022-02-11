@@ -110,7 +110,9 @@ class TrainingConfig:
             print(f"CUDA Available: {torch.cuda.is_available()}")
             for i in range(torch.cuda.device_count()):
                 print("device %s:" % i, torch.cuda.get_device_properties(i))
-
+        
+        # TODO: Check for Habana Driver Statistics - Should just be whatever runs
+        # on v0.171, but just be safe...
         if True:
             print("Habana Statistics ...")
 
@@ -371,3 +373,8 @@ def restore_model(
     G.load_state_dict(checkpoint["G_state_dict"])
     opt_D.load_state_dict(checkpoint["D_optim"])
     opt_G.load_state_dict(checkpoint["G_optim"])
+
+
+def count_parameters(model: nn.Module) -> int:
+    """ Return count of trainable parameters""" 
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

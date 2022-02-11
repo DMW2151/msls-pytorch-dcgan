@@ -55,7 +55,7 @@ python3 -m pip install --upgrade pip &&\
 # and uploading an artifact to s3://dmw2151-habana-model-outputs
 python3 -m msls.run_dcgan \
     -c '{"name": "global-dcgan-128-1", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \
-    -t '{"nc": 3, "nz": 256, "ngf": 256, "ndf": 64, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 64, "weight_decay": 0.05}'\
+    -t '{"nc": 3, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 128, "weight_decay": 0.05}'\
     --s_epoch 0 \
     --n_epoch 16 \
     --dataroot /data/imgs/train_val/ \

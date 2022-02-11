@@ -27,7 +27,12 @@ It's not a novel idea, but enough work has been done in this field that I was ab
 
 ## Theory and Background
 
-In this project I re-implement elements of Ian Goodfellow's [Generative Adversarial Networks (2014)](https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf)<sup>1</sup> and Alec Radford's [Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)](https://arxiv.org/pdf/1511.06434.pdf)<sup>2</sup> papers in PyTorch. Both papers are concerned with the development of GANs, Generative Adversarial Networks.
+|                           |
+|:-------------------------:|
+| *Figure 1. DBGAN Generator Architecture -  As diagramed by Radford, et. al*|
+| ![OK](../images/translation/gan.png) |
+
+In this project I re-implement elements of Ian Goodfellow's [Generative Adversarial Networks (2014)](https://proceedings.neurips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf)<sup> 1 </sup> and Alec Radford's [Unsupervised Representation Learning With Deep Convolutional Generative Adversarial Networks (2016)](https://arxiv.org/pdf/1511.06434.pdf)<sup> 2 </sup> papers in PyTorch. Both papers are concerned with the development of GANs, Generative Adversarial Networks.
 
 Before discussing specific elements of the project, let's discuss the *way* GANs work. Put simply, GANs consist of two competing functions. A generator (`G`) tries to create believable data and a discriminator (`D`) tries to maximize the probability it correctly classifies real and generated data.
 
@@ -51,27 +56,16 @@ The critical steps in each training iteration involve measuring the values of th
 
 - `E`<sub>`z∼pz​(z)​`</sub>`[log(1−D(G(z)))]` &mdash; The expected value of `D`'s prediction when given samples produced from `G(Z)`, Because all images in this batch are fake, a better discriminator would predict a lower `D(G(Z))`, also returning values near *0*.
 
-In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both functions are convolutional neural networks with a specific layer structure.
-
-<center>
-    <figure>
-        <img style="padding-top: 20px;" align="center" width="600" src="../images/translation/gan.png">
-        <i><figcaption style="font-size: 12px;">Figure 1. DBGAN Generator Architecture -  As diagramed by Radford, et. al <sup>4<sup></figcaption></i>
-    <figure>
-</center>
-
-In my implementation, I kept the same form and layer structure of *Radford's* original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see [modeling choices](./ml.html) for more detail on the specific implementation details of the model.
+In the DCGAN paper, the method by which this function is maximized is by putting batches of images through `D` and `G`, where both functions are convolutional neural networks with a specific layer structure. In my implementation, I kept the same form and layer structure of *Radford's* original architecture, but modified the size of the feature maps and input vectors to ensure model stability. Please see [modeling choices](./ml.html) for more detail on the specific implementation details of the model.
 
 --------
 
 ## Mapillary Street Level Imagery Data
 
-<center>
-    <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/translation/train_samples_eu.png">
-    <i><figcaption style="font-size: 12px;" >Figure 2. Training Samples From MSLS - Cropped and Transformed</figcaption></i>
-    <figure>
-</center>
+|                           |
+|:-------------------------:|
+| *Figure 2. Training Samples From MSLS - Cropped and Transformed*|
+| ![OK](../images/translation/train_samples_eu.png) |
 
 Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of most less-expensive training instances.
 
@@ -100,31 +94,27 @@ Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). 
 | Trondheim     |       1.07% |    12,888 |
 | Zurich        |       0.51% |     6,081 |
 | **Total**     |             | **1,199,556** |
-Table: Table 1 &mdash; Count of Mapillary Training Images By Metro Area
+Table: *Table 1 &mdash; Count of Mapillary Training Images By Metro Area*
 
-Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup>3</sup> were specifically interested in place-recognition,the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image. The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to `(3 x 640 x 480)`. Because the model expects `(3 x 64 x 64)` images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.
+Because the authors who developed MSLS for their [research](https://research.mapillary.com/publication/cvpr20c)<sup> 3 </sup> were specifically interested in place-recognition,the data is organized such that images of the same physical location appear multiple times under different conditions. The images from these sequences are very highly correlated and reduce the diversity of the training set far more than a single repeated image. The effect of multi-image sequences was reduced by applying random transformations on each image. MSLS contains images up to `(3 x 640 x 480)`. Because the model expects `(3 x 64 x 64)` images, I had leeway to apply cropping, down-scaling, and horizontal translations to all images before passing them through the network. Given the large image shown below, the model could receive any of the variations presented on the right.
 
-<center>
-    <figure>
-    <img alt="nyc_sample_imgs" style="padding-top: 20px;" align="center" width="600" src="../images/translation/nyc_img_transformed_samples.png">
-    <i><figcaption style="font-size: 12px;"> Figure 3. Sample DataLoader Image Transformations<sup>4</sup> </figcaption></i>
-    <figure>
-</center>
+|                                                                          |
+|:------------------------------------------------------------------------:|
+| *Figure 3.1 Sample DataLoader Image Transformations - 64px*<sup> 4 </sup>  |
+| ![OK](../images/translation/nyc_img_transformed_samples.png)             |
+| *Figure 3.2 Sample DataLoader Image Transformations - 128px*             |
+| ![OK](../images/translation/nyc_img_transformed_samples_128.png)         |
 
 --------
 
 ## AWS System Architecture
 
-<center>
-    <figure>
-    <img alt="training_samples_eu" style="padding-top: 20px;" align="center" width="600" src="../images/infra/arch.png">
-    <i><figcaption style="font-size: 12px;" >Simplified Model Training Architecture</figcaption></i>
-    <figure>
-</center>
+|                                                                  |
+|:----------------------------------------------------------------:|
+| *Figure 4.1 Simplified Model Training Architecture*              |
+| ![OK](../images/infra/arch.png)                                  |
 
-All infrastructure for this project is hosted on AWS. Please see [infrastructure and hardware choices](./infra.html) for more detail on the specific details of that element of the project.
-
-All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
+All infrastructure for this project is hosted on AWS. Please see [infrastructure and hardware choices](./infra.html) for more detail on the specific details of that element of the project. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC's private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.
 
 - **training-prod** &mdash; An EC2 instance for running deep learning models, either `DL1` or a cost-comparable GPU instance (`P`-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.
   

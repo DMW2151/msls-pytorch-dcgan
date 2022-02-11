@@ -66,7 +66,7 @@
               color: #9292f2;
             }
             img {
-              max-width: 100%;
+              max-width: 600px;
             }
             h1, h2, h3, h4, h5, h6 {
               margin-top: 1.4em;
@@ -141,8 +141,8 @@
             }
             tbody {
               margin-top: 0.5em;
-              border-top: 1px solid #ebebe6;
-              border-bottom: 1px solid #ebebe6;
+              /*border-top: 1px solid #ebebe6;*/
+              /*border-bottom: 1px solid #ebebe6;*/
               margin-left: auto;
               margin-right: auto;
             }
@@ -253,20 +253,20 @@
     <p>I want to stress that this isn’t a strict replication of the original DCGAN papers. At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
     <ul>
     <li><p><strong>Use a Different Optimizer</strong> — Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
-    <li><p><strong>Increase The Size of the Generator Feature Map</strong> — I increase the depth of the Generator feature map so that <code>G</code>s parameters outnumber <code>D</code>’s 4-to-1. This is a balancing act; because the images are so small, a large enough parameter space could easily over-fit on the sample data. I think this is tolerable, as long as It works in service of preventing model collapse. Additionally, the original model was <em>very</em> small, so increasing the size allows the HPU the opportunity to excel a bit.</p></li>
+    <li><p><strong>Increase The Size of the Generator Feature Map</strong> — I increase the depth of the Generator feature map so that <code>G</code>s parameter depth outnumbered <code>D</code>’s 4-to-1. This is a balancing act; because the images are so small, a large enough parameter space could easily over-fit on the sample data. Additionally, the original model was <em>very</em> small, so increasing the size allows the HPU the opportunity to excel a bit.</p></li>
     <li><p><strong>Remove the Sigmoid From the Discriminator</strong> — This one sounds more controversial than it is. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a loss function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the network to part of the loss function.</p></li>
-    <li><p><strong>[WIP] Add an Additional Convolutional Block</strong> — I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>, although getting stable training on these larger images took a bit of tuning, it was an interesting challenge to reason through all of this.</p></li>
+    <li><p><strong>Add an Additional Convolutional Block</strong> — I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>, although getting stable training on these larger images took a bit of tuning, it was an interesting challenge to reason through all of this.</p></li>
     </ul>
     <h2 id="selecting-parameters-for-stability">Selecting Parameters for Stability</h2>
     <p>DCGAN can be unstable in comparison to modern generative models. The most common failure mode I observed involved was <code>D</code> learning the difference between test and real images too quickly (e.g. some property of fake images that made them easy to identify), and that left <code>G</code> to make trivial progress in generating better images over time. I didn’t have the time or resources to do full hyper-parameter tuning, so I used a few <del>tricks</del> heuristics suggested <a href="https://github.com/pytorch/examples/issues/70">here</a> and <a href="https://github.com/soumith/ganhacks">here</a> to stabilize the model.</p>
-    <p>After some experimentation and consulting the literature<sup>1</sup>, I landed on the following parameters for my <code>Safe-Params</code> scenario. All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability of results.</p>
+    <p>After some experimentation and consulting the literature<sup>1</sup>, I landed on the following parameters for my <code>Safe-Params</code> scenario. All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability of results. At the same time, I wasn’t hoping to train a 1B parameter model for ages. Again, this is a balancing act.</p>
     <ul>
     <li><strong>Additional Noise Layer in Transformations</strong> — (0, 0.2)</li>
     <li><strong>Batch Size</strong> — 512</li>
     <li><strong>Learning Rate</strong> — 0.0002</li>
-    <li><strong>Generator Feature Map Depth</strong> — 256</li>
-    <li><strong>Discriminator Feature Map Depth</strong> — 64</li>
-    <li><strong>Latent Vector Size</strong> — 256</li>
+    <li><strong>Generator Feature Map Depth</strong> — 128</li>
+    <li><strong>Discriminator Feature Map Depth</strong> — 32</li>
+    <li><strong>Latent Vector Size</strong> — 128</li>
     <li><strong>Adam Optimizer w. Weight Decay:</strong> — 0.05</li>
     </ul>
     <p>For reference, setting the noise value high can produce grainy results, but in practice, it’s an effective remedy against the generator collapsing (see: <a href="https://www.inference.vc/instance-noise-a-trick-for-stabilising-gan-training/"><em>Amortised MAP Inference for Image Super-resolution</em></a><sup>1</sup>). I disabled the noise layer on <code>DL1</code> instances to enable the <code>Habana.DataLoader</code> in lieu of the built-in <code>PyTorch.dataloader</code>.</p>
@@ -276,15 +276,16 @@
     <p>Parzen windows estimation of likelihood favors trivial models and is irrelevant to visual fidelity of samples. Further, it fails to approximate the true likelihood in high dimensional spaces or to rank models<sup>2</sup></p>
     </blockquote>
     <p>Other authors<sup>3</sup> suggest alternative methods, though the most common ones rely on the existence of a pre-trained classifier model. A GAN that generates identifiable objects, (e.g. horses, faces, tea-kettles) might be better for these methods than my GAN. For completeness sake, I implemented and tested Parzen KDE as described in the paper, but found middling results. It didn’t seem to add much more over the <code>G</code> and <code>D</code> loss functions and I really couldn’t verify the validity of the metric. Beyond the third epoch. Consider the neg-log-likelihood plot from this 16 epoch training run. Following the first epoch, which was mostly white noise, the metric is largely unchanged through the remainder of the run.</p>
-    <center>
-    <figure class="image">
-    <img src="../images/training/parzen.png" height="auto" width="600" style="padding: 20px; border-radius: 2px"> <i>
-    <figcaption style="font-size: 12px;">
-    Experimental Output - Plot of Negative Log Likelihood Thru 16 Epochs
-    </figcaption>
-    </i>
-    </figure>
-    </center>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Experimental Output - Plot of Negative Log Likelihood Thru 16 Epochs</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/parzen.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
     <p>Am I to interpret this as the generator failing to improve after the third epoch? Or perhaps even got worse as training progressed beyond the 5th? Because I got uncertain results here and the best alternatives (i.e. inception models) weren’t well suited to my problem, I abandoned quantitative GAN evaluation here.</p>
     <hr />
     <h2 id="references">References</h2>

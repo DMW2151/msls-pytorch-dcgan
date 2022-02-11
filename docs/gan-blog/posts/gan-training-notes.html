@@ -66,7 +66,7 @@
               color: #9292f2;
             }
             img {
-              max-width: 100%;
+              max-width: 600px;
             }
             h1, h2, h3, h4, h5, h6 {
               margin-top: 1.4em;
@@ -141,8 +141,8 @@
             }
             tbody {
               margin-top: 0.5em;
-              border-top: 1px solid #ebebe6;
-              border-bottom: 1px solid #ebebe6;
+              /*border-top: 1px solid #ebebe6;*/
+              /*border-bottom: 1px solid #ebebe6;*/
               margin-left: auto;
               margin-right: auto;
             }
@@ -283,7 +283,7 @@
     <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># and uploading an artifact to s3://dmw2151-habana-model-outputs</span></span>
     <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-m</span> msls.run_dcgan <span class="dt">\</span></span>
     <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">-c</span> <span class="st">&#39;{&quot;name&quot;: &quot;global-dcgan-128-1&quot;, &quot;root&quot;: &quot;/efs/trained_model/&quot;, &quot;log_frequency&quot;: 50, &quot;save_frequency&quot;: 1}&#39;</span> <span class="dt">\</span></span>
-    <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-t</span> <span class="st">&#39;{&quot;nc&quot;: 3, &quot;nz&quot;: 256, &quot;ngf&quot;: 256, &quot;ndf&quot;: 64, &quot;lr&quot;: 0.0002, &quot;beta1&quot;: 0.5, &quot;beta2&quot;: 0.999, &quot;batch_size&quot;: 256, &quot;img_size&quot;: 64, &quot;weight_decay&quot;: 0.05}&#39;</span><span class="dt">\</span></span>
+    <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-t</span> <span class="st">&#39;{&quot;nc&quot;: 3, &quot;nz&quot;: 128, &quot;ngf&quot;: 128, &quot;ndf&quot;: 32, &quot;lr&quot;: 0.0002, &quot;beta1&quot;: 0.5, &quot;beta2&quot;: 0.999, &quot;batch_size&quot;: 256, &quot;img_size&quot;: 128, &quot;weight_decay&quot;: 0.05}&#39;</span><span class="dt">\</span></span>
     <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">--s_epoch</span> 0 <span class="dt">\</span></span>
     <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--n_epoch</span> 16 <span class="dt">\</span></span>
     <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">--dataroot</span> /data/imgs/train_val/ <span class="dt">\</span></span>

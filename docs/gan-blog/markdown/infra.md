@@ -8,7 +8,7 @@ I haven't written a line of ML code since 2014 (and I could even argue that didn
 
 ## Selecting a Comparable GPU Instance
 
-Using [instances.vantage.sh](https://instances.vantage.sh/), I aggregated data for GPU instances available in `us-east-1` with between 2 and 8 GPUs. I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100` GPUs, making them an obvious choice for comparative analysis.
+While I tested my model on a variety of instance types, I wanted to do an "official run" on a machine that might be seen as a reasonable comparison to the `DL1`. Using [instances.vantage.sh](https://instances.vantage.sh/), I aggregated data for GPU instances available in `us-east-1` with between 2 and 8 GPUs. I relied exclusively on Nvidia's most recent [resnext-101 benchmarks](https://developer.nvidia.com/deep-learning-performance-training-inference) as a proxy for my model's performance. On price, `p3.8xlarge` instances are the most similar to the `DL1` and offer 4 `V100` GPUs, making them an obvious choice for comparative analysis.
 
 | API Name      | Memory (GiB) | VCPUs | GPUs | GPU Model             | GPU Mem (GiB) |   $/Hr |
 |---------------|--------------|-------|------|-----------------------|---------------|--------|
@@ -28,7 +28,7 @@ Using [instances.vantage.sh](https://instances.vantage.sh/), I aggregated data f
 | p4d.24xlarge  |         1152 |    96 |    8 | NVIDIA A100           |           320 |  32.77 |
 Table: Table 1.1 - Possible Comparable GPU Instances
 
-I also ran short-lived tests on the  `p2.xlarge`, `p2.8xlarge` and `p3.2xlarge` to help me develop a mental model of DDP patterns and performance. 
+I also ran short-lived tests on the `p2.xlarge`, `p2.8xlarge` and `p3.2xlarge` to help me develop a mental model of DDP patterns and performance. The benchmarks for these are all included in the following sections.
 
 ## Evaluating a First Training run on GPU Instances
 
@@ -101,40 +101,42 @@ Migrating a model to run on HPUs require some changes, most of which are highlig
   
 - **Use `FusedAdamW` over `AdamW`**  &mdash; `FusedAdamW` is a custom `AdamW` implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the `DL1` instances.
   
-- **Use HMP** &mdash; -
+- **Use HMP** &mdash; - Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: [HMP on Tensorflow](https://developer.habana.ai/tutorials/tensorflow/mixed-precision/).
 
 --------
 
 ## Comparative Performance
 
-I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn't able to access a `P3`, so I tried prototyping the standard PyTorch on a `P2`. Towards the end of the project I realized I had benchmarks scattered across multiple instance types, I may as well go back and fill out the testing matrix. All runs minimum of 2 epochs (~2.5M images or 1 hr...)
+I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn't able to access a `P3`, so I tried prototyping the standard PyTorch model on a `P2`. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided that I may as well go back and fill out the testing matrix. In a way, this helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc.
 
-|           Model Run |  Instance  | Average Throughput (Imgs/Hr) |  Rate ($) | Throughput / $ (Est.)  | Spot Rate ($) | Spot Throughput / $ (Est.) |
-|:--------------------|:----------:|-----------------------------:|----------:|-----------------------:|------------:|-----------------------:|
-| Naive-Params-64     | p2.xlarge  |                              |     $0.90 |                        |       $0.27 |                        |
-| Naive-Params-64     | p2.8xlarge |                    7,780,000 |     $7.20 |              1,080,556 |       $2.16 |              3,601,852 |
-| Naive-Params-64     | p3.2xlarge |                    5,830,000 |     $3.06 |              1,905,229 |       $0.92 |              6,336,957 |
-| Naive-Params-64     | p3.8xlarge |                              |    $12.24 |                        |       $3.67 |                        |
-| Safe-Params-64      | p3.2xlarge |                    1,225,000 |     $3.06 |                400,326 |       $0.92 |              1,331,521 |
-| Safe-Params-64      | p3.8xlarge |                    6,605,504 |    $12.24 |                539,665 |       $3.67 |              1,799,84  |
-| Safe-Params-128     | p3.2xlarge |                              |     $3.06 |                        |       $0.92 |                        |
-| Safe-Params-128     | p3.8xlarge |                              |    $12.24 |                        |       $3.67 |                        |
-| Safe-Params-64      | dl1.24xlarge |                            |    $13.11 |                        |       $3.93 |                        |
-| Safe-Params-128     | dl1.24xlarge |                            |    $13.11 |                        |       $3.93 |                        |
-Table: Table 2.1 Comparative Performance of GPU and HPU instances
 
-|         | Generator  | Discriminator|
-|:--------|:----------:|:------------:|
-| Naive-64|   3,576,704|     2,765,568|
-| Safe-64 |  52,448,768|     2,765,568|
-| Safe-128| 195,063,296|    44,611,072|
-Table: Table 2.2 Comparative Model Sizes - Trainable Elements Across All Parameters
+|  Model Parameter Set  |  Instance    |  Throughput (Imgs/Hr) |  Rate (\$) |   Imgs/$  | Spot Rate (\$) | Imgs/$ (Spot) |
+|:---------|:------------:|----------------------:|----------:|-----------------------:|------------:|-----------------------:|
+|**Default Parameters From DCGAN**                                                                                            |
+| Naive-64 | p2.xlarge    |    798,415 |     $0.90 |   887,125 |       $0.27 |  2,957,092 |
+| Naive-64 | p2.8xlarge   |  7,780,000 |     $7.20 | 1,080,556 |       $2.16 |  3,601,852 |
+| Naive-64 | p3.2xlarge   |  5,830,000 |     $3.06 | 1,905,229 |       $0.92 |  6,336,957 |
+| Naive-64 | p3.8xlarge   |            |    $12.24 |           |       $3.67 |            |
+| **Prioritize  Model Stability**                                                         |
+| Clamp-64 | p3.2xlarge   |  1,225,000 |     $3.06 |   400,326 |       $0.92 |  1,331,521 |
+| Clamp-64 | p3.8xlarge   |  6,605,504 |    $12.24 |   539,665 |       $3.67 |   1,799,84 |
+| Clamp-64 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
+| **Rebalance for `(3 x 128 x 128)` Images**                                              |
+| Safe-128 | p3.2xlarge   |  1,462,857 |     $3.06 |   478,057 |       $0.92 |  1,593,526 |
+| Safe-128 | p3.8xlarge   |            |    $12.24 |           |       $3.67 |            |
+| Safe-128 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
+Table: *Table 2.1 Comparative Performance of GPU and HPU instances*
 
-```python
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-```
+Model parameters tested were one of three configurations, `Naive-64`, `Clamps-64`, or `Safe-128`. `Naive-64` parameters were those taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
 
+|         | `G` Params  | `D` Params |    Relevant Params   |
+|:--------|:----------:|:------------:|:-----------:|
+| Naive-64|   3,576,704|     2,765,568| ```{"nz": 100, "ngf": 64, "ndf": 64,  "img_size": 64 }``` |
+|         |            |              |             |
+| Clamp-64|  52,448,768|     2,765,568| ```{"nz": 256, "ngf": 256, "ndf": 64, "img_size": 64 }``` |
+|         |            |              |             |
+| Safe-128|  48,772,864|     2,796,928| ```{"nz": 128, "ngf": 128, "ndf": 32, "img_size": 128 }```|
+Table: *Table 2.2 Comparative Model Sizes &mdash; Trainable Elements Across All Parameters*
 
 --------
 
