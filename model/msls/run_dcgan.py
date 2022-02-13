@@ -5,6 +5,7 @@ import os
 import socket
 import json
 
+# Very Sensitive to Order of Imports...
 try:
     import gaudi_dcgan as dcgan
     from dcgan_utils import ModelCheckpointConfig, TrainingConfig

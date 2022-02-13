@@ -70,6 +70,7 @@ python3 -m msls.run_dcgan \
 
 # BUG: Mysteriously -> This works while the above fails in the container; build the MSLS package without
 # any references to habana, then just run habana dcgan as a standalone py file. oof.
+cd /root/msls-pytorch-dcgan/model/msls
 
 ```
 
