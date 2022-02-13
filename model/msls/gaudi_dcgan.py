@@ -15,16 +15,18 @@ import torch.profiler
 import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
+
+# NOTE: Order of Imports Matters!
+from habana_frameworks.torch.utils.library_loader import load_habana_module
+load_habana_module()
+
 from habana_dataloader import (
     HabanaDataLoader,
-)
-from habana_frameworks.torch.utils.library_loader import (
-    load_habana_module,
 )
 
 import habana_frameworks.torch.core as htcore
 
-from msls.dcgan_utils import (
+from dcgan_utils import (
     DEFAULT_LOADER_PARAMS,
     ModelCheckpointConfig,
     TrainingConfig,
@@ -33,7 +35,7 @@ from msls.dcgan_utils import (
     weights_init,
 )
 
-from msls.gan import (
+from gan import (
     Discriminator64,
     Generator64,
     Discriminator128,
@@ -42,7 +44,6 @@ from msls.gan import (
 
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
-load_habana_module()
 HPU_WORLD_SIZE = 8
 
 

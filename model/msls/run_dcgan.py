@@ -8,16 +8,13 @@ import json
 import torch
 import torch.multiprocessing as mp
 
-
-from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
-
 if torch.cuda.is_available():
     import msls.gpu_dcgan as dcgan
-
+    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "cuda"
 
 else:
-    import msls.gaudi_dcgan as dcgan
+    import gaudi_dcgan as dcgan
     torch.multiprocessing.set_start_method('spawn')
     DEVICE = "hpu"
 
@@ -152,4 +149,6 @@ if __name__ == "__main__":
 
     # On finish training -> send to s3
     if args.s3_bucket:
-        model_cfg.slim_checkpoint_to_cloud_storage(args.s3_bucket, args.n_epoch)
+        model_cfg.slim_checkpoint_to_cloud_storage(
+            args.s3_bucket, args.n_epoch
+        )

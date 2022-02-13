@@ -49,7 +49,7 @@ I designed model training to be as simple as possible. On a GPU instance, the fo
 ```bash
 
 python3 -m pip install --upgrade pip &&\
-    sudo -H pip3 install /path/to/msls/package/model
+    pip3 install /root/msls-pytorch-dcgan/model/ # Possibly with `sudo -H`
 
 # In short, the below does a 16 epoch run on a model with:
 #
@@ -59,6 +59,17 @@ python3 -m pip install --upgrade pip &&\
 # Uploading an artifact to: `s3://dmw2151-habana-model-outputs`
 #
 python3 -m msls.run_dcgan \
+    -c '{"name": "global-dcgan-128-1", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \
+    -t '{"nc": 3, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 128, "weight_decay": 0.05}'\
+    --s_epoch 0 \
+    --n_epoch 16 \
+    --dataroot /data/imgs/train_val/ \
+    --logging True \
+    --profile True  \
+    --s3_bucket 'dmw2151-habana-model-outputs'
+
+# BUG: Mysteriously -> This works while the above fails in the container...
+python3 /root/msls-pytorch-dcgan/model/msls/run_dcgan.py \
     -c '{"name": "global-dcgan-128-1", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \
     -t '{"nc": 3, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 128, "weight_decay": 0.05}'\
     --s_epoch 0 \
@@ -79,9 +90,9 @@ docker run -ti --runtime=habana \
     -e OMPI_MCA_btl_vader_single_copy_mechanism=none \
     --cap-add=sys_nice \
     --net=host \
-    -v /data:/data \
+    -v /ebs:/data \
     -v /efs:/efs \
-    -v /root/msls-pytorch-dcgan:/root/msls-pytorch-dcgan/ \
+    -v /home/ubuntu/msls-pytorch-dcgan:/root/msls-pytorch-dcgan/ \
     --ipc=host \
     vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585
 
