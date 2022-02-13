@@ -9,6 +9,7 @@ import json
 try:
     import msls.gaudi_dcgan as dcgan
     from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
+    import habana_frameworks.torch.core.hccl
     DEVICE = "hpu"
 
 except ImportError as e:
@@ -138,6 +139,15 @@ if __name__ == "__main__":
     # Run in distributed mode;l but on a single node...
     if DEVICE == "hpu":
         dcgan.init_habana_default_params()
+        import torch.distributed as dist
+
+        # NOTE: Use HCCL instead of NCCL for distributed backend...
+        dist.init_process_group(
+            backend="hccl",
+            init_method="env://",
+            world_size=dcgan.WORLD_SIZE,
+            rank=0,
+        )
 
     mp.spawn(
         dcgan.start_or_resume_training_run,

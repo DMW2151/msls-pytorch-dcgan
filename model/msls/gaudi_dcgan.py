@@ -12,7 +12,6 @@ import os
 from habana_frameworks.torch.utils.library_loader import load_habana_module
 load_habana_module()
 import habana_frameworks.torch.core as htcore
-import habana_frameworks.torch.core.hccl
 
 from habana_dataloader import (
     HabanaDataLoader
@@ -137,14 +136,6 @@ def start_or_resume_training_run(
     # TODO: Check if this is the correct way to set device
     # with DDP on HCCL!! torch.cuda.set_device(rank)
     os.environ["ID"] = str(rank)
-
-    # NOTE: Use HCCL instead of NCCL for distributed backend...
-    dist.init_process_group(
-        backend="hccl",
-        init_method="env://",
-        world_size=WORLD_SIZE,
-        rank=int(rank),
-    )
 
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
