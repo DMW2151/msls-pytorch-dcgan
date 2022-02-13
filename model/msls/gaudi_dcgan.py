@@ -10,7 +10,14 @@ import os
 
 # NOTE: Order of Imports Matters!
 from habana_frameworks.torch.utils.library_loader import load_habana_module
-load_habana_module()
+
+try:
+    print("Failed Load on Attempt - 1")
+    load_habana_module()
+except OSError:
+    print("Attempt 2...")
+    load_habana_module()
+
 import habana_frameworks.torch.core as htcore
 
 from habana_dataloader import (
