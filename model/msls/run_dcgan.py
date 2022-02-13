@@ -23,7 +23,7 @@ import torch.multiprocessing as mp
 
 if DEVICE == "hpu":
     print("Using HPU")
-    torch.multiprocessing.set_start_method('spawn')
+    # NO NEED TO RE-SET: torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
