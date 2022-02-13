@@ -70,6 +70,8 @@ python3 -m msls.run_dcgan \
 
 # BUG: Mysteriously -> This works while the above fails in the container; build the MSLS package without
 # any references to habana, then just run habana dcgan as a standalone py file. oof.
+pip3 install boto3
+
 cd /root/msls-pytorch-dcgan/model/msls &&\
     python3 run_dcgan.py \
     -c '{"name": "global-dcgan-128-1", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \

@@ -2,14 +2,18 @@ import setuptools
 
 requirements = [
     "boto3~=1.18.0",
-    "torch==1.10.0",
-    "torch-tb-profiler==0.3.1",
-    "torchvision==0.11.1",
     "theano~=1.0.5",
 ]
 
 # NOTE: Suggest Just Using the Habana / Gaudi Docker Container...
 habana_requirements = []
+
+gpu_requirements = [
+    "torch==1.10.0",
+    "torch-tb-profiler==0.3.1",
+    "torchvision==0.11.1"
+]
+
 setup_requirements = []
 
 extra_requirements = {
