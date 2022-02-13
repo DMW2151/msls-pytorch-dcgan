@@ -4,7 +4,9 @@ FROM python:3.8-slim-buster
 COPY ./model/ ./model
 
 RUN python3 -m pip install --upgrade pip &&\
-    pip3 install /model
+    pip3 install /model \
+        flask \
+        flask-cors
 
 # Copy model API code to container
 COPY ./api ./api/
