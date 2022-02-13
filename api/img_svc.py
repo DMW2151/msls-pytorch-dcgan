@@ -74,6 +74,7 @@ def get_generator(
         s3 = boto3.client("s3")
 
         with open(slim_checkpoint_path, "wb", os.O_CREAT) as fi:
+
             s3.download_fileobj(
                 model_cfg.s3_bucket,
                 f"{model_cfg.name}/slim_checkpoint_{epoch}.pt",

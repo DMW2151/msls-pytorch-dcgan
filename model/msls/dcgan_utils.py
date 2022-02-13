@@ -86,7 +86,7 @@ class TrainingConfig:
 
     dev: torch.device
     batch_size: int = 256
-    img_size: int = 64
+    img_size: int = 128
     nc: int = 3
     nz: int = 256
     ngf: int = 256
