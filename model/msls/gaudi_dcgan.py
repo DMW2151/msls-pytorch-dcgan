@@ -9,15 +9,8 @@ import datetime
 import os
 
 # NOTE: Order of Imports Matters!
-
-try:
-    from habana_frameworks.torch.utils.library_loader import load_habana_module
-    load_habana_module()
-except OSError:
-    print("Failed Load on Attempt - 1")
-    from habana_frameworks.torch.utils.library_loader import load_habana_module
-    load_habana_module()
-
+from habana_frameworks.torch.utils.library_loader import load_habana_module
+load_habana_module()
 import habana_frameworks.torch.core as htcore
 
 from habana_dataloader import (
