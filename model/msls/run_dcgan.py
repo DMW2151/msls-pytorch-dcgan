@@ -141,27 +141,31 @@ if __name__ == "__main__":
         dcgan.init_habana_default_params()
         import torch.distributed as dist
 
-        # NOTE: Use HCCL instead of NCCL for distributed backend...
-        dist.init_process_group(
-            backend="hccl",
-            init_method="env://",
-            world_size=dcgan.WORLD_SIZE,
-            rank=0,
-        )
-
-    mp.spawn(
-        dcgan.start_or_resume_training_run,
-        nprocs=dcgan.WORLD_SIZE,
-        args=(
+        dcgan.start_or_resume_training_run(
+            "1",
             train_cfg,
             model_cfg,
             args.n_epoch,
             args.s_epoch,
             args.profile,
             args.logging,
-        ),
-        join=True,
-    )
+        )
+
+        
+    else:
+        mp.spawn(
+            dcgan.start_or_resume_training_run,
+            nprocs=dcgan.WORLD_SIZE,
+            args=(
+                train_cfg,
+                model_cfg,
+                args.n_epoch,
+                args.s_epoch,
+                args.profile,
+                args.logging,
+            ),
+            join=True,
+        )
 
     # On finish training -> send to s3
     if args.s3_bucket:
