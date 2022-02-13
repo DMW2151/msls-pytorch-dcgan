@@ -11,8 +11,8 @@ try:
     from dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "hpu"
 
-except ImportError:
-    print("Using GPU")
+except ImportError as e:
+    print(f"Failed HPU Import -> Using GPU: {e}")
     import msls.gpu_dcgan as dcgan
     from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "cuda"
