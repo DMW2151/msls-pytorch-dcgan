@@ -52,8 +52,8 @@ parser.add_argument(
     "-s3",
     "--s3_bucket",
     type=str,
-    help="Bucket",
-    default="dmw2151-ml-training",
+    help="Bucket...",
+    default="dmw2151-habana-model-outputs",
 )
 
 parser.add_argument(
@@ -133,6 +133,9 @@ if __name__ == "__main__":
 
     # ================================================================
     # Run in distributed mode;l but on a single node...
+    if DEVICE == "hpu":
+        dcgan.init_habana_params()
+
     mp.spawn(
         dcgan.start_or_resume_training_run,
         nprocs=dcgan.WORLD_SIZE,
@@ -149,4 +152,6 @@ if __name__ == "__main__":
 
     # On finish training -> send to s3
     if args.s3_bucket:
-        model_cfg.slim_checkpoint_to_cloud_storage(args.s3_bucket, args.n_epoch)
+        model_cfg.slim_checkpoint_to_cloud_storage(
+            args.s3_bucket, args.n_epoch
+        )

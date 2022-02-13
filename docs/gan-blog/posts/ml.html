@@ -129,7 +129,8 @@
             table {
               margin: 1em 0;
               border-collapse: collapse;
-              width: 100%;
+              text-align: center;
+              width: 60%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -243,7 +244,7 @@
             <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
             <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
             <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
-            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Interactive Gallery</a>
+            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
         </div>
     </header>
     <h1> DCGAN - Modeling Considerations </h1>
@@ -253,7 +254,7 @@
     <p>I want to stress that this isn’t a strict replication of the original DCGAN papers. At a low-level, it’s difficult to describe all of the internal consequences of using <code>PyTorch</code> rather than the specific packages the authors used. At a high level, I made the following notable changes:</p>
     <ul>
     <li><p><strong>Use a Different Optimizer</strong> — Choose <code>AdamW</code>/<code>FusedAdamW</code> as an optimizer function over <code>SGD</code>. <em>Goodfellow, et al.</em> use a custom <code>SGD</code> <a href="https://github.com/goodfeli/adversarial/blob/master/sgd.py">implementation</a> that is a patched version of pylearn2’s <code>SGD</code>. Instead, I elected for a built-in PyTorch optimizer, <code>AdamW</code>. As an added benefit, Habana offers their own <code>FusedAdamW</code> implementation that should perform quite well on the Gaudi instances.</p></li>
-    <li><p><strong>Increase The Size of the Generator Feature Map</strong> — I increase the depth of the Generator feature map so that <code>G</code>s parameter depth outnumbered <code>D</code>’s 4-to-1. This is a balancing act; because the images are so small, a large enough parameter space could easily over-fit on the sample data. Additionally, the original model was <em>very</em> small, so increasing the size allows the HPU the opportunity to excel a bit.</p></li>
+    <li><p><strong>Increase The Size of the Generator Feature Map</strong> — I increase the depth of the Generator feature map so that <code>G</code>’s depth outnumbered <code>D</code>’s 4-to-1. This is a balancing act; because the images are so small, a large enough parameter space could easily over-fit on the sample data. Additionally, the original model was <em>very</em> small, so increasing the size allows the HPU the opportunity to excel a bit.</p></li>
     <li><p><strong>Remove the Sigmoid From the Discriminator</strong> — This one sounds more controversial than it is. Typically a binary classification problem like the one <code>D</code> solves would use <a href="https://en.wikipedia.org/wiki/Cross_entropy">Binary Cross Entropy Loss</a> (<code>BCELoss</code>). The way that PyTorch optimizes for mixed-precision operations required I switch to <code>BCEWithLogitLoss</code>, a loss function that expects logits (<code>L∈(−∞,∞)</code>) rather than probabilities (<code>p∈[0,1]</code>). In effect, this change moves the <code>Sigmoid</code> from the network to part of the loss function.</p></li>
     <li><p><strong>Add an Additional Convolutional Block</strong> — I add an additional block of <code>Conv2d</code>, <code>BatchNorm2d</code>, and <code>Relu</code> layers to start the model. This allows me to handle for images at <code>(3 x 128 x 128)</code>, although getting stable training on these larger images took a bit of tuning, it was an interesting challenge to reason through all of this.</p></li>
     </ul>
@@ -275,7 +276,7 @@
     <blockquote>
     <p>Parzen windows estimation of likelihood favors trivial models and is irrelevant to visual fidelity of samples. Further, it fails to approximate the true likelihood in high dimensional spaces or to rank models<sup>2</sup></p>
     </blockquote>
-    <p>Other authors<sup>3</sup> suggest alternative methods, though the most common ones rely on the existence of a pre-trained classifier model. A GAN that generates identifiable objects, (e.g. horses, faces, tea-kettles) might be better for these methods than my GAN. For completeness sake, I implemented and tested Parzen KDE as described in the paper, but found middling results. It didn’t seem to add much more over the <code>G</code> and <code>D</code> loss functions and I really couldn’t verify the validity of the metric. Beyond the third epoch. Consider the neg-log-likelihood plot from this 16 epoch training run. Following the first epoch, which was mostly white noise, the metric is largely unchanged through the remainder of the run.</p>
+    <p>Other authors<sup>3</sup> suggest alternative methods, though the most common ones rely on the existence of a pre-trained classifier model. A GAN that generates identifiable objects, (e.g. horses, faces, tea-kettles) might be better for these methods than my GAN. For completeness sake, I implemented and tested Parzen KDE as described in the paper, but found middling results. It didn’t seem to add much more over the <code>G</code> and <code>D</code> loss functions and I really couldn’t verify the validity of the metric. Consider the neg-log-likelihood plot from this 16 epoch training run. Following the first epoch, which was mostly white noise, the metric is largely unchanged through the remainder of the run.</p>
     <table>
     <tbody>
     <tr class="odd">

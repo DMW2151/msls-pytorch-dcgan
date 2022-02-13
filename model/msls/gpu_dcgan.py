@@ -25,8 +25,10 @@ from msls.dcgan_utils import (
 )
 
 from msls.gan import (
-    Discriminator64, Generator64,
-    Discriminator128, Generator128, 
+    Discriminator64,
+    Generator64,
+    Discriminator128,
+    Generator128,
 )
 
 WORLD_SIZE = torch.cuda.device_count()
@@ -35,7 +37,11 @@ WORLD_SIZE = torch.cuda.device_count()
 class GaussianNoise(object):
     """Add Noise to a tensor; reduce tendency for model collapse"""
 
-    def __init__(self, mean: float = 0.0, std: float = 0.1):
+    def __init__(
+        self,
+        mean: float = 0.0,
+        std: float = 0.1,
+    ):
         self.std = std
         self.mean = mean
 
@@ -56,12 +62,18 @@ def get_msls_dataloader(
         root=train_cfg.data_root,
         transform=transforms.Compose(
             [
-                transforms.RandomAffine(degrees=0, translate=(0.2, 0.0)),
+                transforms.RandomAffine(
+                    degrees=0,
+                    translate=(0.2, 0.0),
+                ),
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
                 GaussianNoise(0.0, 0.1),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.Normalize(
+                    (0.5, 0.5, 0.5),
+                    (0.5, 0.5, 0.5),
+                ),
             ]
         ),
     )
@@ -125,14 +137,20 @@ def start_or_resume_training_run(
         D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
         G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
     elif train_cfg.img_size == 128:
-        D, opt_D = train_cfg.get_network(Discriminator128, device_rank=rank)
+        D, opt_D = train_cfg.get_network(
+            Discriminator128,
+            device_rank=rank,
+        )
         G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
-        checkpt = get_checkpoint(path=model_cfg.checkpoint_path(st_epoch), cpu=True)
+        checkpt = get_checkpoint(
+            path=model_cfg.checkpoint_path(st_epoch),
+            cpu=True,
+        )
 
         restore_model(checkpt, G, D, opt_G, opt_D)
 
@@ -149,15 +167,21 @@ def start_or_resume_training_run(
         cur_epoch = 1
         img_list = []
         losses = {"_G": [], "_D": []}
-        Z_fixed = torch.randn(64, train_cfg.nz, 1, 1, device=train_cfg.dev)
+        Z_fixed = torch.randn(
+            64,
+            train_cfg.nz,
+            1,
+            1,
+            device=train_cfg.dev,
+        )
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
     scaler_D = torch.cuda.amp.GradScaler()
     scaler_G = torch.cuda.amp.GradScaler()
 
-    # BUG [RESOLVED]: Profiling results can get distorted if this is placed
-    # @ the wrong location AND the number of batches/epoch is too small
+    # BUG/NOTE: [RESOLVED]: Profiling results can get distorted if
+    # the number of batches per epoch is too small
     if enable_prof:
         prof = model_cfg.get_msls_profiler()
         prof.start()
@@ -183,8 +207,19 @@ def start_or_resume_training_run(
             b_size = real_imgs.size(0)
 
             # TODO: Try Soft Noise on Labels...
-            Z = torch.randn(b_size, train_cfg.nz, 1, 1, device=train_cfg.dev)
-            label = torch.full((b_size,), 1.0, device=train_cfg.dev)
+            Z = torch.randn(
+                b_size,
+                train_cfg.nz,
+                1,
+                1,
+                device=train_cfg.dev,
+            )
+
+            label = torch.full(
+                (b_size,),
+                1.0,
+                device=train_cfg.dev,
+            )
 
             ###################################################################
             # (1.1) Update D: all real batch
@@ -253,10 +288,26 @@ def start_or_resume_training_run(
                     )
 
                     for metric, val in zip(
-                        ["G_loss", "D_loss", "D_X", "D_G_z1", "D_G_z2"],
-                        [err_G.item(), err_D.item(), D_X, D_G_z1, D_G_z2],
+                        [
+                            "G_loss",
+                            "D_loss",
+                            "D_X",
+                            "D_G_z1",
+                            "D_G_z2",
+                        ],
+                        [
+                            err_G.item(),
+                            err_D.item(),
+                            D_X,
+                            D_G_z1,
+                            D_G_z2,
+                        ],
                     ):
-                        writer.add_scalar(metric, val, imgs_processed_ct)
+                        writer.add_scalar(
+                            metric,
+                            val,
+                            imgs_processed_ct,
+                        )
                     writer.flush()
 
                     # Save losses for metric plots...
@@ -294,4 +345,7 @@ def start_or_resume_training_run(
     # if wait, warmup, active, and repeat batches can't fit on the first epoch
     prof.stop() if enable_logging else None
 
-    return {"losses": losses, "img_list": img_list}
+    return {
+        "losses": losses,
+        "img_list": img_list,
+    }

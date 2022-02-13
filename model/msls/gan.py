@@ -114,7 +114,7 @@ class Generator128(nn.Module):
 
     def forward(self, input):
         return self.main(input)
-    
+
 
 class Discriminator128(nn.Module):
     def __init__(self, cfg):
@@ -122,7 +122,7 @@ class Discriminator128(nn.Module):
         self.ngpu = cfg.ngpu
         self.main = nn.Sequential(
             # input is (cfg.nc) x 128 x 128
-            nn.Conv2d(cfg.nc, cfg.ndf, 4, stride=2, padding=1, bias=False), 
+            nn.Conv2d(cfg.nc, cfg.ndf, 4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (cfg.ndf) x 64 x 64
             nn.Conv2d(cfg.ndf, cfg.ndf * 2, 4, stride=2, padding=1, bias=False),
@@ -132,7 +132,7 @@ class Discriminator128(nn.Module):
             nn.Conv2d(cfg.ndf * 2, cfg.ndf * 4, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(cfg.ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
-            # state size. (cfg.ndf*4) x 16 x 16 
+            # state size. (cfg.ndf*4) x 16 x 16
             nn.Conv2d(cfg.ndf * 4, cfg.ndf * 8, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(cfg.ndf * 8),
             nn.LeakyReLU(0.2, inplace=True),
@@ -144,6 +144,6 @@ class Discriminator128(nn.Module):
             nn.Conv2d(cfg.ndf * 16, 1, 4, stride=1, padding=0, bias=False),
             # state size. 1
         )
-        
+
     def forward(self, input):
-        return self.main(input)        
+        return self.main(input)

@@ -117,10 +117,12 @@ Migrating a model to run on HPUs require some changes, most of which are highlig
 - **Use Local NVME Storage Instead of EBS** &mdash; I *just* noted that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on `DL1`, I trained off of the [ephemeral storage volumes](https://aws.amazon.com/ec2/instance-types/dl1/) that come with the instance. Test results in [Performance Results](#Comparative%20Performance)
 
 - **Use `Lazy Mode`** &mdash; [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
+
+- **Use `FusedAdamW` over `AdamW`** &mdash; `FusedAdamW` is a custom `AdamW` implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the `DL1` instances.
   
-- **Use `FusedAdamW` over `AdamW`**  &mdash; `FusedAdamW` is a custom `AdamW` implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the `DL1` instances.
+- **Use HMP** &mdash; Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: [HMP on Tensorflow](https://developer.habana.ai/tutorials/tensorflow/mixed-precision/).
   
-- **Use HMP** &mdash; - Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: [HMP on Tensorflow](https://developer.habana.ai/tutorials/tensorflow/mixed-precision/).
+- **Use HCCL over NCCL** &mdash; Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with torch.distributed as a communication backend. This was a 1 LOC change from NCCL.
 
 --------
 

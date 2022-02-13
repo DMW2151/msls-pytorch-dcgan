@@ -129,7 +129,8 @@
             table {
               margin: 1em 0;
               border-collapse: collapse;
-              width: 100%;
+              text-align: center;
+              width: 60%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -243,7 +244,7 @@
             <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
             <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
             <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
-            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Interactive Gallery</a>
+            <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
         </div>
     </header>
     <h1> Model Training Notes </h1>
@@ -309,6 +310,7 @@
     <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Run the same command(s), but in the container</span></span>
     <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="ex">root@xyzxyzxyz:/\#</span> python3 <span class="at">-m</span> msls.run_dcgan ....</span></code></pre></div>
     <p>Finally, If you want a truly guided experience, you can use the notebooks in <code>./model/notebooks</code> to train in a SageMaker notebook. As of writing, <code>DL1</code> is not a supported SageMaker instance type, so you’ll be restricted to GPU instances.</p>
+    <h2 id="inference-new-image-generation">Inference &amp; New Image Generation</h2>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
     </footer>

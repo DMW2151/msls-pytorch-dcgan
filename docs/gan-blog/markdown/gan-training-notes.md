@@ -89,3 +89,5 @@ root@xyzxyzxyz:/\# python3 -m msls.run_dcgan ....
 ```
 
 Finally, If you want a truly guided experience, you can use the notebooks in `./model/notebooks` to train in a SageMaker notebook. As of writing, `DL1` is not a supported SageMaker instance type, so you'll be restricted to GPU instances.
+
+## Inference & New Image Generation

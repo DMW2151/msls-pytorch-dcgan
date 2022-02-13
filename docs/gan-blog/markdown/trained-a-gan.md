@@ -5,8 +5,8 @@ date: February 8, 2022
 ---
 
 
-|                           |                           |                           |
-|:-------------------------:|:-------------------------:|:-------------------------:|
+|                           |                           |                           |                           |
+|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
 | <img src="../images/gan/001.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> | <img src="../images/gan/002.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> | <img src="../images/gan/003.gif" height="auto" width="188" style="padding: 20px; border-radius: 2px"> |
 |                           | *Experimental Output - Nowhere, USA*                           |                           |
 

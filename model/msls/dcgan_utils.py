@@ -197,17 +197,21 @@ class ModelCheckpointConfig:
         - root: str: Directory to save model artifacts, training results, images,
             videos, etc.
 
-        - save_frequency: int: During training, save the model w. progress estimations
+        - save_frequency:g int: During training, save the model w. progress estimations
             every `save_frequency` epochs
 
         - log_frequency: int: During training, log the results to STDOUT every
             `log_frequency` batches
+
+        - s3_bucket: str: Remote location in S3 to persist slim version of final 
+            model checkpoint
     """
 
     name: str = "msls-dcgan-128"
     root: str = "/efs/trained_model"
     save_frequency: int = 1
     log_frequency: int = 50
+    s3_bucket: str = ''
 
     def get_msls_profiler(
         self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE
@@ -286,11 +290,12 @@ class ModelCheckpointConfig:
         self.create_slim_checkpoint(checkpoint)
 
         # Send the slim checkpoint up to S3!
-        response = s3_client.upload_file(
+        _ = s3_client.upload_file(
             f"{self.root}/{self.name}/slim_checkpoint_{checkpoint}.pt",
             bucket,
             f"{self.name}/slim_checkpoint_{checkpoint}.pt",
         )
+
 
 
 class LimitDataset(torch.utils.data.Dataset):
@@ -391,7 +396,8 @@ def slerp_noise_vect(val: float, Z_0: torch.Tensor, Z_1: torch.Tensor) -> torch.
         Z_0, Z_1: torch.Tensor : [...]
     """
 
-    # Calc Norms over Endpoint Vectors
+    # Calc Norms over Endpoint Vectors on the CPU; going to be a
+    # bit slower but this needs to work on `C` and `T` class instances...
     Z_0_norm = Z_0 / torch.norm(Z_0, dim=1, keepdim=True).to("cpu")
     Z_1_norm = Z_1 / torch.norm(Z_1, dim=1, keepdim=True).to("cpu")
 
