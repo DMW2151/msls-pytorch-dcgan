@@ -136,20 +136,30 @@ if __name__ == "__main__":
     # Run in distributed mode;l but on a single node...
     if DEVICE == "hpu":
         dcgan.init_habana_params()
-
-    mp.spawn(
-        dcgan.start_or_resume_training_run,
-        nprocs=dcgan.WORLD_SIZE,
-        args=(
+        dcgan.start_or_resume_training_run(
+            0,
             train_cfg,
             model_cfg,
             args.n_epoch,
             args.s_epoch,
             args.profile,
             args.logging,
-        ),
-        join=True,
-    )
+        )
+
+    else:
+        mp.spawn(
+            dcgan.start_or_resume_training_run,
+            nprocs=dcgan.WORLD_SIZE,
+            args=(
+                train_cfg,
+                model_cfg,
+                args.n_epoch,
+                args.s_epoch,
+                args.profile,
+                args.logging,
+            ),
+            join=True,
+        )
 
     # On finish training -> send to s3
     if args.s3_bucket:
