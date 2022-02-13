@@ -10,6 +10,3 @@ RUN python3 -m pip install --upgrade pip &&\
 
 # Copy model API code to container
 COPY ./api ./api/
-
-# Run API...
-RUN python3 ./api/img_svc.py
