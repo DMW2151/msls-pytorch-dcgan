@@ -26,7 +26,7 @@
             }
             body {
               margin: 0 auto;
-              max-width: 52em;
+              max-width: 60em;
               padding-left: 50px;
               padding-right: 50px;
               padding-top: 50px;
@@ -119,18 +119,11 @@
               height: 2px;
               margin: 1em 0;
             }
-            .gan-test-img {
-              transition: background-color .2s;
-            }
-            .gan-test-img:hover {
-              mix-blend-mode: hard-light;
-              width: min-content;
-            }
             table {
               margin: 1em 0;
               border-collapse: collapse;
               text-align: center;
-              width: 60%;
+              width: 80%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -142,8 +135,6 @@
             }
             tbody {
               margin-top: 0.5em;
-              /*border-top: 1px solid #ebebe6;*/
-              /*border-bottom: 1px solid #ebebe6;*/
               margin-left: auto;
               margin-right: auto;
             }
@@ -165,17 +156,49 @@
             #TOC a:not(:hover) {
               text-decoration: none;
             }
-            code{white-space: pre-wrap;}
-            span.smallcaps{font-variant: small-caps;}
-            span.underline{text-decoration: underline;}
-            div.column{display: inline-block; vertical-align: top; width: 50%;}
-            div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-            ul.task-list{list-style: none;}
-            pre > code.sourceCode { white-space: pre; position: relative; }
-            pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-            pre > code.sourceCode > span:empty { height: 1.2em; }
+            summary {
+              background-color: gray;
+            }
+            summary > strong {
+              color: white
+            }
+            code{
+              white-space: pre-wrap;
+            }
+            span.smallcaps{
+              font-variant: small-caps;
+            }
+            span.underline{
+              text-decoration: underline;
+            }
+            div.column{
+              display: inline-block; 
+              vertical-align: top; 
+              width: 50%;
+            }
+            div.hanging-indent{
+              margin-left: 1.5em; 
+              text-indent: -1.5em;
+            }
+            ul.task-list{
+              list-style: none;
+            }
+            pre > code.sourceCode { 
+              white-space: pre; 
+              position: relative; 
+            }
+            pre > code.sourceCode > span { 
+              display: inline-block; 
+              line-height: 1.25; 
+            }
+            pre > code.sourceCode > span:empty { 
+              height: 1.2em; 
+            }
             .sourceCode { overflow: visible; }
-            code.sourceCode > span { color: inherit; text-decoration: inherit; }
+            
+            code.sourceCode > span { 
+              color: inherit; text-decoration: inherit; 
+            }
             div.sourceCode { margin: 1em 0; }
             pre.sourceCode { margin: 0; }
             @media screen {
@@ -241,10 +264,10 @@
     <header>
         <div style="background-color:#202025; color: #e6e6e6" class="header">
             <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
-            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
-            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
-            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
             <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
+            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
+            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
+            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
         </div>
     </header>
     <h1> $title$ </h1>

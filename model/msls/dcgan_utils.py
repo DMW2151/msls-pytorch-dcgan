@@ -7,7 +7,6 @@ import collections
 import boto3
 import uuid
 
-from PIL import Image
 import torchvision
 from torchvision import transforms
 
@@ -203,7 +202,7 @@ class ModelCheckpointConfig:
         - log_frequency: int: During training, log the results to STDOUT every
             `log_frequency` batches
 
-        - s3_bucket: str: Remote location in S3 to persist slim version of final 
+        - s3_bucket: str: Remote location in S3 to persist slim version of final
             model checkpoint
     """
 
@@ -211,7 +210,7 @@ class ModelCheckpointConfig:
     root: str = "/efs/trained_model"
     save_frequency: int = 1
     log_frequency: int = 50
-    s3_bucket: str = ''
+    s3_bucket: str = ""
 
     def get_msls_profiler(
         self, schedule=DEFAULT_TORCH_PROFILER_SCHEDULE
@@ -295,7 +294,6 @@ class ModelCheckpointConfig:
             bucket,
             f"{self.name}/slim_checkpoint_{checkpoint}.pt",
         )
-
 
 
 class LimitDataset(torch.utils.data.Dataset):
@@ -418,35 +416,34 @@ def slerp_noise_vect(val: float, Z_0: torch.Tensor, Z_1: torch.Tensor) -> torch.
 def gen_img_sequence_array(
     m_cfg: ModelCheckpointConfig,
     G: Union[Generator64, Generator128],
-    n_frames: int = 100,
+    n_frames: int = 20,
     Z_size: int = 128,
-    num_rows: int = 4,
 ) -> None:
     """Create Interpolated Image Set"""
 
     seq_grid_images = []
-    Z_h = torch.randn(num_rows ** 2, Z_size)
-    Z_l = torch.randn(num_rows ** 2, Z_size)
+    Z_h = torch.randn(1, Z_size, 1, 1)
+    Z_l = torch.randn(1, Z_size, 1, 1)
 
     for ratio in torch.linspace(0.0, 8.0, n_frames):
-
         # Generate and Save Image Sequence...
         Z_i = slerp_noise_vect(ratio, Z_l, Z_h)
 
-        generated_images = G(Z_i).detach().numpy()
-        images_grid = torchvision.utils.make_grid(
-            generated_images, nrow=num_rows
-        )
+        generated_images = G(Z_i).detach()
+
+        images_grid = torchvision.utils.make_grid(generated_images, nrow=1)
         pil_image = transforms.ToPILImage()(images_grid.cpu())
 
         seq_grid_images.append(pil_image)
 
-    # Save Dream Sequence...
+    gif_id = f"/tmp/{uuid.uuid4().__str__()}-sequence.gif"
     seq_grid_images[0].save(
-        f"{m_cfg.root}/{m_cfg.name}/videos/{uuid.uuid4().__str__()}-sequence.gif",
+        gif_id,
         save_all=True,
         append_images=seq_grid_images[1:],
-        duration=80,
+        duration=120,
         loop=0,
         optimize=True,
     )
+    
+    return gif_id

@@ -26,7 +26,7 @@
             }
             body {
               margin: 0 auto;
-              max-width: 52em;
+              max-width: 60em;
               padding-left: 50px;
               padding-right: 50px;
               padding-top: 50px;
@@ -119,18 +119,11 @@
               height: 2px;
               margin: 1em 0;
             }
-            .gan-test-img {
-              transition: background-color .2s;
-            }
-            .gan-test-img:hover {
-              mix-blend-mode: hard-light;
-              width: min-content;
-            }
             table {
               margin: 1em 0;
               border-collapse: collapse;
               text-align: center;
-              width: 60%;
+              width: 80%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -142,8 +135,6 @@
             }
             tbody {
               margin-top: 0.5em;
-              /*border-top: 1px solid #ebebe6;*/
-              /*border-bottom: 1px solid #ebebe6;*/
               margin-left: auto;
               margin-right: auto;
             }
@@ -165,17 +156,49 @@
             #TOC a:not(:hover) {
               text-decoration: none;
             }
-            code{white-space: pre-wrap;}
-            span.smallcaps{font-variant: small-caps;}
-            span.underline{text-decoration: underline;}
-            div.column{display: inline-block; vertical-align: top; width: 50%;}
-            div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-            ul.task-list{list-style: none;}
-            pre > code.sourceCode { white-space: pre; position: relative; }
-            pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-            pre > code.sourceCode > span:empty { height: 1.2em; }
+            summary {
+              background-color: gray;
+            }
+            summary > strong {
+              color: white
+            }
+            code{
+              white-space: pre-wrap;
+            }
+            span.smallcaps{
+              font-variant: small-caps;
+            }
+            span.underline{
+              text-decoration: underline;
+            }
+            div.column{
+              display: inline-block; 
+              vertical-align: top; 
+              width: 50%;
+            }
+            div.hanging-indent{
+              margin-left: 1.5em; 
+              text-indent: -1.5em;
+            }
+            ul.task-list{
+              list-style: none;
+            }
+            pre > code.sourceCode { 
+              white-space: pre; 
+              position: relative; 
+            }
+            pre > code.sourceCode > span { 
+              display: inline-block; 
+              line-height: 1.25; 
+            }
+            pre > code.sourceCode > span:empty { 
+              height: 1.2em; 
+            }
             .sourceCode { overflow: visible; }
-            code.sourceCode > span { color: inherit; text-decoration: inherit; }
+            
+            code.sourceCode > span { 
+              color: inherit; text-decoration: inherit; 
+            }
             div.sourceCode { margin: 1em 0; }
             pre.sourceCode { margin: 0; }
             @media screen {
@@ -241,10 +264,10 @@
     <header>
         <div style="background-color:#202025; color: #e6e6e6" class="header">
             <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
-            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
-            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
-            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
             <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
+            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
+            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
+            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
         </div>
     </header>
     <h1> DCGAN - Modeling Considerations </h1>
@@ -262,8 +285,8 @@
     <p>DCGAN can be unstable in comparison to modern generative models. The most common failure mode I observed involved was <code>D</code> learning the difference between test and real images too quickly (e.g. some property of fake images that made them easy to identify), and that left <code>G</code> to make trivial progress in generating better images over time. I didn’t have the time or resources to do full hyper-parameter tuning, so I used a few <del>tricks</del> heuristics suggested <a href="https://github.com/pytorch/examples/issues/70">here</a> and <a href="https://github.com/soumith/ganhacks">here</a> to stabilize the model.</p>
     <p>After some experimentation and consulting the literature<sup>1</sup>, I landed on the following parameters for my <code>Safe-Params</code> scenario. All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability of results. At the same time, I wasn’t hoping to train a 1B parameter model for ages. Again, this is a balancing act.</p>
     <ul>
-    <li><strong>Additional Noise Layer in Transformations</strong> — (0, 0.2)</li>
-    <li><strong>Batch Size</strong> — 512</li>
+    <li><strong>Additional Noise Layer in Transformations</strong> — (0, 0.05)</li>
+    <li><strong>Batch Size</strong> — 256</li>
     <li><strong>Learning Rate</strong> — 0.0002</li>
     <li><strong>Generator Feature Map Depth</strong> — 128</li>
     <li><strong>Discriminator Feature Map Depth</strong> — 32</li>

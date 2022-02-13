@@ -26,7 +26,7 @@
             }
             body {
               margin: 0 auto;
-              max-width: 52em;
+              max-width: 60em;
               padding-left: 50px;
               padding-right: 50px;
               padding-top: 50px;
@@ -119,18 +119,11 @@
               height: 2px;
               margin: 1em 0;
             }
-            .gan-test-img {
-              transition: background-color .2s;
-            }
-            .gan-test-img:hover {
-              mix-blend-mode: hard-light;
-              width: min-content;
-            }
             table {
               margin: 1em 0;
               border-collapse: collapse;
               text-align: center;
-              width: 60%;
+              width: 80%;
               overflow-x: auto;
               font-variant-numeric: lining-nums tabular-nums;
               color: #ebebe6;
@@ -142,8 +135,6 @@
             }
             tbody {
               margin-top: 0.5em;
-              /*border-top: 1px solid #ebebe6;*/
-              /*border-bottom: 1px solid #ebebe6;*/
               margin-left: auto;
               margin-right: auto;
             }
@@ -165,17 +156,49 @@
             #TOC a:not(:hover) {
               text-decoration: none;
             }
-            code{white-space: pre-wrap;}
-            span.smallcaps{font-variant: small-caps;}
-            span.underline{text-decoration: underline;}
-            div.column{display: inline-block; vertical-align: top; width: 50%;}
-            div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-            ul.task-list{list-style: none;}
-            pre > code.sourceCode { white-space: pre; position: relative; }
-            pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-            pre > code.sourceCode > span:empty { height: 1.2em; }
+            summary {
+              background-color: gray;
+            }
+            summary > strong {
+              color: white
+            }
+            code{
+              white-space: pre-wrap;
+            }
+            span.smallcaps{
+              font-variant: small-caps;
+            }
+            span.underline{
+              text-decoration: underline;
+            }
+            div.column{
+              display: inline-block; 
+              vertical-align: top; 
+              width: 50%;
+            }
+            div.hanging-indent{
+              margin-left: 1.5em; 
+              text-indent: -1.5em;
+            }
+            ul.task-list{
+              list-style: none;
+            }
+            pre > code.sourceCode { 
+              white-space: pre; 
+              position: relative; 
+            }
+            pre > code.sourceCode > span { 
+              display: inline-block; 
+              line-height: 1.25; 
+            }
+            pre > code.sourceCode > span:empty { 
+              height: 1.2em; 
+            }
             .sourceCode { overflow: visible; }
-            code.sourceCode > span { color: inherit; text-decoration: inherit; }
+            
+            code.sourceCode > span { 
+              color: inherit; text-decoration: inherit; 
+            }
             div.sourceCode { margin: 1em 0; }
             pre.sourceCode { margin: 0; }
             @media screen {
@@ -241,42 +264,24 @@
     <header>
         <div style="background-color:#202025; color: #e6e6e6" class="header">
             <a href="./trained-a-gan.html" style="padding: 10px; font-size: 12px;">Project Overview</a>
-            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
-            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
-            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
             <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
+            <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
+            <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
+            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
         </div>
     </header>
     <h1> DCGAN - Model Training Infrastructure Choices </h1>
     <p>Dustin Wilson &#8212 February 8, 2022</p>
     <hr>
     <p>I haven’t written a line of ML code since 2014 (and I could even argue that didn’t count). I wanted to develop a sense of what model training on modern GPUs is like, then, once I was ready with a model that worked on the GPU, migrate it to the HPU. If you’re just interested in comparative results, you can skip to <a href="#Comparative%20Performance">performance results</a>.</p>
-    <h2 id="aws-system-architecture">AWS System Architecture</h2>
-    <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 1.1 Simplified Model Training Architecture</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/infra/arch.png" alt="OK" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <p>All infrastructure for this project is hosted on AWS. Please see <a href="./infra.html">infrastructure and hardware choices</a> for more detail on the specific details of that element of the project. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
-    <ul>
-    <li><p><strong>training-prod</strong> — An EC2 instance for running deep learning models, either <code>DL1</code> or a cost-comparable GPU instance (<code>P</code>-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.</p></li>
-    <li><p><strong>training-nb</strong> — A small SageMaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
-    <li><p><strong>metrics</strong> — A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:</p>
-    <ul>
-    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — A tool for visualizing <em>machine learning metrcs</em> during training.</li>
-    <li><a href="https://grafana.com/">Grafana</a> — An analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
-    </ul></li>
-    </ul>
-    <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a <code>gp3</code> volume attached to my training instances and then passed to the GPU/HPU during training.</p>
-    <h2 id="selecting-a-comparable-gpu-instance">Selecting a Comparable GPU Instance</h2>
+    <h2 id="comparative-performance">Comparative Performance</h2>
     <p>While I tested my model on a variety of instance types, I wanted to do an “official run” on a machine that might be seen as a reasonable comparison to the <code>DL1</code>. Using <a href="https://instances.vantage.sh/">instances.vantage.sh</a>, I aggregated data for GPU instances available in <code>us-east-1</code> with between 2 and 8 GPUs. I relied exclusively on Nvidia’s most recent <a href="https://developer.nvidia.com/deep-learning-performance-training-inference">resnext-101 benchmarks</a> as a proxy for my model’s performance. On price, <code>p3.8xlarge</code> instances are the most similar to the <code>DL1</code> and offer 4 <code>V100</code> GPUs, making them an obvious choice for comparative analysis.</p>
+    <details>
+    <summary>
+    <strong>Table 1.1 — Possible Comparable GPU Instances — Click to Expand</strong>
+    </summary>
     <table>
-    <caption>Table 1.1 - Possible Comparable GPU Instances</caption>
+    <caption><em>Table 1.1 - Possible Comparable GPU Instances</em></caption>
     <thead>
     <tr class="header">
     <th>API Name</th>
@@ -417,96 +422,11 @@
     </tr>
     </tbody>
     </table>
+    </details>
     <p>I also ran short-lived tests on the <code>p2.xlarge</code>, <code>p2.8xlarge</code> and <code>p3.2xlarge</code> to help me develop a mental model of DDP patterns and performance. The benchmarks for these are all included in the following sections.</p>
-    <h2 id="evaluating-a-first-training-run-on-gpu-instances">Evaluating a First Training run on GPU Instances</h2>
-    <p>I started with a PyTorch model running on a GPU (<code>P3.2xlarge</code> w. <code>V100</code>) before instrumenting it to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I was optimizing (within reason) for either platform. To validate that the model was sufficiently tuned for the GPU, I referred to the metrics generated by running my model in profiler mode, instance metrics sent to Grafana, and those produced by <code>nvidia-smi</code> (see: <a href="https://developer.nvidia.com/nvidia-system-management-interface">nvidia-smi</a>). With these metrics available, I was able to make the following choices to improve the model’s training performance.</p>
-    <ul>
-    <li><p><strong>Upgrade EFS to EBS</strong> — Regrettably, an EFS file system can only drive up to 150 KiB/s per GiB of read throughput. This meant that model training start-up was very, very slow. To alleviate this issue, I attached a <code>gp3</code> (8000 iops, 1000 MiB/s) volume to my training instance and used it to “host” the MSLS data. Anecdotally, this choice led to a <em>2000%</em> speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.</p></li>
-    <li><p><strong>Increase Batch Size</strong> — This was low-hanging fruit. Independent of the other changes, the right choice of batch size (i.e. 1024 instead of 128) sped up overall execution time by ~80%.</p></li>
-    <li><p><strong>Minimize (obvious) CUDA Copies</strong> — Training statistics, outputs, labels, etc. were being haphazardly moved to and from the GPU! I can collect and display them at the end of the epoch rather than on each batch.</p></li>
-    <li><p><strong>Using AMP</strong> — Automatic Mixed Precision (AMP) allows for model training to run with FP16 values where possible and F32 where needed. This allows for lower memory consumption and faster training time. It also opens the door for me to use Habana’s mixed precision <a href="https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi">modules</a> when I move over to the <code>DL1</code> instance.</p></li>
-    <li><p><strong>Distributed Data Processing</strong> — In isolation, distributed data processing doesn’t improve the model’s training performance, but it does lend towards a more robust training environment. Although this is a problem that uses a moderate amount of small images, I still wanted to instrument my code to run across multiple GPUs (and nodes).</p></li>
-    </ul>
-    <p>With these changes made, I was hoping that I was in a good place. Looking at the first chart below, <em>PyTorch Profiler - GPU Execution Summary</em>, it would seem I was doing quite well, 85% is OK GPU performance! Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn’t include the dataloader steps!</p>
+    <p>I didn’t intend on doing so many preliminary GPU runs, it just sort of happened. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided to go back and fill out the testing matrix. This helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc.</p>
     <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 1.1 - PyTorch Profiler - GPU Execution Summary</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/training/big_batch_good.png" alt="OK" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 1.2 - Grafana - GPU Utilization Rates</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/training/gpu_poor.png" alt="Bad GPU" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <p>At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a <a href="https://github.com/uploadcare/pillow-simd">SIMD fork of PIL</a> to increase image processing performance. Unfortunately, none of it made a meaningful difference on the <code>V100</code>. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks to make sense of things.</p>
-    <p>Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>). If these calls are causing the slowdown, we should be able to construct an experiment to test it. I tried the following exercises to help me understand resource usage during the training process.</p>
-    <ul>
-    <li><strong>Let’s just use a worse GPU!</strong> — I spun up a <code>p2.8xlarge</code> with older <code>K80</code>s to see if the weaker GPUs would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won’t see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity’s sake, but the charts below confirm my hypothesis. This was an excellent discovery!</li>
-    </ul>
-    <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 2.1 - GPU Training - GPU Usage - P2.8xLarge</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/training/vanity_gpu.png" alt="OK" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <ul>
-    <li><strong>Let’s make sure it’s really the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In <em>Figure 2.2 - GPU Training - atop + Nvidia SMI Profile</em> , you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
-    </ul>
-    <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 2.2 - GPU Training - atop + Nvidia SMI Profile</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/training/disk_saturated.png" alt="OK" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <ul>
-    <li><strong>Two Birds, One Stone</strong> — I was struggling with the relative performance of the GPU and disk, rather than using a worse GPU, why not make a more robust model? If I increase the feature depth of the model, I can probably get the GPU’s utilization up, high efficiency, and a model that converges more reliably! I quadrupled the size of the networks and ran a short test that yielded very satisfying results.</li>
-    </ul>
-    <table>
-    <tbody>
-    <tr class="odd">
-    <td style="text-align: center;"><em>Figure 2.3 - GPU Training - Distributed Training on Larger Model</em></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: center;"><img src="../images/training/magic_bullet.png" alt="OK" /></td>
-    </tr>
-    </tbody>
-    </table>
-    <p>Thinking about it in retrospect, this all makes sense. We’re opening images that are <code>(3 x 360 x 480)</code> and the loader is doing some light calculations to resize and re-color them, but then the GPU is running the expensive operations on images that are just <code>(3 x 64 x 64)</code>.</p>
-    <p>I later did some research into <a href="https://pytorch.org/blog/pytorch-profiler-1.9-released/">GPU profiling</a> and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective given my <code>Est. Achieved Occupancy</code> was OK this entire time<sup>1</sup>. Regardless, very enjoyable set of experiments. Finally, I did a few short test-runs to collect metrics (<code>p2.8xlarge</code> w. 8 x <code>K80</code>, <code>p3.2xlarge</code> w. 1 x <code>V100</code>, <code>p3.8xlarge</code> w. 4 x <code>V100</code>) and I moved along to training on the Gaudi-accelerated instances. (See: <a href="#Comparative%20Performance">Performance Results</a>)</p>
-    <hr />
-    <h2 id="modifications-for-training-on-gaudi-accelerated-instances">Modifications for Training on Gaudi Accelerated Instances</h2>
-    <p>Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration <a href="https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model">guide</a>. In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:</p>
-    <ul>
-    <li><p><strong>Use the custom Habana DataLoader</strong> — Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>. Even without acceleration, <code>HabanaDataLoader</code> still will fall back to the standard loader.</p></li>
-    <li><p><strong>Use Local NVME Storage Instead of EBS</strong> — I <em>just</em> noted that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on <code>DL1</code>, I trained off of the <a href="https://aws.amazon.com/ec2/instance-types/dl1/">ephemeral storage volumes</a> that come with the instance. Test results in <a href="#Comparative%20Performance">Performance Results</a></p></li>
-    <li><p><strong>Use <code>Lazy Mode</code></strong> — <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode">Lazy Mode</a> provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.</p></li>
-    <li><p><strong>Use <code>FusedAdamW</code> over <code>AdamW</code></strong> — <code>FusedAdamW</code> is a custom <code>AdamW</code> implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the <code>DL1</code> instances.</p></li>
-    <li><p><strong>Use HMP</strong> — Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: <a href="https://developer.habana.ai/tutorials/tensorflow/mixed-precision/">HMP on Tensorflow</a>.</p></li>
-    <li><p><strong>Use HCCL over NCCL</strong> — Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with torch.distributed as a communication backend. This was a 1 LOC change from NCCL.</p></li>
-    </ul>
-    <hr />
-    <h2 id="comparative-performance">Comparative Performance</h2>
-    <p>I did not intend on doing so many preliminary GPU runs, it just sort of happened. Some nights I wasn’t able to access a <code>P3</code>, so I tried prototyping the standard PyTorch model on a <code>P2</code>. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided that I may as well go back and fill out the testing matrix. In a way, this helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc. Tests below all conducted with <code>batch_size</code> at 256, for certain models and machines this is <em>definitely</em> a bottleneck, but at a minimum it provides a consistent baseline.</p>
-    <table>
-    <caption><em>Table 2.1 Comparative Performance of GPU and HPU instances</em></caption>
+    <caption><em>Table 1.2 Comparative Performance of GPU and HPU instances</em></caption>
     <colgroup>
     <col style="width: 8%" />
     <col style="width: 11%" />
@@ -647,9 +567,9 @@
     </tr>
     </tbody>
     </table>
-    <p>Model parameters tested were one of three configurations, <code>Naive-64</code>, <code>Clamps-64</code>, or <code>Safe-128</code>. <code>Naive-64</code> parameters were taken directly from the DCGAN paper and (partially) from PyTorch’s own documentation on generative models. <code>Clamps-64</code> parameters were deliberately set to ensure the model didn’t collapse. This meant having millions more parameters in the generator than the model <em>really</em> should have given images of this size. The <code>Safe-128</code> parameter set was designed to have approximately the same size as <code>Clamps-64</code>, favor the generator, and have <em>roughly</em> the same size/performance as <code>Clamps-64</code>, but on images 4x as large. Relevant parameters displayed below.</p>
+    <p>Tests were all conducted with <code>batch_size</code> at 256, for certain models and machines this is <em>definitely</em> a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of three configurations, <code>Naive-64</code>, <code>Clamps-64</code>, or <code>Safe-128</code>. <code>Naive-64</code> parameters were taken directly from the DCGAN paper and (partially) from PyTorch’s own documentation on generative models. <code>Clamps-64</code> parameters were deliberately set to ensure the model didn’t collapse. This meant having millions more parameters in the generator than the model <em>really</em> should have given images of this size. The <code>Safe-128</code> parameter set was designed to have approximately the same size as <code>Clamps-64</code>, favor the generator, and have <em>roughly</em> the same size/performance as <code>Clamps-64</code>, but on images 4x as large. Relevant parameters displayed below.</p>
     <table>
-    <caption><em>Table 2.2 Comparative Model Sizes — Trainable Elements Across All Parameters</em></caption>
+    <caption><em>Table 1.3 Comparative Model Sizes — Trainable Elements Across All Parameters</em></caption>
     <colgroup>
     <col style="width: 18%" />
     <col style="width: 25%" />
@@ -697,6 +617,113 @@
     </tr>
     </tbody>
     </table>
+    <hr />
+    <h2 id="aws-system-architecture">AWS System Architecture</h2>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 1.1 Simplified Model Training Architecture</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/infra/arch.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <p>All infrastructure for this project is hosted on AWS. Please see <a href="./infra.html">infrastructure and hardware choices</a> for more detail on the specific details of that element of the project. All training resources run in a single VPC with two subnets (1 public, 1 private) in the same availability zone. I deployed the following instances to the VPC’s private subnet and accessed them via SSH through a jump-instance deployed to the public subnet.</p>
+    <ul>
+    <li><p><strong>training-prod</strong> — An EC2 instance for running deep learning models, either <code>DL1</code> or a cost-comparable GPU instance (<code>P</code>-type). In either case, the instance is running a variant of the AWS Deep Learning AMI. Of course, you can construct your own conda environment, container, or AMI for your specific needs.</p></li>
+    <li><p><strong>training-nb</strong> — A small SageMaker instance used for interactive model development, model evaluation, and generating plots.</p></li>
+    <li><p><strong>metrics</strong> — A small EC2 instance used to host metrics containers. Most charts in the infrastructure, performance, and profiling section come off of these applications. Specifically, this machine ran:</p>
+    <ul>
+    <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — A tool for visualizing <em>machine learning metrcs</em> during training.</li>
+    <li><a href="https://grafana.com/">Grafana</a> — An analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
+    </ul></li>
+    </ul>
+    <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a <code>gp3</code> volume attached to my training instances and then passed to the GPU/HPU during training.</p>
+    <h2 id="evaluating-a-first-training-run-on-gpu-instances">Evaluating a First Training run on GPU Instances</h2>
+    <p>I started with a PyTorch model running on a GPU (<code>P3.2xlarge</code> w. <code>V100</code>) before instrumenting it to run on the HPU. I wanted to make sure that I could do a fair comparison of the two, and that meant ensuring I was optimizing (within reason) for either platform. To validate that the model was sufficiently tuned for the GPU, I referred to the metrics generated by running my model in profiler mode, instance metrics sent to Grafana, and those produced by <code>nvidia-smi</code> (see: <a href="https://developer.nvidia.com/nvidia-system-management-interface">nvidia-smi</a>). With these metrics available, I was able to make the following choices to improve the model’s training performance.</p>
+    <ul>
+    <li><p><strong>Upgrade EFS to EBS</strong> — Regrettably, an EFS file system can only drive up to 150 KiB/s per GiB of read throughput. This meant that model training start-up was very, very slow. To alleviate this issue, I attached a <code>gp3</code> (8000 iops, 1000 MiB/s) volume to my training instance and used it to “host” the MSLS data. Anecdotally, this choice led to a <em>2000%</em> speed up in time until first training iteration. Although EBS is more expensive, the decision paid for itself by saving hours of idle GPU/HPU time.</p></li>
+    <li><p><strong>Increase Batch Size</strong> — This was low-hanging fruit. Independent of the other changes, the right choice of batch size (i.e. 1024 instead of 128) sped up overall execution time by ~80%.</p></li>
+    <li><p><strong>Minimize (obvious) CUDA Copies</strong> — Training statistics, outputs, labels, etc. were being haphazardly moved to and from the GPU! I can collect and display them at the end of the epoch rather than on each batch.</p></li>
+    <li><p><strong>Using AMP</strong> — Automatic Mixed Precision (AMP) allows for model training to run with FP16 values where possible and F32 where needed. This allows for lower memory consumption and faster training time. It also opens the door for me to use Habana’s mixed precision <a href="https://docs.habana.ai/en/latest/PyTorch_User_Guide/PyTorch_User_Guide.html#pytorch-mixed-precision-training-on-gaudi">modules</a> when I move over to the <code>DL1</code> instance.</p></li>
+    <li><p><strong>Distributed Data Processing</strong> — In isolation, distributed data processing doesn’t improve the model’s training performance, but it does lend towards a more robust training environment. Although this is a problem that uses a moderate amount of small images, I still wanted to instrument my code to run across multiple GPUs (and nodes).</p></li>
+    </ul>
+    <p>With these changes made, I was hoping that I was in a good place. Looking at the first chart below, <em>PyTorch Profiler - GPU Execution Summary</em>, it would seem I was doing quite well, 85% is OK GPU performance! Unfortunately, the second graph reveals a fundamental problem in my profiling strategy at the time. The sections profiled didn’t include the dataloader steps!</p>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 1.1 - PyTorch Profiler - GPU Execution Summary</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/big_batch_good.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 1.2 - Grafana - GPU Utilization Rates</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/gpu_poor.png" alt="Bad GPU" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <p>At this point things got quite difficult. I tried tweaking the number of dataloader workers and their pre-fetch factors, no luck. I tried generating an hd5 dataset from my images and writing my own dataloader, again, no luck. I even tried installing a <a href="https://github.com/uploadcare/pillow-simd">SIMD fork of PIL</a> to increase image processing performance. Unfortunately, none of it made a meaningful difference on the <code>V100</code>. I strongly suspected it was the dataloader code that was the bottleneck and did a few sanity checks to make sense of things.</p>
+    <p>Every batch is doing thousands of <code>PIL.open()</code> calls (<a href="https://github.com/pytorch/vision/blob/main/torchvision/datasets/folder.py#L245-L249">source</a>). If these calls are causing the slowdown, we should be able to construct an experiment to test it. I tried the following exercises to help me understand resource usage during the training process.</p>
+    <ul>
+    <li><strong>Let’s just use a worse GPU!</strong> — I spun up a <code>p2.8xlarge</code> with older <code>K80</code>s to see if the weaker GPUs would produce nicer utilization metrics. In theory, if the GPU is the bottleneck instead of the dataloader, I won’t see these periodic dips. This is a bit of a vanity metric and I have no interest in doubling my training costs for vanity’s sake, but the charts below confirm my hypothesis. This was an excellent discovery!</li>
+    </ul>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 2.1 - GPU Training - GPU Usage - P2.8xLarge</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/vanity_gpu.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>Let’s make sure it’s really the disk?</strong> — Back on the <code>p3.2xlarge</code>, I figured I should profile the disk to see what was going on during the utilization drops. I thought a maxed-out <code>gp3</code> would have been adequate, but maybe I should have sprung for the <code>io1</code> or <code>io2</code>. In <em>Figure 2.2 - GPU Training - atop + Nvidia SMI Profile</em> , you can see the results of <code>atop</code> and <code>nvidia-smi</code> during a training run. When the GPU is at low utilization. the disk where <code>MSLS</code> is mounted (<code>/dev/xvdh</code>) is <strong>working!</strong>.</li>
+    </ul>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 2.2 - GPU Training - atop + Nvidia SMI Profile</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/disk_saturated.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>Two Birds, One Stone</strong> — I was struggling with the relative performance of the GPU and disk, rather than using a worse GPU, why not make a more robust model? If I increase the feature depth of the model, I can probably get the GPU’s utilization up, high efficiency, and a model that converges more reliably! I quadrupled the size of the networks and ran a short test that yielded very satisfying results.</li>
+    </ul>
+    <table>
+    <tbody>
+    <tr class="odd">
+    <td style="text-align: center;"><em>Figure 2.3 - GPU Training - Distributed Training on Larger Model</em></td>
+    </tr>
+    <tr class="even">
+    <td style="text-align: center;"><img src="../images/training/magic_bullet.png" alt="OK" /></td>
+    </tr>
+    </tbody>
+    </table>
+    <p>Thinking about it in retrospect, this all makes sense. We’re opening images that are <code>(3 x 360 x 480)</code> and the loader is doing some light calculations to resize and re-color them, but then the GPU is running the expensive operations on images that are just <code>(3 x 64 x 64)</code>.</p>
+    <p>I later did some research into <a href="https://pytorch.org/blog/pytorch-profiler-1.9-released/">GPU profiling</a> and learned that GPU utilization is a coarse metric and I was probably already in a OK place from a performance perspective given my <code>Est. Achieved Occupancy</code> was OK this entire time<sup>1</sup>. Regardless, very enjoyable set of experiments. Finally, I did a few short test-runs to collect metrics (<code>p2.8xlarge</code> w. 8 x <code>K80</code>, <code>p3.2xlarge</code> w. 1 x <code>V100</code>, <code>p3.8xlarge</code> w. 4 x <code>V100</code>) and I moved along to training on the Gaudi-accelerated instances. (See: <a href="#Comparative%20Performance">Performance Results</a>)</p>
+    <hr />
+    <h2 id="modifications-for-training-on-gaudi-accelerated-instances">Modifications for Training on Gaudi Accelerated Instances</h2>
+    <p>Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration <a href="https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model">guide</a>. In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:</p>
+    <ul>
+    <li><p><strong>Use the custom Habana DataLoader</strong> — Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>. Even without acceleration, <code>HabanaDataLoader</code> still will fall back to the standard loader.</p></li>
+    <li><p><strong>Use Local NVME Storage Instead of EBS</strong> — I <em>just</em> noted that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on <code>DL1</code>, I trained off of the <a href="https://aws.amazon.com/ec2/instance-types/dl1/">ephemeral storage volumes</a> that come with the instance. Test results in <a href="#Comparative%20Performance">Performance Results</a></p></li>
+    <li><p><strong>Use <code>Lazy Mode</code></strong> — <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode">Lazy Mode</a> provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.</p></li>
+    <li><p><strong>Use <code>FusedAdamW</code> over <code>AdamW</code></strong> — <code>FusedAdamW</code> is a custom <code>AdamW</code> implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the <code>DL1</code> instances.</p></li>
+    <li><p><strong>Use HMP</strong> — Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: <a href="https://developer.habana.ai/tutorials/tensorflow/mixed-precision/">HMP on Tensorflow</a>.</p></li>
+    <li><p><strong>Use HCCL over NCCL</strong> — Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with torch.distributed as a communication backend. This was a 1 LOC change from NCCL.</p></li>
+    </ul>
     <hr />
     <p><sup>1</sup> Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. … As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.</p>
     <footer class="site-footer">

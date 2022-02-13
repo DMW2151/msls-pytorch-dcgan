@@ -22,8 +22,8 @@ DCGAN can be unstable in comparison to modern generative models. The most common
 
 After some experimentation and consulting the literature<sup>1</sup>, I landed on the following parameters for my `Safe-Params` scenario. All of these choices are meant to be conservative in that they forsake optimal performance or faster model-convergence time in favor of stability of results. At the same time, I wasn't hoping to train a 1B parameter model for ages. Again, this is a balancing act.
 
-- **Additional Noise Layer in Transformations** &mdash; (0, 0.2)
-- **Batch Size** &mdash; 512
+- **Additional Noise Layer in Transformations** &mdash; (0, 0.05)
+- **Batch Size** &mdash; 256
 - **Learning Rate** &mdash; 0.0002
 - **Generator Feature Map Depth** &mdash; 128
 - **Discriminator Feature Map Depth** &mdash; 32

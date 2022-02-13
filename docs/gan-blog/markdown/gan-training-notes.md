@@ -20,6 +20,7 @@ Remember to:
 
 - Change the Terraform statefile's S3-backend to a bucket you own!
 - Change regions and AZs to launch the training instance to one with `DL1` instances available!
+- Remove the API module, I strongly doubt you'll want or need it.
 
 ### Model Training Infra Only
 
@@ -91,3 +92,30 @@ root@xyzxyzxyz:/\# python3 -m msls.run_dcgan ....
 Finally, If you want a truly guided experience, you can use the notebooks in `./model/notebooks` to train in a SageMaker notebook. As of writing, `DL1` is not a supported SageMaker instance type, so you'll be restricted to GPU instances.
 
 ## Inference & New Image Generation
+
+In my opinion, this is the cool part. Individual images and Gifs can be generated from a CPU instance by restoring a trained model and passing any noise vector through the Generator.
+
+Static images are produced quite easily with the following, where `G` is a pre-trained model:
+
+```python
+imgs = (
+    vutils.make_grid(
+        G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
+    ).cpu(),
+)
+
+tmp_img_hash = uuid.uuid4().__str__()
+vutils.save_image(imgs, f"/tmp/{tmp_img_hash}.png")
+```
+
+Generating GIFs is a bit more complicated. The GIFs are created with a method called `SLERP`. spherical linear interpolation (`SLERP`) involves taking two key-frames (e.g. `Z` vectors) and creating smooth intermediate locations (input `Z`) between them. Rather than re-implementing `SLERP`, you can just use the following to create and save a new GIF.
+
+```python
+from msls.dcgan_utils import (
+    gen_img_sequence_array
+)
+
+tmp_gif_location = gen_img_sequence_array(
+    MODEL_CFG, G, n_frames=10, Z_size=TRAIN_CFG.nz
+)
+```

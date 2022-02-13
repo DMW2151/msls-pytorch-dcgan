@@ -4,25 +4,16 @@ author: Dustin Wilson
 date: February 8, 2022
 ---
 
-<style>
-    table {
-        margin: 1em 0;
-        border-collapse: collapse;
-        width: 80%;
-        overflow-x: auto;
-        font-variant-numeric: lining-nums tabular-nums;
-        color: #ebebe6;
-        margin-left: auto;
-        margin-right: auto;
-    }
-</style>
-
-This is a small gallery as part of my submission for [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com). These are generated live, **NOT** cached and served from a file-system. Try refreshing a few times or just hitting the API directly.
-
-```bash
-curl -XGET https://api.dmw2151.com/deep-dashcam
-```
+This is a small gallery as part of my submission for [AWS Deep Learning Challenge](https://amazon-ec2-dl1.devpost.com). Note that these are generated live, **NOT** served from a file-system of pre-generated images. Try refreshing a few times or hitting the gallery API directly at `https://api.dmw2151.com/deep-dashcam/imgs` or `https://api.dmw2151.com/deep-dashcam/gifs` for more samples.
 
 |                                                                                                    |
 |:--------------------------------------------------------------------------------------------------:|
-| <img class="gan-test-img"width="128" height="128" src="https://gan.dmw2151.com/favicon.ico"></img> |
+| <img width="128" height="128" src="https://api.dmw2151.com/deep-dashcam/gifs"></img> |
+Table: *Figure 1. &mdash; Sample GIF &mdash; GAN generated GIF with Rotating Noise Vectors*
+
+-------
+
+|                                                                                                    |
+|:--------------------------------------------------------------------------------------------------:|
+| <img width="512" height="512" src="https://api.dmw2151.com/deep-dashcam/imgs"></img> |
+Table: *Figure 2 &mdash; Sample PNGs &mdash; Sample GAN Generated Images*

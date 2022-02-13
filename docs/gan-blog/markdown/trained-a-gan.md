@@ -32,7 +32,7 @@ In this project I re-implement elements of Ian Goodfellow's [Generative Adversar
 Before discussing specific elements of the project, let's discuss the *way* GANs work. Put simply, GANs consist of two competing functions. A generator (`G`) tries to create believable data and a discriminator (`D`) tries to maximize the probability it correctly classifies real and generated data.
 
 <details>
-<summary><strong>Optional Math</strong></summary>
+<summary><strong>Optional Math &mdash; Click to Expand</strong></summary>
 
 Assume the following variables:
 
@@ -66,10 +66,10 @@ In the DCGAN paper, both functions are convolutional neural networks with a spec
 | *Figure 2. Training Samples From MSLS - Cropped and Transformed*|
 | ![OK](../images/translation/train_samples_eu.png) |
 
-Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of most less-expensive training instances.
+Throughout this project, I used Mapillary's Street-Level Sequences data (MSLS). Mapillary provides a platform for crowd-sourced maps and street-level imagery, and publishes computer vision research using data collected from this platform. Mapillary has made this and other data publicly available for [download](https://www.mapillary.com/dataset/places) (**Note**: [GH Issue](https://github.com/mapillary/mapillary_sls/issues/23)). In total, MSLS contains 1.6 million images from 30 major cities on six-continents and covers different seasons, weather, daylight conditions, structural settings, etc. The models discussed in this post here was trained on a sample of ~1.2 million images with geographic distribution shown below. The remaining images were reserved for hyperparameter tuning, cross-validation, model evaluation, etc. In total, the training data was about 45GB, just a bit too large to fit in the GPU memory of the tested training instances.
 
 <details>
-<summary><strong>Table 1.1 — Count of Mapillary Training Images By Metro Area</strong></summary>
+<summary><strong>Table 1.1 — Count of Mapillary Training Images By Metro Area &mdash; Click To Expand</strong></summary>
 | Metro Area    | % of Sample | Approx. Count |
 |:--------------|:-----------:|----------:|
 | Amman         |       0.14% |     1,702 |
