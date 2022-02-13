@@ -44,7 +44,7 @@ from msls.gan import (
 
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
-HPU_WORLD_SIZE = 8
+WORLD_SIZE = 8
 
 
 def init_habana_default_params():
@@ -102,7 +102,7 @@ def get_msls_dataloader(
 
     msls_sampler = torch.utils.data.distributed.DistributedSampler(
         dataset,
-        num_replicas=HPU_WORLD_SIZE,
+        num_replicas=WORLD_SIZE,
         rank=rank,
         shuffle=False,
     )
@@ -142,7 +142,7 @@ def start_or_resume_training_run(
     dist.init_process_group(
         backend="hccl",
         init_method="env://",
-        world_size=HPU_WORLD_SIZE,
+        world_size=WORLD_SIZE,
         rank=int(rank),
     )
 
