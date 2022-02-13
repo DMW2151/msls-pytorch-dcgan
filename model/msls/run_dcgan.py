@@ -5,18 +5,18 @@ import os
 import socket
 import json
 
-import torch
-import torch.multiprocessing as mp
-from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
-
-if torch.cuda.is_available():
-    import msls.gpu_dcgan as dcgan
-    DEVICE = "cuda"
-
-else:
+try:
     import msls.gaudi_dcgan as dcgan
     torch.multiprocessing.set_start_method('spawn')
     DEVICE = "hpu"
+
+except ImportError: 
+    import msls.gpu_dcgan as dcgan
+    DEVICE = "cuda"
+
+import torch
+import torch.multiprocessing as mp
+from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
