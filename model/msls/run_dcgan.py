@@ -139,7 +139,6 @@ if __name__ == "__main__":
     # Run in distributed mode;l but on a single node...
     if DEVICE == "hpu":
         dcgan.init_habana_default_params()
-        import torch.distributed as dist
 
         dcgan.start_or_resume_training_run(
             "1",
@@ -151,7 +150,6 @@ if __name__ == "__main__":
             args.logging,
         )
 
-        
     else:
         mp.spawn(
             dcgan.start_or_resume_training_run,

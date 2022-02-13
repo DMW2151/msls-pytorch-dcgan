@@ -102,7 +102,7 @@ def get_msls_dataloader(
     msls_sampler = torch.utils.data.distributed.DistributedSampler(
         dataset,
         num_replicas=WORLD_SIZE,
-        rank=rank,
+        rank=int(rank),
         shuffle=False,
     )
 
