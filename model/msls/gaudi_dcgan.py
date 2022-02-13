@@ -10,8 +10,8 @@ import os
 
 # NOTE: Order of Imports Matters!
 from habana_frameworks.torch.utils.library_loader import load_habana_module
-import habana_frameworks.torch.core as htcore
 load_habana_module()
+import habana_frameworks.torch.core as htcore
 
 from habana_dataloader import (
     HabanaDataLoader
