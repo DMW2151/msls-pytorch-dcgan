@@ -69,7 +69,7 @@ def get_msls_dataloader(
                 transforms.CenterCrop(train_cfg.img_size * 4),
                 transforms.Resize(train_cfg.img_size),
                 transforms.ToTensor(),
-                GaussianNoise(0.0, 0.1),
+                GaussianNoise(0.0, 0.05),
                 transforms.Normalize(
                     (0.5, 0.5, 0.5),
                     (0.5, 0.5, 0.5),

@@ -4,16 +4,24 @@ and serves them, that's all...
 
 Run the API container with...
 
-docker build . -t dmw2151/deep-dash-api-flask
-docker run dmw2151/deep-dash-api-flask
+
+sudo docker build . \
+    -t dmw2151/deep-dash-api-flask
+
+sudo docker run \
+    -p 5000:5000 \
+    --net=host \
+    -v /efs/trained_model/:/efs/trained_model \
+    dmw2151/deep-dash-api-flask python3 ./api/img_svc.py
 """
 
+import uuid
 import os
 from typing import Union
 
 import boto3
-import numpy as np
-from flask import Flask, Response
+
+from flask import Flask, send_file
 
 import torch
 import torchvision.utils as vutils
@@ -112,29 +120,34 @@ def generate_static_img():
     """Generates static images from the Generator model..."""
 
     Z = torch.randn(
-        1,
+        16,
         TRAIN_CFG.nz,
         1,
         1,
         device=TRAIN_CFG.dev,
     )
 
-    generated_imgs = np.transpose(
-        vutils.make_grid(
-            G(Z).detach().to(DEVICE),
-            padding=2,
-            normalize=True,
-        ).cpu(),
-        (1, 2, 0),
-    )
+    g = vutils.make_grid(
+        G(Z).detach().to(DEVICE),
+        padding=4,
+        normalize=True,
+        nrow=4
+    ).cpu(),
 
-    return Response(generated_imgs, mimetype="image/png")
+    # TODO: Use tmpfile instead of this mess...
+    tmp_img_hash = uuid.uuid4().__str__()
+    vutils.save_image(g, f"/tmp/{tmp_img_hash}.png")
+
+    return send_file(
+        f"/tmp/{tmp_img_hash}.png", mimetype="image/PNG"
+    )
 
 
 if __name__ == "__main__":
+
     G = get_generator(
-        TRAIN_CFG, 
-        MODEL_CFG, 
+        TRAIN_CFG,
+        MODEL_CFG,
         epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM", "8"))
     )
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
