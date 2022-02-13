@@ -141,7 +141,7 @@ def start_or_resume_training_run(
         backend="hccl",
         init_method="env://",
         world_size=HPU_WORLD_SIZE,
-        rank=rank,
+        rank=int(rank),
     )
 
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
