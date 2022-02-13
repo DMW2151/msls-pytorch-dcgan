@@ -136,7 +136,7 @@ def start_or_resume_training_run(
 
     # TODO: Check if this is the correct way to set device
     # with DDP on HCCL!! torch.cuda.set_device(rank)
-    os.environ["ID"] = rank
+    os.environ["ID"] = str(rank)
 
     # NOTE: Use HCCL instead of NCCL for distributed backend...
     dist.init_process_group(
