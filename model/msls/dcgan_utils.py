@@ -89,8 +89,8 @@ class TrainingConfig:
     img_size: int = 128
     nc: int = 3
     nz: int = 128
-    ngf: int = 256
-    ndf: int = 64
+    ngf: int = 128
+    ndf: int = 32
     lr: float = 0.0002
     beta1: float = 0.5
     beta2: float = 0.999
