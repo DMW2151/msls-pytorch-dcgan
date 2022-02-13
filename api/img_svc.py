@@ -45,7 +45,7 @@ TRAIN_CFG = TrainingConfig(
 # Allow the model config to be modified at runtime w. environment vars
 MODEL_CFG = ModelCheckpointConfig(
     **{
-        "name": os.environ.get("MODEL_CFG__NAME") or "msls-dcgan-128",
+        "name": os.environ.get("MODEL_CFG__NAME") or "helsinki-dcgan-128",
         "root": os.environ.get("MODEL_CFG__ROOT") or "/efs/trained_model",
         "s3_bucket": os.environ.get("MODEL_CFG__BUCKET") or "dmw2151-habana-model-outputs",
     }
@@ -55,7 +55,7 @@ MODEL_CFG = ModelCheckpointConfig(
 def get_generator(
     train_cfg: TrainingConfig,
     model_cfg: ModelCheckpointConfig,
-    epoch: int = 16,
+    epoch: int = 8,
 ) -> Union[Generator128, Generator64]:
     """Get a model from storage to use as a generator..."""
 
@@ -73,7 +73,6 @@ def get_generator(
     except FileNotFoundError:
         s3 = boto3.client("s3")
 
-        os
         with open(slim_checkpoint_path, "wb", os.O_CREAT) as fi:
             s3.download_fileobj(
                 model_cfg.s3_bucket,
