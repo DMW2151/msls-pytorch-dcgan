@@ -98,11 +98,9 @@ In my opinion, this is the cool part. Individual images and Gifs can be generate
 Static images are produced quite easily with the following, where `G` is a pre-trained model:
 
 ```python
-imgs = (
-    vutils.make_grid(
-        G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
-    ).cpu(),
-)
+    imgs = vutils.make_grid(
+    G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
+).cpu()
 
 tmp_img_hash = uuid.uuid4().__str__()
 vutils.save_image(imgs, f"/tmp/{tmp_img_hash}.png")
@@ -111,7 +109,7 @@ vutils.save_image(imgs, f"/tmp/{tmp_img_hash}.png")
 Generating GIFs is a bit more complicated. The GIFs are created with a method called `SLERP`. spherical linear interpolation (`SLERP`) involves taking two key-frames (e.g. `Z` vectors) and creating smooth intermediate locations (input `Z`) between them. Rather than re-implementing `SLERP`, you can just use the following to create and save a new GIF.
 
 ```python
-from msls.dcgan_utils import (
+    from msls.dcgan_utils import (
     gen_img_sequence_array
 )
 

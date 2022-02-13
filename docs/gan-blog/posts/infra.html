@@ -638,6 +638,7 @@
     <li><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> — A tool for visualizing <em>machine learning metrcs</em> during training.</li>
     <li><a href="https://grafana.com/">Grafana</a> — An analytics and monitoring tool. I configured Grafana to visualize <em>machine-level</em> metrics from our training instances.</li>
     </ul></li>
+    <li><p><strong>imgs-api</strong> — A small, CPU EC2 instance for hosting our model API. Runs a Flask app that serves images and gifs for the gallery.</p></li>
     </ul>
     <p>Each of these instances has access to an AWS Elastic Filesystem (EFS) for saving model data (e.g. checkpoints, plots, traces, etc.). Using EFS saved me hours of data transfer in development and allowed me to pass model checkpoints between machines (i.e. between <em>training-prod</em> and <em>training-nb</em>). However, because EFS can be quite slow compared to EBS or local storage, the actual training data was saved to a <code>gp3</code> volume attached to my training instances and then passed to the GPU/HPU during training.</p>
     <h2 id="evaluating-a-first-training-run-on-gpu-instances">Evaluating a First Training run on GPU Instances</h2>

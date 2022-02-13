@@ -283,6 +283,7 @@
     <ul>
     <li>Change the Terraform statefile’s S3-backend to a bucket you own!</li>
     <li>Change regions and AZs to launch the training instance to one with <code>DL1</code> instances available!</li>
+    <li>Remove the API module, I strongly doubt you’ll want or need it.</li>
     </ul>
     <h3 id="model-training-infra-only">Model Training Infra Only</h3>
     <p>If you’re just interested in training a GAN, I would recommend spinning up a single <code>DL1</code> instance, cloning the model <a href="https://github.com/DMW2151/msls-pytorch-dcgan">repo</a>, and pip installing the training package with <code>pip install -e /path/to/msls/package/model/</code>. From there, you should be ready to train on any data local to that instance.</p>
@@ -334,6 +335,22 @@
     <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="ex">root@xyzxyzxyz:/\#</span> python3 <span class="at">-m</span> msls.run_dcgan ....</span></code></pre></div>
     <p>Finally, If you want a truly guided experience, you can use the notebooks in <code>./model/notebooks</code> to train in a SageMaker notebook. As of writing, <code>DL1</code> is not a supported SageMaker instance type, so you’ll be restricted to GPU instances.</p>
     <h2 id="inference-new-image-generation">Inference &amp; New Image Generation</h2>
+    <p>In my opinion, this is the cool part. Individual images and Gifs can be generated from a CPU instance by restoring a trained model and passing any noise vector through the Generator.</p>
+    <p>Static images are produced quite easily with the following, where <code>G</code> is a pre-trained model:</p>
+    <div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    imgs <span class="op">=</span> vutils.make_grid(</span>
+    <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    G(Z).detach().to(DEVICE), padding<span class="op">=</span><span class="dv">4</span>, normalize<span class="op">=</span><span class="va">True</span>, nrow<span class="op">=</span><span class="dv">4</span></span>
+    <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>).cpu()</span>
+    <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>tmp_img_hash <span class="op">=</span> uuid.uuid4().<span class="fu">__str__</span>()</span>
+    <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>vutils.save_image(imgs, <span class="ss">f&quot;/tmp/</span><span class="sc">{</span>tmp_img_hash<span class="sc">}</span><span class="ss">.png&quot;</span>)</span></code></pre></div>
+    <p>Generating GIFs is a bit more complicated. The GIFs are created with a method called <code>SLERP</code>. spherical linear interpolation (<code>SLERP</code>) involves taking two key-frames (e.g. <code>Z</code> vectors) and creating smooth intermediate locations (input <code>Z</code>) between them. Rather than re-implementing <code>SLERP</code>, you can just use the following to create and save a new GIF.</p>
+    <div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> msls.dcgan_utils <span class="im">import</span> (</span>
+    <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    gen_img_sequence_array</span>
+    <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>)</span>
+    <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+    <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>tmp_gif_location <span class="op">=</span> gen_img_sequence_array(</span>
+    <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    MODEL_CFG, G, n_frames<span class="op">=</span><span class="dv">10</span>, Z_size<span class="op">=</span>TRAIN_CFG.nz</span>
+    <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
     <footer class="site-footer">
         <span class="site-footer-owner"> Maintained by <a href="https://github.com/DMW2151">DMW2151</a>.</span>
     </footer>

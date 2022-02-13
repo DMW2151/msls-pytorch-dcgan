@@ -127,7 +127,7 @@ def root_check():
     return {"Health": "OK"}
 
 
-@app.route("/imgs")
+@app.route("/gan_imgs")
 def generate_static_img():
     """Generates static images from the Generator model..."""
 
@@ -150,7 +150,7 @@ def generate_static_img():
     return send_file(f"/tmp/{tmp_img_hash}.png", mimetype="image/png")
 
 
-@app.route("/gifs")
+@app.route("/gan_gifs")
 def generate_gif():
     """ Serves a Gif - Series of predictions w. SLERP """
 
@@ -158,7 +158,7 @@ def generate_gif():
     tmp_gif_location = gen_img_sequence_array(
         MODEL_CFG,
         G,
-        n_frames=10,
+        n_frames=16,
         Z_size=TRAIN_CFG.nz
     )
 
