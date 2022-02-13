@@ -46,7 +46,7 @@ TRAIN_CFG = TrainingConfig(
 MODEL_CFG = ModelCheckpointConfig(
     **{
         "name": os.environ.get("MODEL_CFG__NAME") or "msls-dcgan-128",
-        "root": os.environ.get("MODEL_CFG__ROOT") or "/efs/trained_model/",
+        "root": os.environ.get("MODEL_CFG__ROOT") or "/efs/trained_model",
         "s3_bucket": os.environ.get("MODEL_CFG__BUCKET") or "dmw2151-habana-model-outputs",
     }
 )
