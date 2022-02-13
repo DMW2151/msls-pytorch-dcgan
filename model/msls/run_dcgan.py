@@ -79,9 +79,9 @@ parser.add_argument(
     default=json.dumps(
         {
             "nc": 3,
-            "nz": 256,
-            "ngf": 256,
-            "ndf": 64,
+            "nz": 128,
+            "ngf": 128,
+            "ndf": 32,
             "lr": 0.0002,
             "beta1": 0.5,
             "beta2": 0.999,
