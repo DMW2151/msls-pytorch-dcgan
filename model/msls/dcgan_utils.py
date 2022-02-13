@@ -112,8 +112,10 @@ class TrainingConfig:
 
         # TODO: Check for Habana Driver Statistics - Should just be whatever runs
         # on v0.171, but just be safe...
-        if True:
+        if 'htcore' in locals().keys():
             print("Habana Statistics ...")
+            print(f"HPU Pytorch Version: {htcore.torch.__version__}")
+            print("Habana HPU Available: ", htcore.is_available())
 
         print("====================")
 

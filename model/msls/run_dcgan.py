@@ -12,6 +12,7 @@ try:
     DEVICE = "hpu"
 
 except ImportError:
+    print("Using GPU")
     import msls.gpu_dcgan as dcgan
     from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "cuda"
@@ -21,6 +22,7 @@ import torch
 import torch.multiprocessing as mp
 
 if DEVICE == "hpu":
+    print("Using HPU")
     torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     if DEVICE == "hpu":
         dcgan.init_habana_params()
         dcgan.start_or_resume_training_run(
-            0,
+            1,
             train_cfg,
             model_cfg,
             args.n_epoch,
