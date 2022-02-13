@@ -131,5 +131,9 @@ def generate_static_img():
 
 
 if __name__ == "__main__":
-    G = get_generator(TRAIN_CFG, MODEL_CFG, epoch=16)
+    G = get_generator(
+        TRAIN_CFG, 
+        MODEL_CFG, 
+        epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM"), 8)
+    )
     app.run(debug=True)
