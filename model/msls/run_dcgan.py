@@ -7,10 +7,10 @@ import json
 
 import torch
 import torch.multiprocessing as mp
+from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 if torch.cuda.is_available():
     import msls.gpu_dcgan as dcgan
-    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "cuda"
 
 else:

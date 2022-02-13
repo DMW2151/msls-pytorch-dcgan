@@ -8,6 +8,15 @@ See: https://docs.habana.ai/en/v1.1.0/Migration_Guide/Migration_Guide.html#porti
 import datetime
 import os
 
+# NOTE: Order of Imports Matters!
+from habana_frameworks.torch.utils.library_loader import load_habana_module
+load_habana_module()
+import habana_frameworks.torch.core as htcore
+
+from habana_dataloader import (
+    HabanaDataLoader
+)
+
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -16,17 +25,7 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
 
-# NOTE: Order of Imports Matters!
-from habana_frameworks.torch.utils.library_loader import load_habana_module
-load_habana_module()
-
-from habana_dataloader import (
-    HabanaDataLoader,
-)
-
-import habana_frameworks.torch.core as htcore
-
-from dcgan_utils import (
+from msls.dcgan_utils import (
     DEFAULT_LOADER_PARAMS,
     ModelCheckpointConfig,
     TrainingConfig,
@@ -35,7 +34,7 @@ from dcgan_utils import (
     weights_init,
 )
 
-from gan import (
+from msls.gan import (
     Discriminator64,
     Generator64,
     Discriminator128,
