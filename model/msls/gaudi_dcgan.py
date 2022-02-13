@@ -56,7 +56,6 @@ def init_habana_default_params():
     os.environ["LOG_LEVEL_ALL"] = "0"
 
 
-
 def get_msls_dataloader(
     rank: int,
     train_cfg: TrainingConfig,
@@ -99,15 +98,19 @@ def get_msls_dataloader(
         ),
     )
 
-    msls_sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset,
-        num_replicas=WORLD_SIZE,
-        rank=int(rank),
-        shuffle=False,
-    )
+    msls_sampler = None
+    
+    # msls_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     dataset,
+    #     num_replicas=WORLD_SIZE,
+    #     rank=int(rank),
+    #     shuffle=False,
+    # )
 
     params["dataset"] = dataset
-    params["sampler"] = msls_sampler
+    
+    if msls_sampler:
+        params["sampler"] = msls_sampler
 
     return HabanaDataLoader(**params)
 
