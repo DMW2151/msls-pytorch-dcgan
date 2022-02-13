@@ -139,7 +139,7 @@ if __name__ == "__main__":
     if DEVICE == "hpu":
         dcgan.init_habana_default_params()
         dcgan.start_or_resume_training_run(
-            1,
+            "1",
             train_cfg,
             model_cfg,
             args.n_epoch,

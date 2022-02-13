@@ -12,6 +12,7 @@ import os
 from habana_frameworks.torch.utils.library_loader import load_habana_module
 load_habana_module()
 import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.core.hccl
 
 from habana_dataloader import (
     HabanaDataLoader
