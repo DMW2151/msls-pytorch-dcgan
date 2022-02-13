@@ -32,7 +32,7 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
 
-from dcgan_utils import (
+from msls.dcgan_utils import (
     DEFAULT_LOADER_PARAMS,
     ModelCheckpointConfig,
     TrainingConfig,
@@ -41,7 +41,7 @@ from dcgan_utils import (
     weights_init,
 )
 
-from gan import (
+from msls.gan import (
     Discriminator64,
     Generator64,
     Discriminator128,

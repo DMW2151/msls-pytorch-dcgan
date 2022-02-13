@@ -7,8 +7,8 @@ import json
 
 # Very Sensitive to Order of Imports...
 try:
-    import gaudi_dcgan as dcgan
-    from dcgan_utils import ModelCheckpointConfig, TrainingConfig
+    import msls.gaudi_dcgan as dcgan
+    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "hpu"
 
 except ImportError as e:
