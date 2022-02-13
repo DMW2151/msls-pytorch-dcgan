@@ -7,10 +7,9 @@ import json
 
 try:
     import msls.gaudi_dcgan as dcgan
-    torch.multiprocessing.set_start_method('spawn')
     DEVICE = "hpu"
 
-except ImportError: 
+except ImportError:
     import msls.gpu_dcgan as dcgan
     DEVICE = "cuda"
 
@@ -18,6 +17,8 @@ import torch
 import torch.multiprocessing as mp
 from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
+if DEVICE == "hpu":
+    torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
