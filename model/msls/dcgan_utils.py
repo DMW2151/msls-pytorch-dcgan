@@ -88,7 +88,7 @@ class TrainingConfig:
     batch_size: int = 256
     img_size: int = 128
     nc: int = 3
-    nz: int = 256
+    nz: int = 128
     ngf: int = 256
     ndf: int = 64
     lr: float = 0.0002
