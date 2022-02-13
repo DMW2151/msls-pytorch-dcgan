@@ -14,7 +14,7 @@ if torch.cuda.is_available():
     DEVICE = "cuda"
 
 else:
-    import gaudi_dcgan as dcgan
+    import msls.gaudi_dcgan as dcgan
     torch.multiprocessing.set_start_method('spawn')
     DEVICE = "hpu"
 
