@@ -139,11 +139,9 @@ def generate_static_img():
         device=TRAIN_CFG.dev,
     )
 
-    g = (
-        vutils.make_grid(
+    g = vutils.make_grid(
             G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
-        ).cpu(),
-    )
+        ).cpu()
 
     # TODO: Use tmpfile instead of this mess...
     tmp_img_hash = uuid.uuid4().__str__()
