@@ -6,16 +6,18 @@ import socket
 import json
 
 try:
-    import msls.gaudi_dcgan as dcgan
+    import gaudi_dcgan as dcgan
+    from dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "hpu"
 
 except ImportError:
     import msls.gpu_dcgan as dcgan
+    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
     DEVICE = "cuda"
 
+# Very Sensitive to Order of Imports...
 import torch
 import torch.multiprocessing as mp
-from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 if DEVICE == "hpu":
     torch.multiprocessing.set_start_method('spawn')
