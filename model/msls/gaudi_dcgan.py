@@ -54,6 +54,8 @@ def init_habana_default_params():
     os.environ["PT_HPU_LAZY_MODE"] = "1"
     os.environ["GRAPH_VISUALIZATION"] = "True"
     os.environ["ENABLE_CONSOLE"] = "True"
+    os.environ["LOG_LEVEL_ALL"] = "0"
+
 
 
 def get_msls_dataloader(
