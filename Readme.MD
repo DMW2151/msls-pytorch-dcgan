@@ -4,7 +4,7 @@
 
 This repository contains code for training an implementation of Ian Goodfellow's original `DCGAN` model<sup>1</sup> on data sourced from Mapillary's Street Level Sequences dataset. Although this paper is quite old, I felt that it's worth taking a look at because it's a foundational paper in the field and can be implemented in just a few hundred lines of PyTorch. The code in this repo has been instrumented to run on either Gaudi accelerated or Nvidia GPU instances.
 
-I would encourage you to refer to my full write-up [here](https://projects.dmw2151.com/trained-a-gan.html), which contains details on:
+I would encourage you to refer to my full write-up [here](https://gan.dmw2151.com/trained-a-gan.html), which contains details on:
 
 - Theory Behind DCGAN
 - Discussion of MSLS Dataset & Data Preparation
