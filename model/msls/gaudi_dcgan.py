@@ -135,7 +135,7 @@ def start_or_resume_training_run(
         backend="hccl",
         init_method="env://",
         world_size=WORLD_SIZE,
-        rank=rank,
+        rank=int(rank),
     )
 
     # TODO: Check if this is the correct way to set device
