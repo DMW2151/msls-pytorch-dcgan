@@ -26,7 +26,7 @@ DEFAULT_LOADER_PARAMS = {
     "timeout": 0,
     "prefetch_factor": 2,
     "persistent_workers": False,
-    "batch_size": 256,
+    "batch_size": 128,
 }
 
 # NOTE: in `start_or_resume_training_run` we're assuming there are at least
@@ -84,7 +84,7 @@ class TrainingConfig:
     """
 
     dev: torch.device
-    batch_size: int = 256
+    batch_size: int = 128
     img_size: int = 128
     nc: int = 3
     nz: int = 128
