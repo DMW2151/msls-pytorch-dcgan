@@ -98,17 +98,15 @@ def get_msls_dataloader(
         ),
     )
 
-    msls_sampler = None
-    
-    # msls_sampler = torch.utils.data.distributed.DistributedSampler(
-    #     dataset,
-    #     num_replicas=WORLD_SIZE,
-    #     rank=int(rank),
-    #     shuffle=False,
-    # )
+    msls_sampler = torch.utils.data.distributed.DistributedSampler(
+        dataset,
+        num_replicas=WORLD_SIZE,
+        rank=int(rank),
+        shuffle=False,
+    )
 
     params["dataset"] = dataset
-    
+
     if msls_sampler:
         params["sampler"] = msls_sampler
 
@@ -233,6 +231,7 @@ def start_or_resume_training_run(
             D.zero_grad()
 
             # Forward pass && Calculate D_loss
+            print(real_imgs.shape)
             output = D(real_imgs.detach()).view(-1)
             err_D_real = criterion(output, label)
 
