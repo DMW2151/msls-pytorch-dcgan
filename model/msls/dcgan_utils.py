@@ -158,7 +158,9 @@ class TrainingConfig:
         MULTI_DEVICE = (max(torch.cuda.device_count(), world_size) > 0)
 
         if MULTI_DEVICE:
-            N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
+            N = nn.parallel.DistributedDataParallel(
+                N, device_ids=[int(device_rank)]
+            )
 
         # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
         # launching on HPU units vs. regular Torch AdamW, SGD, etc...
