@@ -98,17 +98,17 @@ def get_msls_dataloader(
         ),
     )
 
-    msls_sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset,
-        num_replicas=WORLD_SIZE,
-        rank=int(rank),
-        shuffle=False,
-    )
+    # msls_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     dataset,
+    #     num_replicas=WORLD_SIZE,
+    #     rank=int(rank),
+    #     shuffle=False,
+    # )
 
     params["dataset"] = dataset
 
-    if msls_sampler:
-        params["sampler"] = msls_sampler
+    # if msls_sampler:
+    #     params["sampler"] = msls_sampler
 
     return HabanaDataLoader(**params)
 
@@ -131,7 +131,6 @@ def start_or_resume_training_run(
         -
     """
     torch.manual_seed(0)
-
     train_cfg.dev = torch.device(train_cfg.dev)
 
     # TODO: Check if this is the correct way to set device
@@ -200,8 +199,8 @@ def start_or_resume_training_run(
     for epoch in range(cur_epoch, n_epochs + 1):
 
         # If running with DDP; set the epoch to prevent deterministic order
-        if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
-            dl.sampler.set_epoch(epoch)
+        # if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
+        #     dl.sampler.set_epoch(epoch)
 
         # For Each Batch...
         for epoch_step, batch in enumerate(dl, start=0):
@@ -229,9 +228,9 @@ def start_or_resume_training_run(
             ###################################################################
             # (1.1) Update D: all real batch
             D.zero_grad()
-
-            # Forward pass && Calculate D_loss
+            
             print(real_imgs.shape)
+            # Forward pass && Calculate D_loss
             output = D(real_imgs.detach()).view(-1)
             err_D_real = criterion(output, label)
 

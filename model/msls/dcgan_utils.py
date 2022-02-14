@@ -95,7 +95,7 @@ class TrainingConfig:
     beta2: float = 0.999
     weight_decay: float = 0.05
     ngpu: int = int(torch.cuda.device_count())
-    data_root: str = "/data/images/train_val"
+    data_root: str = "/data/imgs/train_val"
 
     def _announce(self) -> None:
         """Display PyTorch, HPU, and CUDA attributes before Training"""
@@ -155,9 +155,9 @@ class TrainingConfig:
         # If we have multiple devices - Enable DDP; Assumes the world_size is known
         # if we're training on HPU, else use cuda.device_count() and treat it as a
         # multi-gpu,
-        DEVICE_COUNT = max(torch.cuda.device_count(), world_size) > 0
+        MULTI_DEVICE = (max(torch.cuda.device_count(), world_size) > 0)
 
-        if (torch.cuda.is_available()) and (DEVICE_COUNT):
+        if MULTI_DEVICE:
             N = nn.parallel.DistributedDataParallel(N, device_ids=[device_rank])
 
         # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
