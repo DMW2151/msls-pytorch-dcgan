@@ -98,15 +98,15 @@ def get_msls_dataloader(
         ),
     )
 
-    msls_sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset,
-        num_replicas=WORLD_SIZE,
-        rank=int(rank),
-        shuffle=False,
-    )
+    # msls_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     dataset,
+    #     num_replicas=WORLD_SIZE,
+    #     rank=int(rank),
+    #     shuffle=False,
+    # )
 
     params["dataset"] = dataset
-    params["sampler"] = msls_sampler
+    #params["sampler"] = msls_sampler
 
     return HabanaDataLoader(**params)
 
