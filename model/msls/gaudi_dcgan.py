@@ -22,6 +22,8 @@ import torch.profiler
 import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
+import habana_frameworks.torch.core.hccl
+
 
 from msls.dcgan_utils import (
     DEFAULT_LOADER_PARAMS,
@@ -120,6 +122,13 @@ def start_or_resume_training_run(
     """
     torch.manual_seed(0)
     train_cfg.dev = torch.device(train_cfg.dev)
+
+    dist.init_process_group(
+        backend="hccl",
+        init_method="env://",
+        world_size=torch.cuda.device_count(),
+        rank=rank,
+    )
 
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
