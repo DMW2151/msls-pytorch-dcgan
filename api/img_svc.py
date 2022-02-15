@@ -31,7 +31,7 @@ from msls.dcgan_utils import (
     TrainingConfig,
     get_checkpoint,
     restore_G_for_inference,
-    gen_img_sequence_array
+    gen_img_sequence_array,
 )
 from msls.gan import Generator64, Generator128
 
@@ -117,6 +117,7 @@ def add_header(r):
     r.headers["Cache-Control"] = "public, max-age=0"
     return r
 
+
 @app.route("/health")
 def health_check():
     return {"Health": "OK"}
@@ -140,8 +141,8 @@ def generate_static_img():
     )
 
     g = vutils.make_grid(
-            G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
-        ).cpu()
+        G(Z).detach().to(DEVICE), padding=4, normalize=True, nrow=4
+    ).cpu()
 
     # TODO: Use tmpfile instead of this mess...
     tmp_img_hash = uuid.uuid4().__str__()
@@ -152,14 +153,11 @@ def generate_static_img():
 
 @app.route("/gan_gifs")
 def generate_gif():
-    """ Serves a Gif - Series of predictions w. SLERP """
+    """Serves a Gif - Series of predictions w. SLERP"""
 
     # TODO: Use tmpfile instead of this mess...
     tmp_gif_location = gen_img_sequence_array(
-        MODEL_CFG,
-        G,
-        n_frames=16,
-        Z_size=TRAIN_CFG.nz
+        MODEL_CFG, G, n_frames=16, Z_size=TRAIN_CFG.nz
     )
 
     return send_file(tmp_gif_location, mimetype="image/gif")
@@ -168,7 +166,9 @@ def generate_gif():
 if __name__ == "__main__":
 
     G = get_generator(
-        TRAIN_CFG, MODEL_CFG, epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM", "8"))
+        TRAIN_CFG,
+        MODEL_CFG,
+        epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM", "8")),
     )
 
     app.run(debug=True, host="0.0.0.0")

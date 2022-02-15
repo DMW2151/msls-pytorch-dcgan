@@ -129,15 +129,21 @@ class Discriminator128(nn.Module):
             nn.BatchNorm2d(cfg.ndf * 2),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (cfg.ndf*2) x 32 x 32
-            nn.Conv2d(cfg.ndf * 2, cfg.ndf * 4, 4, stride=2, padding=1, bias=False),
+            nn.Conv2d(
+                cfg.ndf * 2, cfg.ndf * 4, 4, stride=2, padding=1, bias=False
+            ),
             nn.BatchNorm2d(cfg.ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (cfg.ndf*4) x 16 x 16
-            nn.Conv2d(cfg.ndf * 4, cfg.ndf * 8, 4, stride=2, padding=1, bias=False),
+            nn.Conv2d(
+                cfg.ndf * 4, cfg.ndf * 8, 4, stride=2, padding=1, bias=False
+            ),
             nn.BatchNorm2d(cfg.ndf * 8),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (cfg.ndf*8) x 8 x 8
-            nn.Conv2d(cfg.ndf * 8, cfg.ndf * 16, 4, stride=2, padding=1, bias=False),
+            nn.Conv2d(
+                cfg.ndf * 8, cfg.ndf * 16, 4, stride=2, padding=1, bias=False
+            ),
             nn.BatchNorm2d(cfg.ndf * 16),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (cfg.ndf*16) x 4 x 4

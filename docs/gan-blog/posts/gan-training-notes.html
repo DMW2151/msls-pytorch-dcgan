@@ -299,7 +299,7 @@
     <p>I designed model training to be as simple as possible. On a GPU instance, the following should be adequate to begin training. All flags for <code>python3 -m msls.run_dcgan</code> are shown below. Please see the CLI <code>--help</code> to understand what each flag and value does in the example below.</p>
     <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
     <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-m</span> pip install <span class="at">--upgrade</span> pip <span class="kw">&amp;&amp;</span><span class="dt">\</span></span>
-    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> <span class="at">-H</span> pip3 install /path/to/msls/package/model</span>
+    <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="ex">pip3</span> install /root/msls-pytorch-dcgan/model/ <span class="co"># Possibly with `sudo -H`</span></span>
     <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
     <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># In short, the below does a 16 epoch run on a model with:</span></span>
     <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
@@ -325,9 +325,9 @@
     <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">-e</span> OMPI_MCA_btl_vader_single_copy_mechanism=none <span class="dt">\</span></span>
     <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--cap-add</span><span class="op">=</span>sys_nice <span class="dt">\</span></span>
     <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--net</span><span class="op">=</span>host <span class="dt">\</span></span>
-    <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">-v</span> /data:/data <span class="dt">\</span></span>
+    <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">-v</span> /ebs:/data <span class="dt">\</span></span>
     <span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">-v</span> /efs:/efs <span class="dt">\</span></span>
-    <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-v</span> /root/msls-pytorch-dcgan:/root/msls-pytorch-dcgan/ <span class="dt">\</span></span>
+    <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-v</span> /home/ubuntu/msls-pytorch-dcgan:/root/msls-pytorch-dcgan/ <span class="dt">\</span></span>
     <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">--ipc</span><span class="op">=</span>host <span class="dt">\</span></span>
     <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585</span>
     <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>

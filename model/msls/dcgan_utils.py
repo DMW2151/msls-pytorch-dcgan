@@ -17,7 +17,12 @@ import torch.optim as optim
 from typing import Union
 from torch.utils.tensorboard import SummaryWriter
 
-from msls.gan import Discriminator64, Generator64, Discriminator128, Generator128
+from msls.gan import (
+    Discriminator64,
+    Generator64,
+    Discriminator128,
+    Generator128,
+)
 
 DEFAULT_LOADER_PARAMS = {
     "shuffle": False,
@@ -112,7 +117,7 @@ class TrainingConfig:
 
         # TODO: Check for Habana Driver Statistics - Should just be whatever runs
         # on v0.171, but just be safe...
-        if 'htcore' in locals().keys():
+        if "htcore" in locals().keys():
             print("Habana Statistics ...")
             print(f"HPU Pytorch Version: {htcore.torch.__version__}")
             print("Habana HPU Available: ", htcore.is_available())
@@ -121,7 +126,9 @@ class TrainingConfig:
 
     def get_network(
         self,
-        network: Union[Discriminator64, Discriminator128, Generator64, Generator128],
+        network: Union[
+            Discriminator64, Discriminator128, Generator64, Generator128
+        ],
         world_size: int = 1,
         device_rank: int = 0,
     ) -> (
@@ -139,13 +146,14 @@ class TrainingConfig:
             world_size: int: We use DDP by default, even on single nodes, specifies a
                 training world size
 
-            device_rank: int: See note above, int to uniquely identify this GPU/HPU given
-                a world size of `world_size`
+            device_rank: int: See note above, int to uniquely identify this GPU/HPU
+                given a world size of `world_size`
 
         NOTE:/TODO:
         --------
             - Return type hints aren't technically correct: — A check for the
-            union type, `Union[optim.AdamW, FusedAdamW]` would fail on instances that do not have the
+            union type, `Union[optim.AdamW, FusedAdamW]` would fail on instances
+            that do not have the
             correct Habana drivers, leave it out...
         """
 
@@ -155,12 +163,12 @@ class TrainingConfig:
         # If we have multiple devices - Enable DDP; Assumes the world_size is known
         # if we're training on HPU, else use cuda.device_count() and treat it as a
         # multi-gpu,
-        MULTI_DEVICE = (max(torch.cuda.device_count(), world_size) > 0)
+        MULTI_DEVICE = max(torch.cuda.device_count(), world_size) > 0
 
-        # if MULTI_DEVICE:
-        #     N = nn.parallel.DistributedDataParallel(
-        #         N, device_ids=[int(device_rank)]
-        #     )
+        if MULTI_DEVICE:
+            N = nn.parallel.DistributedDataParallel(
+                N, device_ids=[int(device_rank)]
+            )
 
         # Patch in the hpex.optimizer; FusedAdamW allows for better kernel
         # launching on HPU units vs. regular Torch AdamW, SGD, etc...
@@ -387,7 +395,9 @@ def count_parameters(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def slerp_noise_vect(val: float, Z_0: torch.Tensor, Z_1: torch.Tensor) -> torch.Tensor:
+def slerp_noise_vect(
+    val: float, Z_0: torch.Tensor, Z_1: torch.Tensor
+) -> torch.Tensor:
     """
     CPU SLERP in Torch; Implementation from LW-GAN
     Source: https://github.com/lucidrains/lightweight-gan/blob/main/lightweight_gan/lightweight_gan.py#L99-L105
@@ -449,5 +459,5 @@ def gen_img_sequence_array(
         loop=0,
         optimize=True,
     )
-    
+
     return gif_id

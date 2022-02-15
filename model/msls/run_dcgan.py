@@ -6,25 +6,12 @@ import socket
 import json
 
 # Very Sensitive to Order of Imports...
-try:
-    import msls.gaudi_dcgan as dcgan
-    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
-    import habana_frameworks.torch.core.hccl
-    DEVICE = "hpu"
-
-except ImportError as e:
-    print(f"Failed HPU Import -> Using GPU: {e}")
-    import msls.gpu_dcgan as dcgan
-    from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
-    DEVICE = "cuda"
+import msls.gpu_dcgan as dcgan
+from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 # Very Sensitive to Order of Imports...
 import torch
 import torch.multiprocessing as mp
-
-if DEVICE == "hpu":
-    print("Using HPU")
-    # NO NEED TO RE-SET: torch.multiprocessing.set_start_method('spawn')
 
 parser = argparse.ArgumentParser(description="Run MSLS DCGAN")
 
@@ -129,7 +116,7 @@ if __name__ == "__main__":
     # Create Training Config && Announce Model Training Situation...
     train_cfg = TrainingConfig(
         data_root=args.dataroot,
-        dev=torch.device(DEVICE),
+        dev=torch.device("cuda"),
         **json.loads(args.train_params)
     )
 
@@ -137,36 +124,20 @@ if __name__ == "__main__":
 
     # ================================================================
     # Run in distributed mode;l but on a single node...
-    if DEVICE == "hpu":
-        dcgan.init_habana_default_params()
-
-        dcgan.start_or_resume_training_run(
-            "1",
+    mp.spawn(
+        dcgan.start_or_resume_training_run,
+        nprocs=dcgan.WORLD_SIZE,
+        args=(
             train_cfg,
             model_cfg,
             args.n_epoch,
             args.s_epoch,
             args.profile,
             args.logging,
-        )
-
-    else:
-        mp.spawn(
-            dcgan.start_or_resume_training_run,
-            nprocs=dcgan.WORLD_SIZE,
-            args=(
-                train_cfg,
-                model_cfg,
-                args.n_epoch,
-                args.s_epoch,
-                args.profile,
-                args.logging,
-            ),
-            join=True,
-        )
+        ),
+        join=True,
+    )
 
     # On finish training -> send to s3
     if args.s3_bucket:
-        model_cfg.slim_checkpoint_to_cloud_storage(
-            args.s3_bucket, args.n_epoch
-        )
+        model_cfg.slim_checkpoint_to_cloud_storage(args.s3_bucket, args.n_epoch)

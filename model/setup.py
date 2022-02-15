@@ -11,7 +11,7 @@ habana_requirements = []
 gpu_requirements = [
     "torch==1.10.0",
     "torch-tb-profiler==0.3.1",
-    "torchvision==0.11.1"
+    "torchvision==0.11.1",
 ]
 
 setup_requirements = []

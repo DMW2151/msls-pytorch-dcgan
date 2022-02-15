@@ -122,7 +122,7 @@ def start_or_resume_training_run(
     torch.manual_seed(0)
 
     train_cfg.dev = torch.device(f"cuda:{rank}")
-    torch.cuda.set_device(rank)
+    torch.cuda.set_device(int(rank))
 
     dist.init_process_group(
         backend="nccl",
@@ -195,7 +195,9 @@ def start_or_resume_training_run(
     for epoch in range(cur_epoch, n_epochs + 1):
 
         # If running with DDP; set the epoch to prevent deterministic order
-        if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
+        if type(dl.sampler) == (
+            torch.utils.data.distributed.DistributedSampler
+        ):
             dl.sampler.set_epoch(epoch)
 
         # For Each Batch...

@@ -70,16 +70,6 @@ python3 -m msls.run_dcgan \
 ```
 
 
-python3 -m msls.run_dcgan \
-    -c '{"name": "global-dcgan-128-1", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \
-    -t '{"nc": 3, "img_size": 128, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 128, "img_size": 128, "weight_decay": 0.05}'\
-    --s_epoch 0 \
-    --n_epoch 16 \
-    --dataroot /data/imgs/test/miami  \
-    --logging True \
-    --profile True  \
-    --s3_bucket 'dmw2151-habana-model-outputs'
-
 In the case above, the `msls` package will fall back to training on the GPU because no HPU is available. However, when a call to `load_habana_module()` succeeds, the model will prefer to train on the HPU. For example, rather than running `python3 -m msls.run_dcgan` directly on the host, I can spin up a Habana PyTorch container, mount the proper volumes, and then run the same training script as above.
 
 ```bash

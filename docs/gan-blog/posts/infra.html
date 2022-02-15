@@ -425,6 +425,10 @@
     </details>
     <p>I also ran short-lived tests on the <code>p2.xlarge</code>, <code>p2.8xlarge</code> and <code>p3.2xlarge</code> to help me develop a mental model of DDP patterns and performance. The benchmarks for these are all included in the following sections.</p>
     <p>I didn’t intend on doing so many preliminary GPU runs, it just sort of happened. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided to go back and fill out the testing matrix. This helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc.</p>
+    <details>
+    <summary>
+    <strong>Table 1.2 Comparative Performance of GPU and HPU instances — Click to Expand</strong>
+    </summary>
     <table>
     <caption><em>Table 1.2 Comparative Performance of GPU and HPU instances</em></caption>
     <colgroup>
@@ -459,24 +463,6 @@
     </tr>
     <tr class="even">
     <td style="text-align: left;">Naive-64</td>
-    <td style="text-align: center;">p2.xlarge</td>
-    <td style="text-align: right;">798,400</td>
-    <td style="text-align: right;">$0.90</td>
-    <td style="text-align: right;">887,125</td>
-    <td style="text-align: right;">$0.27</td>
-    <td style="text-align: right;">2,957,092</td>
-    </tr>
-    <tr class="odd">
-    <td style="text-align: left;">Naive-64</td>
-    <td style="text-align: center;">p2.8xlarge</td>
-    <td style="text-align: right;">7,780,000</td>
-    <td style="text-align: right;">$7.20</td>
-    <td style="text-align: right;">1,080,556</td>
-    <td style="text-align: right;">$2.16</td>
-    <td style="text-align: right;">3,601,852</td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: left;">Naive-64</td>
     <td style="text-align: center;">p3.2xlarge</td>
     <td style="text-align: right;">5,830,000</td>
     <td style="text-align: right;">$3.06</td>
@@ -494,6 +480,15 @@
     <td style="text-align: right;">2,686,002</td>
     </tr>
     <tr class="even">
+    <td style="text-align: left;">Naive-64</td>
+    <td style="text-align: center;">dl1.24xlarge</td>
+    <td style="text-align: right;">NT</td>
+    <td style="text-align: right;">$13.11</td>
+    <td style="text-align: right;">NT</td>
+    <td style="text-align: right;">$3.93</td>
+    <td style="text-align: right;">NT</td>
+    </tr>
+    <tr class="odd">
     <td style="text-align: left;"><strong>Prioritize Model Stability</strong></td>
     <td style="text-align: center;"></td>
     <td style="text-align: right;"></td>
@@ -502,7 +497,7 @@
     <td style="text-align: right;"></td>
     <td style="text-align: right;"></td>
     </tr>
-    <tr class="odd">
+    <tr class="even">
     <td style="text-align: left;">Clamp-64</td>
     <td style="text-align: center;">p3.2xlarge</td>
     <td style="text-align: right;">1,225,000</td>
@@ -511,7 +506,7 @@
     <td style="text-align: right;">$0.92</td>
     <td style="text-align: right;">1,331,521</td>
     </tr>
-    <tr class="even">
+    <tr class="odd">
     <td style="text-align: left;">Clamp-64</td>
     <td style="text-align: center;">p3.8xlarge</td>
     <td style="text-align: right;">6,260,800</td>
@@ -520,7 +515,7 @@
     <td style="text-align: right;">$3.67</td>
     <td style="text-align: right;">1,705,010</td>
     </tr>
-    <tr class="odd">
+    <tr class="even">
     <td style="text-align: left;">Clamp-64</td>
     <td style="text-align: center;">dl1.24xlarge</td>
     <td style="text-align: right;"></td>
@@ -529,7 +524,7 @@
     <td style="text-align: right;">$3.93</td>
     <td style="text-align: right;"></td>
     </tr>
-    <tr class="even">
+    <tr class="odd">
     <td style="text-align: left;"><strong>Rebalance for <code>(3 x 128 x 128)</code> Images</strong></td>
     <td style="text-align: center;"></td>
     <td style="text-align: right;"></td>
@@ -538,7 +533,7 @@
     <td style="text-align: right;"></td>
     <td style="text-align: right;"></td>
     </tr>
-    <tr class="odd">
+    <tr class="even">
     <td style="text-align: left;">Safe-128</td>
     <td style="text-align: center;">p3.2xlarge</td>
     <td style="text-align: right;">1,462,900</td>
@@ -547,7 +542,7 @@
     <td style="text-align: right;">$0.92</td>
     <td style="text-align: right;">1,593,526</td>
     </tr>
-    <tr class="even">
+    <tr class="odd">
     <td style="text-align: left;">Safe-128</td>
     <td style="text-align: center;">p3.8xlarge</td>
     <td style="text-align: right;">5,941,000</td>
@@ -556,7 +551,7 @@
     <td style="text-align: right;">$3.67</td>
     <td style="text-align: right;">1,617,919</td>
     </tr>
-    <tr class="odd">
+    <tr class="even">
     <td style="text-align: left;">Safe-128</td>
     <td style="text-align: center;">dl1.24xlarge</td>
     <td style="text-align: right;"></td>
@@ -567,7 +562,12 @@
     </tr>
     </tbody>
     </table>
+    </details>
     <p>Tests were all conducted with <code>batch_size</code> at 256, for certain models and machines this is <em>definitely</em> a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of three configurations, <code>Naive-64</code>, <code>Clamps-64</code>, or <code>Safe-128</code>. <code>Naive-64</code> parameters were taken directly from the DCGAN paper and (partially) from PyTorch’s own documentation on generative models. <code>Clamps-64</code> parameters were deliberately set to ensure the model didn’t collapse. This meant having millions more parameters in the generator than the model <em>really</em> should have given images of this size. The <code>Safe-128</code> parameter set was designed to have approximately the same size as <code>Clamps-64</code>, favor the generator, and have <em>roughly</em> the same size/performance as <code>Clamps-64</code>, but on images 4x as large. Relevant parameters displayed below.</p>
+    <details>
+    <summary>
+    <strong>Table 1.3 Comparative Model Sizes — Trainable Elements Across All Parameters — Click to Expand</strong>
+    </summary>
     <table>
     <caption><em>Table 1.3 Comparative Model Sizes — Trainable Elements Across All Parameters</em></caption>
     <colgroup>
@@ -617,6 +617,7 @@
     </tr>
     </tbody>
     </table>
+    </details>
     <hr />
     <h2 id="aws-system-architecture">AWS System Architecture</h2>
     <table>
@@ -719,11 +720,11 @@
     <p>Migrating a model to run on HPUs require some changes, most of which are highlighted in the migration <a href="https://docs.habana.ai/en/latest/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model">guide</a>. In general, a few changed imports allow the PyTorch Habana bridge to drive the execution of deep learning models on the Habana Gaudi device. Specifically, I made the following changes for the Gaudi accelerated instances:</p>
     <ul>
     <li><p><strong>Use the custom Habana DataLoader</strong> — Under the right <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader">circumstances</a>, <code>HabanaDataLoader</code> can yield better performance that the native <code>DataLoader</code>. Even without acceleration, <code>HabanaDataLoader</code> still will fall back to the standard loader.</p></li>
-    <li><p><strong>Use Local NVME Storage Instead of EBS</strong> — I <em>just</em> noted that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on <code>DL1</code>, I trained off of the <a href="https://aws.amazon.com/ec2/instance-types/dl1/">ephemeral storage volumes</a> that come with the instance. Test results in <a href="#Comparative%20Performance">Performance Results</a></p></li>
+    <li><p><strong>Use Local NVME Storage Instead of EBS</strong> — Instead of training of of EBS, when training the model on <code>DL1</code>, I trained off of the <a href="https://aws.amazon.com/ec2/instance-types/dl1/">ephemeral storage volumes</a> that come with the instance. Test results in <a href="#Comparative%20Performance">Performance Results</a>.</p></li>
     <li><p><strong>Use <code>Lazy Mode</code></strong> — <a href="https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode">Lazy Mode</a> provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.</p></li>
     <li><p><strong>Use <code>FusedAdamW</code> over <code>AdamW</code></strong> — <code>FusedAdamW</code> is a custom <code>AdamW</code> implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the <code>DL1</code> instances.</p></li>
-    <li><p><strong>Use HMP</strong> — Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: <a href="https://developer.habana.ai/tutorials/tensorflow/mixed-precision/">HMP on Tensorflow</a>.</p></li>
-    <li><p><strong>Use HCCL over NCCL</strong> — Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with torch.distributed as a communication backend. This was a 1 LOC change from NCCL.</p></li>
+    <li><p><strong>Use HMP</strong> — Habana HPUs can run operations in <code>bfloat16</code> faster than <code>float32</code>. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: <a href="https://developer.habana.ai/tutorials/tensorflow/mixed-precision/">HMP on Tensorflow</a>.</p></li>
+    <li><p><strong>Use HCCL over NCCL</strong> — Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with <code>torch.distributed</code> as a communication backend.</p></li>
     </ul>
     <hr />
     <p><sup>1</sup> Estimated Achieved Occupancy (Est. Achieved Occupancy) is a layer deeper than Est. SM Efficiency and GPU Utilization for diagnosing performance issues. … As a rule of thumb, good throughput gains can be had by improving this metric to 15% and above. But at some point you will hit diminishing returns. If the value is already at 30% for example, further gains will be uncertain.</p>

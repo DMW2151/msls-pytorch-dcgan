@@ -10,15 +10,13 @@ import os
 
 # NOTE: Order of Imports Matters!
 from habana_frameworks.torch.utils.library_loader import load_habana_module
+
 load_habana_module()
 import habana_frameworks.torch.core as htcore
 
-from habana_dataloader import (
-    HabanaDataLoader
-)
+from habana_dataloader import HabanaDataLoader
 
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.profiler
 import torch.utils.data
@@ -55,6 +53,7 @@ def init_habana_default_params():
     os.environ["ENABLE_CONSOLE"] = "True"
     os.environ["LOG_LEVEL_ALL"] = "0"
 
+init_habana_default_params()
 
 def get_msls_dataloader(
     rank: int,
@@ -98,16 +97,7 @@ def get_msls_dataloader(
         ),
     )
 
-    # msls_sampler = torch.utils.data.distributed.DistributedSampler(
-    #     dataset,
-    #     num_replicas=WORLD_SIZE,
-    #     rank=int(rank),
-    #     shuffle=False,
-    # )
-
     params["dataset"] = dataset
-    #params["sampler"] = msls_sampler
-
     return HabanaDataLoader(**params)
 
 
@@ -131,28 +121,23 @@ def start_or_resume_training_run(
     torch.manual_seed(0)
     train_cfg.dev = torch.device(train_cfg.dev)
 
-    # dist.init_process_group(
-    #     backend="hccl",
-    #     init_method="env://",
-    #     world_size=WORLD_SIZE,
-    #     rank=int(rank),
-    # )
-
-    # TODO: Check if this is the correct way to set device
-    # with DDP on HCCL!! torch.cuda.set_device(rank)
-    os.environ["ID"] = str(rank)
-
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
     if train_cfg.img_size == 64:
         D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
+
         G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
+
     elif train_cfg.img_size == 128:
+
         D, opt_D = train_cfg.get_network(
-            Discriminator128,
-            device_rank=rank,
+            Discriminator128, device_rank=rank,
         )
-        G, opt_G = train_cfg.get_network(Generator128, device_rank=rank)
+
+        G, opt_G = train_cfg.get_network(
+            Generator128, device_rank=rank
+        )
+
     else:
         raise NotImplementedError
 
@@ -189,12 +174,7 @@ def start_or_resume_training_run(
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
 
-    # BUG/NOTE: [RESOLVED]: Profiling results can get distorted if
-    # the number of batches per epoch is too small
-    if enable_prof:
-        prof = model_cfg.get_msls_profiler()
-        prof.start()
-
+    # NOTE/BUG: [RESOLVED]: AFAIK – No Profiling on Gaudi HPUs
     if enable_logging:
         writer = model_cfg.get_msls_writer()
 
@@ -203,19 +183,15 @@ def start_or_resume_training_run(
     # Begin the Training Cycle...
     for epoch in range(cur_epoch, n_epochs + 1):
 
-        # If running with DDP; set the epoch to prevent deterministic order
-        # if type(dl.sampler) == (torch.utils.data.distributed.DistributedSampler):
-        #     dl.sampler.set_epoch(epoch)
-
         # For Each Batch...
         for epoch_step, batch in enumerate(dl, start=0):
 
             ###################################################################
             # (0.1) Generate labels + input noise for this batch (GPU)
-            real_imgs = batch[0].to(train_cfg.dev)  # Img Batch (CPU) -> (GPU)
+            # Send Img Batch (CPU) -> (GPU)
+            real_imgs = batch[0].to(train_cfg.dev, non_blocking=True) 
             b_size = real_imgs.size(0)
 
-            # TODO: Try Soft Noise on Labels...
             Z = torch.randn(
                 b_size,
                 train_cfg.nz,
@@ -233,8 +209,7 @@ def start_or_resume_training_run(
             ###################################################################
             # (1.1) Update D: all real batch
             D.zero_grad()
-            
-            print(real_imgs.shape)
+
             # Forward pass && Calculate D_loss
             output = D(real_imgs.detach()).view(-1)
             err_D_real = criterion(output, label)
@@ -336,9 +311,6 @@ def start_or_resume_training_run(
                 generated_images = G(Z_fixed).detach().cpu()
                 img_list.append(generated_images)
 
-            # Save Checkpoint - block if running DDP
-            dist.barrier()
-
             # NOTE: in DDP vs Single GPU processing; `state_dict()` will have
             # different keys (really namespaces), leave that to reader...
             torch.save(
@@ -354,10 +326,6 @@ def start_or_resume_training_run(
                 },
                 model_cfg.checkpoint_path(epoch),
             )
-
-    # Epoch's over; Stop Profiling!; This explicitly closes the profiler; will fail
-    # if wait, warmup, active, and repeat batches can't fit on the first epoch
-    prof.stop() if enable_logging else None
 
     return {
         "losses": losses,

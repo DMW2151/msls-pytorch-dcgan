@@ -35,13 +35,15 @@ I also ran short-lived tests on the `p2.xlarge`, `p2.8xlarge` and `p3.2xlarge` t
 
 I didn't intend on doing so many preliminary GPU runs, it just sort of happened. Towards the end of the project I realized I had benchmarks scattered across multiple instance types and parameter sets and decided to go back and fill out the testing matrix. This helped me validate that DDP was working as expected and contextualize the effect of larger parameter models, different batch sizes, etc. 
 
+<details>
+<summary><strong>Table 1.2 Comparative Performance of GPU and HPU instances &mdash; Click to Expand</strong></summary>
+
 |  Model Parameter Set  |  Instance    |  Throughput (Imgs/Hr) |  Rate (\$) |   Imgs/$  | Spot Rate (\$) | Imgs/$ (Spot) |
 |:---------|:------------:|----------------------:|----------:|-----------------------:|------------:|-----------------------:|
 |**Default Parameters From DCGAN**                                                                                            |
-| Naive-64 | p2.xlarge    |    798,400 |     $0.90 |   887,125 |       $0.27 |  2,957,092 |
-| Naive-64 | p2.8xlarge   |  7,780,000 |     $7.20 | 1,080,556 |       $2.16 |  3,601,852 |
 | Naive-64 | p3.2xlarge   |  5,830,000 |     $3.06 | 1,905,229 |       $0.92 |  6,336,957 |
 | Naive-64 | p3.8xlarge   |  9,863,000 |    $12.24 |   805,800 |       $3.67 |  2,686,002 |
+| Naive-64 | dl1.24xlarge |         NT |    $13.11 |        NT |       $3.93 |         NT |
 | **Prioritize  Model Stability**                                                         |
 | Clamp-64 | p3.2xlarge   |  1,225,000 |     $3.06 |   400,326 |       $0.92 |  1,331,521 |
 | Clamp-64 | p3.8xlarge   |  6,260,800 |    $12.24 |   511,503 |       $3.67 |  1,705,010 |
@@ -51,9 +53,12 @@ I didn't intend on doing so many preliminary GPU runs, it just sort of happened.
 | Safe-128 | p3.8xlarge   |  5,941,000 |    $12.24 |   485,375 |       $3.67 |  1,617,919 |
 | Safe-128 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
 Table: *Table 1.2 Comparative Performance of GPU and HPU instances*
+</details>
 
 Tests were all conducted with `batch_size` at 256, for certain models and machines this is *definitely* a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of three configurations, `Naive-64`, `Clamps-64`, or `Safe-128`.  `Naive-64` parameters were taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
 
+<details>
+<summary><strong>Table 1.3 Comparative Model Sizes &mdash; Trainable Elements Across All Parameters &mdash; Click to Expand</strong></summary>
 |         | `G` Params  | `D` Params |    Relevant Params   |
 |:--------|:----------:|:------------:|:-----------:|
 | Naive-64|   3,576,704|     2,765,568| ```{"nz": 100, "ngf": 64, "ndf": 64,  "img_size": 64 }``` |
@@ -62,6 +67,7 @@ Tests were all conducted with `batch_size` at 256, for certain models and machin
 |         |            |              |             |
 | Safe-128|  48,772,864|     2,796,928| ```{"nz": 128, "ngf": 128, "ndf": 32, "img_size": 128 }```|
 Table: *Table 1.3 Comparative Model Sizes &mdash; Trainable Elements Across All Parameters*
+</details>
 
 --------
 
@@ -149,15 +155,15 @@ Migrating a model to run on HPUs require some changes, most of which are highlig
 
 - **Use the custom Habana DataLoader** &mdash; Under the right [circumstances](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#habana-data-loader), `HabanaDataLoader` can yield better performance that the native `DataLoader`. Even without acceleration, `HabanaDataLoader` still will fall back to the standard loader.
 
-- **Use Local NVME Storage Instead of EBS** &mdash; I *just* noted that the dataloader was potentially a bottleneck in my training process. Instead of training of of EBS, when training the model on `DL1`, I trained off of the [ephemeral storage volumes](https://aws.amazon.com/ec2/instance-types/dl1/) that come with the instance. Test results in [Performance Results](#Comparative%20Performance)
+- **Use Local NVME Storage Instead of EBS** &mdash; Instead of training of of EBS, when training the model on `DL1`, I trained off of the [ephemeral storage volumes](https://aws.amazon.com/ec2/instance-types/dl1/) that come with the instance. Test results in [Performance Results](#Comparative%20Performance).
 
 - **Use `Lazy Mode`** &mdash; [Lazy Mode](https://docs.habana.ai/en/v1.1.0/PyTorch_User_Guide/PyTorch_User_Guide.html#lazy-mode) provides the SynapseAI graph compiler the opportunity to optimize the device execution for multiple ops.
 
 - **Use `FusedAdamW` over `AdamW`** &mdash; `FusedAdamW` is a custom `AdamW` implementation for Habana devices that can batch the element-wise updates applied to all the model’s parameters into one or a few kernel launches rather than a single kernel for each parameter. This should yield some nice performance improvements on the `DL1` instances.
   
-- **Use HMP** &mdash; Habana HPUs can run operations in bfloat16 faster than float32. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: [HMP on Tensorflow](https://developer.habana.ai/tutorials/tensorflow/mixed-precision/).
+- **Use HMP** &mdash; Habana HPUs can run operations in `bfloat16` faster than `float32`. Therefore, these lower-precision dtypes should be used whenever possible on those devices. Just like AMP helps on GPU instances. I should use HMP where possible. See: [HMP on Tensorflow](https://developer.habana.ai/tutorials/tensorflow/mixed-precision/).
   
-- **Use HCCL over NCCL** &mdash; Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with torch.distributed as a communication backend. This was a 1 LOC change from NCCL.
+- **Use HCCL over NCCL** &mdash; Collective ops are implemented using the Habana Collective Communications Library (HCCL) and used to perform communication among different Gaudi cards (see Habana Collective Communications Library (HCCL) API Reference). HCCL is integrated with `torch.distributed` as a communication backend.
 
 --------
 
