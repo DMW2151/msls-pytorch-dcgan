@@ -43,9 +43,14 @@ from msls.gan import (
     Generator128,
 )
 
+import socket
+
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 8
+
+os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
+os.environ["MASTER_PORT"] = "8888"
 
 
 def init_habana_default_params():
@@ -128,9 +133,11 @@ def start_or_resume_training_run(
     dist.init_process_group(
         backend="hccl",
         init_method="env://",
-        world_size=torch.cuda.device_count(),
+        world_size=WORLD_SIZE,
         rank=rank,
     )
+
+    os.environ["ID"] = str(rank)
 
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
