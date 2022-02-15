@@ -163,7 +163,7 @@ class TrainingConfig:
         # If we have multiple devices - Enable DDP; Assumes the world_size is known
         # if we're training on HPU, else use cuda.device_count() and treat it as a
         # multi-gpu,
-        MULTI_DEVICE = max(torch.cuda.device_count(), world_size) > 0
+        MULTI_DEVICE = max(torch.cuda.device_count(), world_size) > 1
 
         if MULTI_DEVICE:
             N = nn.parallel.DistributedDataParallel(

@@ -47,10 +47,10 @@ import socket
 
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
-WORLD_SIZE = 8
+WORLD_SIZE = 1
 
-os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
-os.environ["MASTER_PORT"] = "8888"
+# os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
+# os.environ["MASTER_PORT"] = "8888"
 
 
 def init_habana_default_params():
@@ -130,14 +130,14 @@ def start_or_resume_training_run(
     torch.manual_seed(0)
     train_cfg.dev = torch.device(train_cfg.dev)
 
-    dist.init_process_group(
-        backend="hccl",
-        init_method="env://",
-        world_size=WORLD_SIZE,
-        rank=rank,
-    )
+    # dist.init_process_group(
+    #     backend="hccl",
+    #     init_method="env://",
+    #     world_size=WORLD_SIZE,
+    #     rank=int(rank),
+    # )
 
-    os.environ["ID"] = str(rank)
+    # os.environ["ID"] = str(rank)
 
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
