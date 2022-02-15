@@ -14,6 +14,7 @@ from habana_frameworks.torch.utils.library_loader import load_habana_module
 load_habana_module()
 import habana_frameworks.torch.core as htcore
 
+
 from habana_dataloader import HabanaDataLoader
 
 import torch
@@ -22,6 +23,7 @@ import torch.profiler
 import torch.utils.data
 import torchvision
 import torchvision.transforms as transforms
+import torch.distributed as dist
 import habana_frameworks.torch.core.hccl
 
 

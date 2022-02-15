@@ -87,6 +87,8 @@ docker run -ti --runtime=habana \
     vault.habana.ai/gaudi-docker/1.2.0/ubuntu18.04/habanalabs/pytorch-installer-1.10.0:1.2.0-585
 
 # Run the same command(s), but in the container
+cd root/msls-pytorch-dcgan/model/
+
 root@xyzxyzxyz:/\# python3 -m msls.run_dcgan ....
 ```
 
