@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     # ================================================================
     # Run in distributed mode;l but on a single node...
-    init_habana_default_params()
-    
+    dcgan.init_habana_default_params()
+
     dcgan.start_or_resume_training_run(
         "1",
         train_cfg,
