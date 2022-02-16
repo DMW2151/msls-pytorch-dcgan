@@ -46,7 +46,7 @@ import socket
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 1
-LAZY = 1
+LAZY = 0
 HPU = 1
 
 
@@ -249,7 +249,7 @@ def start_or_resume_training_run(
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
             #htcore.mark_step()
             opt_D.step()
-            htcore.mark_step()
+            #htcore.mark_step()
             
             err_D = err_D_real + err_D_fake
 
@@ -269,7 +269,7 @@ def start_or_resume_training_run(
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
             #htcore.mark_step()
             opt_G.step()
-            htcore.mark_step()
+            #htcore.mark_step()
             
             ###################################################################
             # (3) Post Batch Metrics Collection
