@@ -183,10 +183,10 @@ def start_or_resume_training_run(
         raise NotImplementedError
 
     # Send all to HPU...
-    D.to(train_cfg.device)
-    opt_D.to(train_cfg.device)
-    G.to(train_cfg.device)
-    opt_G.to(train_cfg.device)
+    D.to(train_cfg.dev)
+    opt_D.to(train_cfg.dev)
+    G.to(train_cfg.dev)
+    opt_G.to(train_cfg.dev)
 
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
@@ -318,7 +318,6 @@ def start_or_resume_training_run(
 
         # Save model && progress images every N epochs
         if (epoch % model_cfg.save_frequency == 0) | (epoch == n_epochs):
-
             with torch.no_grad():
                 generated_images = G(Z_fixed).detach().cpu()
                 img_list.append(generated_images)
