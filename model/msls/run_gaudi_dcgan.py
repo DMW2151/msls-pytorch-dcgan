@@ -6,7 +6,7 @@ import socket
 import json
 
 # Very Sensitive to Order of Imports...
-import msls.gpu_dcgan as dcgan
+import msls.gaudi_dcgan as dcgan
 from msls.dcgan_utils import ModelCheckpointConfig, TrainingConfig
 
 # Very Sensitive to Order of Imports...
