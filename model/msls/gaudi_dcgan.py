@@ -185,19 +185,18 @@ def start_or_resume_training_run(
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
     # latent vector, training params dict, etc. && proceed w. model training...
-    else:
-        G.apply(weights_init)
-        D.apply(weights_init)
-        cur_epoch = 1
-        img_list = []
-        losses = {"_G": [], "_D": []}
-        Z_fixed = torch.randn(
-            64,
-            train_cfg.nz,
-            1,
-            1,
-            device=train_cfg.dev,
-        )
+    G.apply(weights_init)
+    D.apply(weights_init)
+    cur_epoch = 1
+    img_list = []
+    losses = {"_G": [], "_D": []}
+    Z_fixed = torch.randn(
+        64,
+        train_cfg.nz,
+        1,
+        1,
+        device=train_cfg.dev,
+    )
 
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
