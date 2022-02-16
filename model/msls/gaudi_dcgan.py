@@ -244,7 +244,6 @@ def start_or_resume_training_run(
             err_D_fake = criterion(output, label)
 
             # See: https://docs.habana.ai/en/v1.1.0/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model
-            D_G_z1 = torch.sigmoid(output).mean().item()
             err_D_fake.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
@@ -265,7 +264,6 @@ def start_or_resume_training_run(
             err_G = criterion(output, label)
 
             # See: https://docs.habana.ai/en/v1.1.0/Migration_Guide/Migration_Guide.html#porting-simple-pyt-model
-            D_G_z2 = torch.sigmoid(output).mean().item()
             err_G.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
@@ -277,7 +275,7 @@ def start_or_resume_training_run(
             # (3) Post Batch Metrics Collection
             if (epoch_step % model_cfg.log_frequency) == 0:
                 print(
-                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f} D(x): {D_X:.4f} D(G(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                    f" [{datetime.datetime.utcnow().__str__()}] [{epoch}/{n_epochs}][{epoch_step}/{len(dl)}] Loss_D: {err_D.item():.4f} Loss_G: {err_G.item():.4f}"
                 )
 
                 # Write Metrics to TensorBoard: (GPU) -> (CPU)
