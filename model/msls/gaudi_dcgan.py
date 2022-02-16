@@ -10,10 +10,8 @@ import os
 
 # NOTE: Order of Imports Matters!
 from habana_frameworks.torch.utils.library_loader import load_habana_module
-
 load_habana_module()
 import habana_frameworks.torch.core as htcore
-
 
 from habana_dataloader import HabanaDataLoader
 
@@ -48,9 +46,45 @@ import socket
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 1
+LAZY = 1
+HPU = 1
 
-# os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
-# os.environ["MASTER_PORT"] = "8888"
+
+def permute_params(model, to_filters_last, lazy_mode):
+    if htcore.is_enabled_weight_permute_pass() is True:
+        return
+
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            if(param.ndim == 4):
+                if to_filters_last:
+                    param.data = param.data.permute((2, 3, 1, 0))
+                else:
+                    param.data = param.data.permute((3, 2, 0, 1))  # permute RSCK to KCRS
+
+    if lazy_mode:
+        htcore.mark_step()
+
+
+def permute_momentum(optimizer, to_filters_last, lazy_mode):
+    # Permute the momentum buffer before using for checkpoint
+    if htcore.is_enabled_weight_permute_pass() is True:
+        return
+
+    for group in optimizer.param_groups:
+        for p in group['params']:
+            param_state = optimizer.state[p]
+            if 'momentum_buffer' in param_state:
+                buf = param_state['momentum_buffer']
+                if(buf.ndim == 4):
+                    if to_filters_last:
+                        buf = buf.permute((2,3,1,0))
+                    else:
+                        buf = buf.permute((3,2,0,1))
+                    param_state['momentum_buffer'] = buf
+
+    if lazy_mode:
+        htcore.mark_step()
 
 
 def init_habana_default_params():
@@ -130,20 +164,10 @@ def start_or_resume_training_run(
     torch.manual_seed(0)
     train_cfg.dev = torch.device(train_cfg.dev)
 
-    # dist.init_process_group(
-    #     backend="hccl",
-    #     init_method="env://",
-    #     world_size=WORLD_SIZE,
-    #     rank=int(rank),
-    # )
-
-    # os.environ["ID"] = str(rank)
-
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
     if train_cfg.img_size == 64:
         D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
-
         G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
 
     elif train_cfg.img_size == 128:
@@ -159,6 +183,13 @@ def start_or_resume_training_run(
     else:
         raise NotImplementedError
 
+    # This Model is Meant to Run on the HPU; permute Params
+    if HPU:
+        permute_params(D, True, LAZY)
+        permute_momentum(opt_D, True, LAZY)
+        permute_params(G, True, LAZY)
+        permute_momentum(opt_G, True, LAZY)
+
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
         checkpt = get_checkpoint(
@@ -166,6 +197,7 @@ def start_or_resume_training_run(
             cpu=True,
         )
 
+        # TODO: Write Habana Restore Model Code Here...
         restore_model(checkpt, G, D, opt_G, opt_D)
 
         cur_epoch = checkpt["epoch"]
@@ -192,11 +224,11 @@ def start_or_resume_training_run(
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
 
-    # NOTE/BUG: [RESOLVED]: AFAIK – No Profiling on Gaudi HPUs
+    # NOTE: AFAIK – No Profiling on Gaudi HPUs - Remove Profiling Option
     if enable_logging:
         writer = model_cfg.get_msls_writer()
 
-    dl = get_msls_dataloader(rank, train_cfg, use_ddp=True)
+    dl = get_msls_dataloader(rank, train_cfg, use_ddp=False)
 
     # Begin the Training Cycle...
     for epoch in range(cur_epoch, n_epochs + 1):
