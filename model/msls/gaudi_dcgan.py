@@ -184,9 +184,9 @@ def start_or_resume_training_run(
 
     # Send all to HPU...
     D.to(train_cfg.dev)
-    opt_D.to(train_cfg.dev)
+    #opt_D.to(train_cfg.dev)
     G.to(train_cfg.dev)
-    opt_G.to(train_cfg.dev)
+    #opt_G.to(train_cfg.dev)
 
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
