@@ -46,7 +46,7 @@ import socket
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 1
-LAZY = 0
+LAZY = 1
 HPU = 1
 
 
@@ -188,9 +188,9 @@ def start_or_resume_training_run(
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
         permute_params(D, True, LAZY)
-        #permute_momentum(opt_D, True, LAZY)
+        permute_momentum(opt_D, True, LAZY)
         permute_params(G, True, LAZY)
-        #permute_momentum(opt_G, True, LAZY)
+        permute_momentum(opt_G, True, LAZY)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
@@ -280,7 +280,9 @@ def start_or_resume_training_run(
             err_D_fake.backward()
 
             # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
+            ht.step()
             opt_D.step()
+            ht.step()
             
             err_D = err_D_real + err_D_fake
 
@@ -299,7 +301,9 @@ def start_or_resume_training_run(
             err_G.backward()
 
             # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
+            ht.step()
             opt_G.step()
+            ht.step()
             
             ###################################################################
             # (3) Post Batch Metrics Collection
