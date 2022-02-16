@@ -46,7 +46,7 @@ import socket
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 1
-LAZY = 1
+LAZY = 0
 HPU = 1
 
 
@@ -91,7 +91,7 @@ def init_habana_default_params():
     os.environ["MAX_WAIT_ATTEMPTS"] = "50"
     os.environ["PT_HPU_ENABLE_SYNC_OUTPUT_HOST"] = "false"
     os.environ["PL_TORCH_DISTRIBUTED_BACKEND"] = "hccl"
-    os.environ["PT_HPU_LAZY_MODE"] = "1"
+    os.environ["PT_HPU_LAZY_MODE"] = str(LAZY)
     os.environ["GRAPH_VISUALIZATION"] = "True"
     os.environ["ENABLE_CONSOLE"] = "True"
     os.environ["LOG_LEVEL_ALL"] = "0"
@@ -282,7 +282,7 @@ def start_or_resume_training_run(
             err_D_fake.backward()
 
             # Call ht.step() Between loss.backward and optimizer.step()
-            htcore.mark_step()
+            # htcore.mark_step()
 
             # Call ht.step() Right After Opt.Step()
             opt_D.step()
@@ -305,7 +305,7 @@ def start_or_resume_training_run(
             err_G.backward()
 
             # Call ht.step() Between loss.backward and optimizer.step()
-            htcore.mark_step()
+            # htcore.mark_step()
 
             # Call ht.step() Right After Opt.Step()
             opt_G.step()
