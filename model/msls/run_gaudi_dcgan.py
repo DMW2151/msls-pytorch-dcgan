@@ -116,7 +116,7 @@ if __name__ == "__main__":
     # Create Training Config && Announce Model Training Situation...
     train_cfg = TrainingConfig(
         data_root=args.dataroot,
-        dev=torch.device("hpu"),
+        dev=(torch.device("hpu") if dcgan.HPU else torch.device("cpu")),
         **json.loads(args.train_params)
     )
 

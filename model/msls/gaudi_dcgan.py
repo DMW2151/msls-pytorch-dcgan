@@ -170,8 +170,11 @@ def start_or_resume_training_run(
     D.to(train_cfg.dev)
     G.to(train_cfg.dev)
     
+    G.apply(weights_init)
+    D.apply(weights_init)
+    
     # This Model is Meant to Run on the HPU; permute Params
-    if True:
+    if HPU:
         permute_params(D, True, LAZY)
         permute_momentum(opt_D, True, LAZY)
         permute_params(G, True, LAZY)
@@ -179,8 +182,6 @@ def start_or_resume_training_run(
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
     # latent vector, training params dict, etc. && proceed w. model training...
-    G.apply(weights_init)
-    D.apply(weights_init)
     cur_epoch = 1
     img_list = []
     losses = {"_G": [], "_D": []}
