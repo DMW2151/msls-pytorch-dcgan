@@ -274,7 +274,7 @@ def start_or_resume_training_run(
             scaler_G.update()
 
             # If profiling enabled; then mark step...
-            prof.step() if enable_logging else None
+            prof.step() if enable_prof else None
 
             ###################################################################
             # (3) Post Batch Metrics Collection

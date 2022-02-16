@@ -46,7 +46,7 @@ import socket
 # Load Habana Module && set a fixed world size of 8
 # TODO: Allow this to be configurable...
 WORLD_SIZE = 1
-LAZY = 0
+LAZY = 1
 HPU = 1
 
 
@@ -258,6 +258,7 @@ def start_or_resume_training_run(
 
             ###################################################################
             # (1.1) Update D: all real batch
+            htcore.mark_step()
             D.zero_grad()
 
             # Forward pass && Calculate D_loss
@@ -281,10 +282,8 @@ def start_or_resume_training_run(
             D_G_z1 = torch.sigmoid(output).mean().item()
             err_D_fake.backward()
 
-            # Call ht.step() Between loss.backward and optimizer.step()
-            # htcore.mark_step()
-
-            # Call ht.step() Right After Opt.Step()
+            # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
+            htcore.mark_step()
             opt_D.step()
             htcore.mark_step()
 
@@ -304,15 +303,10 @@ def start_or_resume_training_run(
             D_G_z2 = torch.sigmoid(output).mean().item()
             err_G.backward()
 
-            # Call ht.step() Between loss.backward and optimizer.step()
-            # htcore.mark_step()
-
-            # Call ht.step() Right After Opt.Step()
+            # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
+            htcore.mark_step()
             opt_G.step()
             htcore.mark_step()
-
-            # If profiling enabled; then mark step...
-            prof.step() if enable_logging else None
 
             ###################################################################
             # (3) Post Batch Metrics Collection
