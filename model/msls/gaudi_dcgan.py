@@ -207,7 +207,6 @@ def start_or_resume_training_run(
                 train_cfg.nz,
                 1,
                 1,
-                device=train_cfg.dev,
             )
 
             label = torch.full(
