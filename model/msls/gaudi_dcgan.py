@@ -279,10 +279,10 @@ def start_or_resume_training_run(
             D_G_z1 = torch.sigmoid(output).mean().item()
             err_D_fake.backward()
 
-            # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
-            ht.step()
+            # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
+            htcore.mark_step
             opt_D.step()
-            ht.step()
+            htcore.mark_step
             
             err_D = err_D_real + err_D_fake
 
@@ -300,10 +300,10 @@ def start_or_resume_training_run(
             D_G_z2 = torch.sigmoid(output).mean().item()
             err_G.backward()
 
-            # Call ht.step() Between loss.backward and optimizer.step() && Right After Opt.Step()
-            ht.step()
+            # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
+            htcore.mark_step
             opt_G.step()
-            ht.step()
+            htcore.mark_step
             
             ###################################################################
             # (3) Post Batch Metrics Collection
