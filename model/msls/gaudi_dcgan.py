@@ -247,7 +247,7 @@ def start_or_resume_training_run(
             err_D_fake.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
-            htcore.mark_step()
+            #htcore.mark_step()
             opt_D.step()
             htcore.mark_step()
             
@@ -267,7 +267,7 @@ def start_or_resume_training_run(
             err_G.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
-            htcore.mark_step()
+            #htcore.mark_step()
             opt_G.step()
             htcore.mark_step()
             
