@@ -166,13 +166,14 @@ def start_or_resume_training_run(
         Generator128, device_rank=rank
     )
 
+    D.apply(weights_init)
+    G.apply(weights_init)
+    
     # Send all to HPU...
     D.to(train_cfg.dev)
     G.to(train_cfg.dev)
     
-    G.apply(weights_init)
-    D.apply(weights_init)
-    
+
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
         permute_params(D, True, LAZY)
