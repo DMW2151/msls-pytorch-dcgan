@@ -164,48 +164,24 @@ def start_or_resume_training_run(
     
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
-    if train_cfg.img_size == 64:
-        D, opt_D = train_cfg.get_network(Discriminator64, device_rank=rank)
-        G, opt_G = train_cfg.get_network(Generator64, device_rank=rank)
+    D, opt_D = train_cfg.get_network(
+        Discriminator128, device_rank=rank,
+    )
 
-    elif train_cfg.img_size == 128:
-
-        D, opt_D = train_cfg.get_network(
-            Discriminator128, device_rank=rank,
-        )
-
-        G, opt_G = train_cfg.get_network(
-            Generator128, device_rank=rank
-        )
-
-    else:
-        raise NotImplementedError
+    G, opt_G = train_cfg.get_network(
+        Generator128, device_rank=rank
+    )
 
     # Send all to HPU...
     D.to(train_cfg.dev)
     G.to(train_cfg.dev)
     
     # This Model is Meant to Run on the HPU; permute Params
-    if HPU:
+    if True:
         permute_params(D, True, LAZY)
         permute_momentum(opt_D, True, LAZY)
         permute_params(G, True, LAZY)
         permute_momentum(opt_G, True, LAZY)
-
-    # Check the save-path for a model with this name && Load Params
-    if st_epoch:
-        checkpt = get_checkpoint(
-            path=model_cfg.checkpoint_path(st_epoch),
-            cpu=True,
-        )
-
-        # TODO: Write Habana Restore Model Code Here...
-        restore_model(checkpt, G, D, opt_G, opt_D)
-
-        cur_epoch = checkpt["epoch"]
-        losses = checkpt["losses"]
-        Z_fixed = checkpt["noise"]
-        img_list = checkpt["img_list"]
 
     # If no start epoch specified; then apply weights from DCGAN paper, init
     # latent vector, training params dict, etc. && proceed w. model training...
@@ -280,9 +256,9 @@ def start_or_resume_training_run(
             err_D_fake.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
-            htcore.mark_step
+            htcore.mark_step()
             opt_D.step()
-            htcore.mark_step
+            htcore.mark_step()
             
             err_D = err_D_real + err_D_fake
 
@@ -301,9 +277,9 @@ def start_or_resume_training_run(
             err_G.backward()
 
             # Call htcore.mark_step Between loss.backward and optimizer.step() && Right After Opt.Step()
-            htcore.mark_step
+            htcore.mark_step()
             opt_G.step()
-            htcore.mark_step
+            htcore.mark_step()
             
             ###################################################################
             # (3) Post Batch Metrics Collection
