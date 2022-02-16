@@ -229,10 +229,6 @@ def start_or_resume_training_run(
     # Initialize Stateless BCELoss Function
     criterion = nn.BCEWithLogitsLoss().to(train_cfg.dev)
 
-    # NOTE: AFAIK – No Profiling on Gaudi HPUs - Remove Profiling Option
-    if enable_logging:
-        writer = model_cfg.get_msls_writer()
-
     dl = get_msls_dataloader(rank, train_cfg, use_ddp=False)
 
     # Begin the Training Cycle...
@@ -317,34 +313,6 @@ def start_or_resume_training_run(
 
                 # Write Metrics to TensorBoard: (GPU) -> (CPU)
                 if enable_logging:
-                    imgs_processed_ct = (epoch * len(dl.dataset)) + (
-                        epoch_step * train_cfg.batch_size
-                    )
-
-                    for metric, val in zip(
-                        [
-                            "G_loss",
-                            "D_loss",
-                            "D_X",
-                            "D_G_z1",
-                            "D_G_z2",
-                        ],
-                        [
-                            err_G.item(),
-                            err_D.item(),
-                            D_X,
-                            D_G_z1,
-                            D_G_z2,
-                        ],
-                    ):
-                        writer.add_scalar(
-                            metric,
-                            val,
-                            imgs_processed_ct,
-                        )
-                    writer.flush()
-
-                    # Save losses for metric plots...
                     losses["_G"].append(err_G.item())
                     losses["_D"].append(err_D.item())
 
