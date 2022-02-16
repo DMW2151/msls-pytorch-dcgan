@@ -88,15 +88,9 @@ def permute_momentum(optimizer, to_filters_last, lazy_mode):
 
 
 def init_habana_default_params():
-    os.environ["MAX_WAIT_ATTEMPTS"] = "50"
-    os.environ["PT_HPU_ENABLE_SYNC_OUTPUT_HOST"] = "false"
     os.environ["PL_TORCH_DISTRIBUTED_BACKEND"] = "hccl"
     os.environ["PT_HPU_LAZY_MODE"] = str(LAZY)
-    os.environ["GRAPH_VISUALIZATION"] = "True"
-    os.environ["ENABLE_CONSOLE"] = "True"
-    os.environ["LOG_LEVEL_ALL"] = "0"
-
-
+    
 def get_msls_dataloader(
     rank: int,
     train_cfg: TrainingConfig,
