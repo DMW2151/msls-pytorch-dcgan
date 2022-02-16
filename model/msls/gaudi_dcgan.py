@@ -182,8 +182,7 @@ def start_or_resume_training_run(
         64,
         train_cfg.nz,
         1,
-        1,
-        device=train_cfg.dev,
+        1
     )
 
     # Initialize Stateless BCELoss Function
