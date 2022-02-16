@@ -233,8 +233,7 @@ def start_or_resume_training_run(
 
             # Calculate gradients for D in backward pass
             err_D_real.backward()
-            D_X = torch.sigmoid(output).mean().item()
-
+            
             # (1.2) Update D: all fake batch
             fake = G(Z)
             label.fill_(0.0)
