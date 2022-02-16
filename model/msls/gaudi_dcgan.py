@@ -162,8 +162,7 @@ def start_or_resume_training_run(
         -
     """
     torch.manual_seed(0)
-    train_cfg.dev = torch.device(train_cfg.dev)
-
+    
     # Initialize Both Networks and Optimizers @ either very-small (64^2) or
     # small (128^2) size...
     if train_cfg.img_size == 64:
@@ -182,6 +181,12 @@ def start_or_resume_training_run(
 
     else:
         raise NotImplementedError
+
+    # Send all to HPU...
+    D.to(train_cfg.device)
+    opt_D.to(train_cfg.device)
+    G.to(train_cfg.device)
+    opt_G.to(train_cfg.device)
 
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
