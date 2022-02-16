@@ -96,7 +96,6 @@ def init_habana_default_params():
     os.environ["ENABLE_CONSOLE"] = "True"
     os.environ["LOG_LEVEL_ALL"] = "0"
 
-init_habana_default_params()
 
 def get_msls_dataloader(
     rank: int,
@@ -184,16 +183,14 @@ def start_or_resume_training_run(
 
     # Send all to HPU...
     D.to(train_cfg.dev)
-    #opt_D.to(train_cfg.dev)
     G.to(train_cfg.dev)
-    #opt_G.to(train_cfg.dev)
-
+    
     # This Model is Meant to Run on the HPU; permute Params
     if HPU:
         permute_params(D, True, LAZY)
-        permute_momentum(opt_D, True, LAZY)
+        #permute_momentum(opt_D, True, LAZY)
         permute_params(G, True, LAZY)
-        permute_momentum(opt_G, True, LAZY)
+        #permute_momentum(opt_G, True, LAZY)
 
     # Check the save-path for a model with this name && Load Params
     if st_epoch:
