@@ -54,7 +54,7 @@ parser.add_argument(
     help="checkpoint_params",
     default=json.dumps(
         {
-            "name": "msls-dcgan-128",
+            "name": "habana-dcgan-128",
             "root": "/efs/trained_model/",
             "log_frequency": 50,
             "save_frequency": 1,

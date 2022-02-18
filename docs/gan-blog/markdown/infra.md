@@ -40,10 +40,6 @@ I didn't intend on doing so many preliminary GPU runs, it just sort of happened.
 
 |  Model Parameter Set  |  Instance    |  Throughput (Imgs/Hr) |  Rate (\$) |   Imgs/$  | Spot Rate (\$) | Imgs/$ (Spot) |
 |:---------|:------------:|----------------------:|----------:|-----------------------:|------------:|-----------------------:|
-|**Default Parameters From DCGAN**                                                                                            |
-| Naive-64 | p3.2xlarge   |  5,830,000 |     $3.06 | 1,905,229 |       $0.92 |  6,336,957 |
-| Naive-64 | p3.8xlarge   |  9,863,000 |    $12.24 |   805,800 |       $3.67 |  2,686,002 |
-| Naive-64 | dl1.24xlarge |         NT |    $13.11 |        NT |       $3.93 |         NT |
 | **Prioritize  Model Stability**                                                         |
 | Clamp-64 | p3.2xlarge   |  1,225,000 |     $3.06 |   400,326 |       $0.92 |  1,331,521 |
 | Clamp-64 | p3.8xlarge   |  6,260,800 |    $12.24 |   511,503 |       $3.67 |  1,705,010 |
