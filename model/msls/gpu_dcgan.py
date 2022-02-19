@@ -2,11 +2,11 @@
 Functions for running a PyTorch implementation of DCGAN on a GPU instance
 
 sudo python3 -m msls.run_dcgan     \
-    -c '{"name": "ottawa-msls-gpu-dcgan-64-001", "root": "/efs/trained_model/", "log_frequency": 250, "save_frequency": 4}'\
+    -c '{"name": "phx-msls-gpu-dcgan-64-001", "root": "/efs/trained_model/", "log_frequency": 250, "save_frequency": 4}'\
     -t '{"nc": 3, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 128, "img_size": 64, "weight_decay": 0.05}'\
     --s_epoch 0\
-    --n_epoch 64\
-    --dataroot /data/imgs/train_val/ottawa\
+    --n_epoch 128\
+    --dataroot /data/imgs/train_val/phoenix\
     --logging True \
     --profile True \
     --s3_bucket 'dmw2151-habana-model-outputs'

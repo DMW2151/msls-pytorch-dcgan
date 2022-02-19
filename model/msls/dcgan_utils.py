@@ -430,7 +430,7 @@ def slerp_noise_vect(
 def gen_img_sequence_array(
     m_cfg: ModelCheckpointConfig,
     G: Union[Generator64, Generator128],
-    n_frames: int = 20,
+    n_frames: int = 64,
     Z_size: int = 128,
 ) -> None:
     """Create Interpolated Image Set"""
@@ -445,7 +445,10 @@ def gen_img_sequence_array(
 
         generated_images = G(Z_i).detach()
 
-        images_grid = torchvision.utils.make_grid(generated_images, nrow=1)
+        images_grid = torchvision.utils.make_grid(
+            generated_images, padding=4, normalize=True, nrow=1
+        ).cpu()
+
         pil_image = transforms.ToPILImage()(images_grid.cpu())
 
         seq_grid_images.append(pil_image)

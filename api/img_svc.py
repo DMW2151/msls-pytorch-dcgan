@@ -10,8 +10,8 @@ sudo docker build . \
 
 sudo docker run \
     -e TRAIN_CFG__IMG_SIZE=64 \
-    -e MODEL_CFG__NAME=ottawa-msls-gpu-dcgan-64-001\
-    -e ML_CONFIG_CHECKPOINT_NUM=16\
+    -e MODEL_CFG__NAME=phx-msls-gpu-dcgan-64-001\
+    -e ML_CONFIG_CHECKPOINT_NUM=132\
     --net=host \
     -v /efs/trained_model/:/efs/trained_model \
     dmw2151/deep-dash-api-flask python3 ./api/img_svc.py
@@ -82,6 +82,15 @@ def get_generator(
         f"{model_cfg.root}/{model_cfg.name}/slim_checkpoint_{epoch}.pt"
     )
     try:
+        with open(slim_checkpoint_path, "rb") as fi:
+            fi.close()
+
+    # Fallback to full checkpoint...
+    except FileNotFoundError:
+        slim_checkpoint_path = (
+            f"{model_cfg.root}/{model_cfg.name}/checkpoint_{epoch}.pt"
+        )
+
         with open(slim_checkpoint_path, "rb") as fi:
             fi.close()
 
@@ -172,7 +181,7 @@ if __name__ == "__main__":
     G = get_generator(
         TRAIN_CFG,
         MODEL_CFG,
-        epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM", "8")),
+        epoch=int(os.environ.get("ML_CONFIG_CHECKPOINT_NUM", "64")),
     )
 
     app.run(debug=True, host="0.0.0.0")
