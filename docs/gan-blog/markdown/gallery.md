@@ -8,12 +8,12 @@ This is a small gallery as part of my submission for [AWS Deep Learning Challeng
 
 |                                                                                                    |
 |:--------------------------------------------------------------------------------------------------:|
-| <img width="512" height="512" src="https://api.dmw2151.com/gan_imgs"></img> |
+| <img width="280" height="280" src="https://api.dmw2151.com/gan_imgs"></img> |
 Table: *Figure 1. &mdash; Sample PNGs &mdash; Sample GAN Generated Images*
 
 -------
 
 |                                                                                                    |
 |:--------------------------------------------------------------------------------------------------:|
-| <img width="128" height="128" src="https://api.dmw2151.com/gan_gifs"></img> |
+| <img width="64" height="64" src="https://api.dmw2151.com/gan_gifs"></img> |
 Table: *Figure 2. &mdash; Sample GIF &mdash; GAN generated GIF with Rotating Noise Vectors*
