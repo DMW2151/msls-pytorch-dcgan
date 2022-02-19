@@ -1,7 +1,7 @@
 ---
 title: DCGAN - Modeling Considerations
 author: Dustin Wilson
-date: February 8, 2022
+date: February 18, 2022
 ---
 
 ## General Improvements

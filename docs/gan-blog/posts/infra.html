@@ -6,7 +6,7 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon"> 
     <meta charset="utf-8">
     <meta name="author" content='Dustin Wilson'>
-    <meta name="date" content='2022-02-08'>
+    <meta name="date" content='2022-02-18'>
     <title>DCGAN - Model Training Infrastructure Choices</title>
     <style>
             html {
@@ -267,11 +267,10 @@
             <a href="./gallery.html" style="padding: 10px; font-size: 12px;">Gallery</a>
             <a href="./infra.html" style="padding: 10px; font-size: 12px;">Details on Infrastructure & Performance</a>
             <a href="./ml.html" style="padding: 10px; font-size: 12px;">Details on Model Development</a>
-            <a href="./gan-training-notes.html" style="padding: 10px; font-size: 12px;">Model User Guide</a>
         </div>
     </header>
     <h1> DCGAN - Model Training Infrastructure Choices </h1>
-    <p>Dustin Wilson &#8212 February 8, 2022</p>
+    <p>Dustin Wilson &#8212 February 18, 2022</p>
     <hr>
     <p>I haven’t written a line of ML code since 2014 (and I could even argue that didn’t count). I wanted to develop a sense of what model training on modern GPUs is like, then, once I was ready with a model that worked on the GPU, migrate it to the HPU. If you’re just interested in comparative results, you can skip to <a href="#Comparative%20Performance">performance results</a>.</p>
     <h2 id="comparative-performance">Comparative Performance</h2>
@@ -453,42 +452,6 @@
     </thead>
     <tbody>
     <tr class="odd">
-    <td style="text-align: left;"><strong>Default Parameters From DCGAN</strong></td>
-    <td style="text-align: center;"></td>
-    <td style="text-align: right;"></td>
-    <td style="text-align: right;"></td>
-    <td style="text-align: right;"></td>
-    <td style="text-align: right;"></td>
-    <td style="text-align: right;"></td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: left;">Naive-64</td>
-    <td style="text-align: center;">p3.2xlarge</td>
-    <td style="text-align: right;">5,830,000</td>
-    <td style="text-align: right;">$3.06</td>
-    <td style="text-align: right;">1,905,229</td>
-    <td style="text-align: right;">$0.92</td>
-    <td style="text-align: right;">6,336,957</td>
-    </tr>
-    <tr class="odd">
-    <td style="text-align: left;">Naive-64</td>
-    <td style="text-align: center;">p3.8xlarge</td>
-    <td style="text-align: right;">9,863,000</td>
-    <td style="text-align: right;">$12.24</td>
-    <td style="text-align: right;">805,800</td>
-    <td style="text-align: right;">$3.67</td>
-    <td style="text-align: right;">2,686,002</td>
-    </tr>
-    <tr class="even">
-    <td style="text-align: left;">Naive-64</td>
-    <td style="text-align: center;">dl1.24xlarge</td>
-    <td style="text-align: right;">NT</td>
-    <td style="text-align: right;">$13.11</td>
-    <td style="text-align: right;">NT</td>
-    <td style="text-align: right;">$3.93</td>
-    <td style="text-align: right;">NT</td>
-    </tr>
-    <tr class="odd">
     <td style="text-align: left;"><strong>Prioritize Model Stability</strong></td>
     <td style="text-align: center;"></td>
     <td style="text-align: right;"></td>
@@ -518,11 +481,11 @@
     <tr class="even">
     <td style="text-align: left;">Clamp-64</td>
     <td style="text-align: center;">dl1.24xlarge</td>
-    <td style="text-align: right;"></td>
+    <td style="text-align: right;">NT</td>
     <td style="text-align: right;">$13.11</td>
-    <td style="text-align: right;"></td>
+    <td style="text-align: right;">NT</td>
     <td style="text-align: right;">$3.93</td>
-    <td style="text-align: right;"></td>
+    <td style="text-align: right;">NT</td>
     </tr>
     <tr class="odd">
     <td style="text-align: left;"><strong>Rebalance for <code>(3 x 128 x 128)</code> Images</strong></td>
@@ -563,7 +526,7 @@
     </tbody>
     </table>
     </details>
-    <p>Tests were all conducted with <code>batch_size</code> at 256, for certain models and machines this is <em>definitely</em> a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of three configurations, <code>Naive-64</code>, <code>Clamps-64</code>, or <code>Safe-128</code>. <code>Naive-64</code> parameters were taken directly from the DCGAN paper and (partially) from PyTorch’s own documentation on generative models. <code>Clamps-64</code> parameters were deliberately set to ensure the model didn’t collapse. This meant having millions more parameters in the generator than the model <em>really</em> should have given images of this size. The <code>Safe-128</code> parameter set was designed to have approximately the same size as <code>Clamps-64</code>, favor the generator, and have <em>roughly</em> the same size/performance as <code>Clamps-64</code>, but on images 4x as large. Relevant parameters displayed below.</p>
+    <p>Tests were all conducted with <code>batch_size</code> at 256, for certain models and machines this is <em>definitely</em> a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of two configurations, <code>Clamps-64</code>, or <code>Safe-128</code>. There was also a 3rd set, <code>Naive-64</code>, whose parameters were taken directly from the DCGAN paper and (partially) from PyTorch’s own documentation on generative models. <code>Clamps-64</code> parameters were deliberately set to ensure the model didn’t collapse. This meant having millions more parameters in the generator than the model <em>really</em> should have given images of this size. The <code>Safe-128</code> parameter set was designed to have approximately the same size as <code>Clamps-64</code>, favor the generator, and have <em>roughly</em> the same size/performance as <code>Clamps-64</code>, but on images 4x as large. Relevant parameters displayed below.</p>
     <details>
     <summary>
     <strong>Table 1.3 Comparative Model Sizes — Trainable Elements Across All Parameters — Click to Expand</strong>

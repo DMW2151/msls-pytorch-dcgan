@@ -1,7 +1,7 @@
 ---
 title: DCGAN - Model Training Infrastructure Choices
 author: Dustin Wilson
-date: February 8, 2022
+date: February 18, 2022
 ---
 
 I haven't written a line of ML code since 2014 (and I could even argue that didn't count). I wanted to develop a sense of what model training on modern GPUs is like, then, once I was ready with a model that worked on the GPU, migrate it to the HPU. If you're just interested in comparative results, you can skip to [performance results](#Comparative%20Performance).
@@ -43,7 +43,7 @@ I didn't intend on doing so many preliminary GPU runs, it just sort of happened.
 | **Prioritize  Model Stability**                                                         |
 | Clamp-64 | p3.2xlarge   |  1,225,000 |     $3.06 |   400,326 |       $0.92 |  1,331,521 |
 | Clamp-64 | p3.8xlarge   |  6,260,800 |    $12.24 |   511,503 |       $3.67 |  1,705,010 |
-| Clamp-64 | dl1.24xlarge |            |    $13.11 |           |       $3.93 |            |
+| Clamp-64 | dl1.24xlarge |         NT |    $13.11 |        NT |       $3.93 |         NT |
 | **Rebalance for `(3 x 128 x 128)` Images**                                              |
 | Safe-128 | p3.2xlarge   |  1,462,900 |     $3.06 |   478,057 |       $0.92 |  1,593,526 |
 | Safe-128 | p3.8xlarge   |  5,941,000 |    $12.24 |   485,375 |       $3.67 |  1,617,919 |
@@ -51,7 +51,7 @@ I didn't intend on doing so many preliminary GPU runs, it just sort of happened.
 Table: *Table 1.2 Comparative Performance of GPU and HPU instances*
 </details>
 
-Tests were all conducted with `batch_size` at 256, for certain models and machines this is *definitely* a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of three configurations, `Naive-64`, `Clamps-64`, or `Safe-128`.  `Naive-64` parameters were taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
+Tests were all conducted with `batch_size` at 256, for certain models and machines this is *definitely* a bottleneck, but at a minimum it provides a consistent baseline. Model parameters tested were one of two configurations, `Clamps-64`, or `Safe-128`. There was also a 3rd set, `Naive-64`, whose parameters were taken directly from the DCGAN paper and (partially) from PyTorch's own documentation on generative models. `Clamps-64` parameters were deliberately set to ensure the model didn't collapse. This meant having millions more parameters in the generator than the model *really* should have given images of this size. The `Safe-128` parameter set was designed to have approximately the same size as `Clamps-64`, favor the generator, and have *roughly* the same size/performance as `Clamps-64`, but on images 4x as large. Relevant parameters displayed below.
 
 <details>
 <summary><strong>Table 1.3 Comparative Model Sizes &mdash; Trainable Elements Across All Parameters &mdash; Click to Expand</strong></summary>
