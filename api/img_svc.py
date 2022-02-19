@@ -102,12 +102,9 @@ def get_generator(
     checkpoint = get_checkpoint(path=slim_checkpoint_path, cpu=True)
 
     # Create an un-initialized model to load the weights from our
-    # pre-trained model...
-    if train_cfg.img_size == 128:
-        G, _ = train_cfg.get_network(Generator128, device_rank=0)
-    elif train_cfg.img_size == 64:
-        G, _ = train_cfg.get_network(Generator64, device_rank=0)
-    
+    # pre-trained model..
+    G, _ = train_cfg.get_network(Generator64, device_rank=0)
+
     restore_G_for_inference(checkpoint, G)
     return G
 
