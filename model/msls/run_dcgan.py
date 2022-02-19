@@ -36,7 +36,7 @@ parser.add_argument(
     "--n_epoch",
     type=int,
     help="Train model through N epochs",
-    default=16,
+    default=32,
 )
 
 parser.add_argument(

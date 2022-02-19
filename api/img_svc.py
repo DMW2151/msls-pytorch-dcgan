@@ -9,10 +9,13 @@ sudo docker build . \
     -t dmw2151/deep-dash-api-flask
 
 sudo docker run \
-    -p 5000:5000 \
+    -e TRAIN_CFG__IMG_SIZE=64 \
+    -e MODEL_CFG__NAME=ottawa-msls-gpu-dcgan-64-001\
+    -e ML_CONFIG_CHECKPOINT_NUM=16\
     --net=host \
     -v /efs/trained_model/:/efs/trained_model \
     dmw2151/deep-dash-api-flask python3 ./api/img_svc.py
+
 """
 
 import uuid
@@ -51,14 +54,14 @@ TRAIN_CFG = TrainingConfig(
     dev=torch.device(DEVICE),
     **{
         "nc": os.environ.get("TRAIN_CFG__N_CHANNELS") or 3,
-        "img_size": os.environ.get("TRAIN_CFG__IMG_SIZE") or 128,
+        "img_size": os.environ.get("TRAIN_CFG__IMG_SIZE") or 64,
     },
 )
 
 # Allow the model config to be modified at runtime w. environment vars
 MODEL_CFG = ModelCheckpointConfig(
     **{
-        "name": os.environ.get("MODEL_CFG__NAME") or "helsinki-dcgan-128",
+        "name": os.environ.get("MODEL_CFG__NAME") or "msls-gaudi-dcgan-128-001",
         "root": os.environ.get("MODEL_CFG__ROOT") or "/efs/trained_model",
         "s3_bucket": os.environ.get("MODEL_CFG__BUCKET")
         or "dmw2151-habana-model-outputs",
@@ -100,7 +103,11 @@ def get_generator(
 
     # Create an un-initialized model to load the weights from our
     # pre-trained model...
-    G, _ = train_cfg.get_network(Generator128, device_rank=0)
+    if train_cfg.img_size == 128:
+        G, _ = train_cfg.get_network(Generator128, device_rank=0)
+    elif train_cfg.img_size == 64:
+        G, _ = train_cfg.get_network(Generator64, device_rank=0)
+    
     restore_G_for_inference(checkpoint, G)
     return G
 

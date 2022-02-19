@@ -13,6 +13,35 @@ I would encourage you to refer to my full write-up [here](https://gan.dmw2151.co
 - DCGAN Results
 - Comparative Results w.r.t Cost and Hardware Performance (`DL1` v. `P`)
 
+Please see the Habana HPU repo for this model [here](https://github.com/DMW2151/Model-References)
+
+
+## Usage
+
+```bash
+python3 -m pip install --upgrade pip &&\
+    sudo -H pip3 install /home/ubuntu/msls-pytorch-dcgan/model
+```
+
+```bash
+# In short, the below does a 16 epoch run on a model with:
+#
+# Id: `global-dcgan-128-1`
+# Image data data from: `/data/imgs/train_val/`
+# Saving checkpoints to: `/efs/trained_model/`
+# Uploading an artifact to: `s3://dmw2151-habana-model-outputs`
+#
+python3 -m msls.run_dcgan \
+    -c '{"name": "msls-gpu-dcgan-128-001", "root": "/efs/trained_model/", "log_frequency": 50, "save_frequency": 1}' \
+    -t '{"nc": 3, "nz": 128, "ngf": 128, "ndf": 32, "lr": 0.0002, "beta1": 0.5, "beta2": 0.999, "batch_size": 256, "img_size": 128, "weight_decay": 0.05}'\
+    --s_epoch 0 \
+    --n_epoch 24 \
+    --dataroot /data/imgs/train_val/ \
+    --logging True \
+    --profile True  \
+    --s3_bucket 'dmw2151-habana-model-outputs'
+```
+
 ## Citations
 
 **[1]** *"Generative Adversarial Networks." Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. ArXiv 2014.*
