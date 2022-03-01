@@ -13,7 +13,7 @@ I would encourage you to refer to my full write-up [here](https://gan.dmw2151.co
 - DCGAN Results
 - Comparative Results w.r.t Cost and Hardware Performance (`DL1` v. `P`)
 
-Please see the Habana HPU repo for this model [here](https://github.com/DMW2151/Model-References)
+Please see the Habana HPU repo for this model [here](https://github.com/DMW2151/Model-References/tree/master/PyTorch/dl1_models/computer_vision/msls)
 
 
 ## Usage
